@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-cream: #fffbf4;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-cream);
+  color: #2a1b12;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: #ffdca1;
+  color: #7c3210;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #fff3e0;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(#f97d14, #d44563);
+  border-radius: 8px;
+}
+
+@layer components {
+  .container-px {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-saffron-500 to-saffron-600 px-7 py-3.5 text-sm font-semibold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-saffron-200 bg-white/80 px-7 py-3.5 text-sm font-semibold text-saffron-700 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-saffron-400 hover:bg-saffron-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400;
+  }
+
+  .section-pad {
+    @apply py-20 md:py-28;
+  }
+
+  .eyebrow {
+    @apply mb-4 inline-flex items-center gap-2 rounded-full border border-saffron-200 bg-saffron-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-saffron-700;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-card;
+  }
+}
+
+/* Reveal-on-scroll base */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Shimmer text for hero accent */
+.shimmer-text {
+  background: linear-gradient(
+    110deg,
+    #e96109 20%,
+    #d9a441 40%,
+    #d44563 60%,
+    #e96109 80%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
