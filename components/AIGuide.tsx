@@ -12,7 +12,7 @@ const replies: { match: RegExp; answer: string }[] = [
   {
     match: /(pooja|puja|book|ritual)/i,
     answer:
-      "🙏 Wonderful! We offer Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti & more. Head to the Services section and pick the one that speaks to you!",
+      "🙏 Wonderful! We offer Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti & more. Check out our upcoming events or browse the full catalogue and pick the one that speaks to you!",
   },
   {
     match: /(kundli|rashi|nakshatra|astrolog)/i,
@@ -22,7 +22,7 @@ const replies: { match: RegExp; answer: string }[] = [
   {
     match: /(darshan|live|stream)/i,
     answer:
-      "🎥 You can watch live darshan from Kashi Vishwanath, Tirupati & Kedarnath! Your private streaming link is unlocked instantly after payment in the Live Streaming section.",
+      "🎥 You can watch live darshan from Kashi Vishwanath, Tirupati & Kedarnath! Your private streaming link is unlocked instantly after payment — just book any live pooja.",
   },
   {
     match: /(kit|samagri|deliver)/i,

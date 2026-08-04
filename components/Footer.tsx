@@ -56,6 +56,22 @@ export default function Footer() {
                   </a>
                 </li>
               ))}
+              <li>
+                <a
+                  href="/profile"
+                  className="text-sm text-cream/60 transition-colors hover:text-saffron-300"
+                >
+                  My Profile
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/admin"
+                  className="text-sm text-cream/60 transition-colors hover:text-saffron-300"
+                >
+                  Admin
+                </a>
+              </li>
             </ul>
           </div>
 

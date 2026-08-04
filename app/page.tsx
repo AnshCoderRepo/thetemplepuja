@@ -1,8 +1,6 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import UpcomingEvents from "@/components/UpcomingEvents";
-import Yatra from "@/components/Yatra";
-import Services from "@/components/Services";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import Deals from "@/components/Deals";
 import Testimonials from "@/components/Testimonials";
@@ -18,8 +16,6 @@ export default function Home() {
       <main>
         <Hero />
         <UpcomingEvents />
-        <Yatra />
-        <Services />
         <WhyChooseUs />
         <Deals />
         <Testimonials />

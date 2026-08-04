@@ -12,9 +12,10 @@ interface Props {
   title: ReactNode;
   subtitle: string;
   facts?: Fact[];
+  crumb?: string;
 }
 
-export default function BookPageHeader({ eyebrow, title, subtitle, facts = [] }: Props) {
+export default function BookPageHeader({ eyebrow, title, subtitle, facts = [], crumb }: Props) {
   return (
     <header className="relative overflow-hidden bg-gradient-to-br from-saffron-600 via-saffron-700 to-maroon-800 pb-16 pt-28 md:pb-20 md:pt-36">
       {/* Decorative background */}
@@ -36,10 +37,14 @@ export default function BookPageHeader({ eyebrow, title, subtitle, facts = [] }:
             Home
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link href="/book" className="transition-colors hover:text-white">
-            Book Pooja
-          </Link>
-          {facts.length > 0 && (
+          {crumb ? (
+            <span className="text-amber-50">{crumb}</span>
+          ) : (
+            <Link href="/book" className="transition-colors hover:text-white">
+              Book Pooja
+            </Link>
+          )}
+          {!crumb && facts.length > 0 && (
             <>
               <ChevronRight className="h-3.5 w-3.5" />
               <span className="max-w-[200px] truncate text-amber-50">Booking</span>

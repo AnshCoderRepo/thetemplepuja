@@ -6,17 +6,13 @@ export const stats = [
 ];
 
 export const heroCtas = [
-  { label: "Book Pooja", href: "/book", primary: true },
+  { label: "Book Pooja", href: "/book/form", primary: true },
   { label: "Live E-Pooja", href: "#events" },
-  { label: "Pooja Kits", href: "#services" },
-  { label: "Tirtha Yatra", href: "#yatra" },
 ];
 
 export const navLinks = [
   { label: "Home", href: "#home" },
   { label: "Events", href: "#events" },
-  { label: "Yatra", href: "#yatra" },
-  { label: "Services", href: "#services" },
   { label: "Why Us", href: "#why-us" },
   { label: "Deals", href: "#deals" },
   { label: "Reviews", href: "#testimonials" },
@@ -24,11 +20,44 @@ export const navLinks = [
   { label: "Contact", href: "#contact" },
 ];
 
-export const upcomingEvents = [
+// Upcoming events are scheduled relative to today so the feed never shows stale/past dates.
+// Each spec lists daysFromToday; getUpcomingEvents() computes real dates, drops any that have
+// already passed, and returns them closest-first.
+
+const eventDateFmt = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+function toISODate(d: Date): string {
+  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+}
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+export interface UpcomingEvent {
+  title: string;
+  slug: string;
+  date: string; // display, e.g. "Tue, Aug 12"
+  dateISO: string; // machine-readable, e.g. "2026-08-12"
+  time: string;
+  seats: string;
+  live: boolean;
+  price: string;
+  emoji: string;
+  gradient: string;
+}
+
+const upcomingEventSpecs = [
   {
     title: "Hanuman Pooja",
     slug: "hanuman-pooja",
-    date: "Tue, Aug 12",
+    daysFromToday: 8,
     time: "7:00 PM IST",
     seats: "Only 12 seats left",
     live: true,
@@ -39,7 +68,7 @@ export const upcomingEvents = [
   {
     title: "Satyanarayan Katha",
     slug: "satyanarayan-katha",
-    date: "Thu, Aug 14",
+    daysFromToday: 10,
     time: "6:30 PM IST",
     seats: "18 spots open",
     live: true,
@@ -50,7 +79,7 @@ export const upcomingEvents = [
   {
     title: "Rudrabhishek",
     slug: "rudrabhishek",
-    date: "Sat, Aug 16",
+    daysFromToday: 12,
     time: "5:00 AM IST",
     seats: "Only 9 seats left",
     live: true,
@@ -61,7 +90,7 @@ export const upcomingEvents = [
   {
     title: "Griha Pravesh",
     slug: "griha-pravesh",
-    date: "Sun, Aug 17",
+    daysFromToday: 13,
     time: "10:00 AM IST",
     seats: "5 slots available",
     live: false,
@@ -72,7 +101,7 @@ export const upcomingEvents = [
   {
     title: "Shani Dev Pooja",
     slug: "shani-dev-pooja",
-    date: "Mon, Aug 18",
+    daysFromToday: 14,
     time: "9:00 PM IST",
     seats: "20 spots open",
     live: true,
@@ -83,7 +112,7 @@ export const upcomingEvents = [
   {
     title: "Navgraha Shanti",
     slug: "navgraha-shanti",
-    date: "Fri, Aug 22",
+    daysFromToday: 18,
     time: "8:00 AM IST",
     seats: "Only 15 seats left",
     live: false,
@@ -93,77 +122,29 @@ export const upcomingEvents = [
   },
 ];
 
-export const yatras = [
-  {
-    title: "Kashi Vishwanath Yatra",
-    location: "Varanasi, Uttar Pradesh",
-    duration: "3 Days / 2 Nights",
-    rating: 4.9,
-    price: "₹7,999",
-    description:
-      "Walk the sacred ghats, witness the evening Ganga Aarti and seek blessings of Baba Vishwanath with complete guidance.",
-    highlights: ["Ganga Aarti", "Kashi Vishwanath Darshan", "Sarnath Visit"],
-    emoji: "🛕",
-    gradient: "from-amber-400 via-orange-500 to-rose-500",
-  },
-  {
-    title: "Kedarnath Dham Yatra",
-    location: "Uttarakhand, Himalayas",
-    duration: "5 Days / 4 Nights",
-    rating: 4.9,
-    price: "₹12,499",
-    description:
-      "A soul-stirring pilgrimage to the holy shrine of Lord Shiva in the mighty Himalayas with helicopter assistance.",
-    highlights: ["Helicopter Option", "Rudrabhishek", "Trek Assistance"],
-    emoji: "🏔️",
-    gradient: "from-sky-400 via-blue-500 to-indigo-600",
-  },
-  {
-    title: "Tirupati Balaji Yatra",
-    location: "Tirumala, Andhra Pradesh",
-    duration: "2 Days / 1 Night",
-    rating: 4.8,
-    price: "₹6,499",
-    description:
-      "Special darshan of Lord Venkateshwara with hassle-free booking, accommodation and all rituals arranged for you.",
-    highlights: ["Special Darshan", "Accommodation", "Laddu Prasadam"],
-    emoji: "⛰️",
-    gradient: "from-orange-400 to-red-600",
-  },
-];
+export function getUpcomingEvents(today: Date = new Date()): UpcomingEvent[] {
+  const todayISO = toISODate(today);
+  return upcomingEventSpecs
+    .map((spec) => {
+      const d = addDays(today, spec.daysFromToday);
+      return {
+        title: spec.title,
+        slug: spec.slug,
+        date: eventDateFmt.format(d),
+        dateISO: toISODate(d),
+        time: spec.time,
+        seats: spec.seats,
+        live: spec.live,
+        price: spec.price,
+        emoji: spec.emoji,
+        gradient: spec.gradient,
+      };
+    })
+    .filter((e) => e.dateISO >= todayISO)
+    .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+}
 
-export const services = [
-  {
-    title: "Sacred Pooja Services",
-    tagline: "Authentic Vedic rituals performed by certified pandits",
-    description:
-      "From Satyanarayan Katha to Griha Pravesh, every ritual follows ancient scriptures with sankalp on your behalf.",
-    features: ["Certified Pandits", "Sankalp on your name", "Video recording"],
-    icon: "🪔",
-    gradient: "from-saffron-100 to-amber-50",
-    accent: "text-saffron-600",
-  },
-  {
-    title: "Live Streaming",
-    tagline: "Live Darshan & E-Pooja",
-    description:
-      "Pay and watch instantly — your private streaming link is unlocked the moment your booking is confirmed.",
-    features: ["Private streaming link", "Live from major temples", "HD quality"],
-    icon: "🎥",
-    gradient: "from-rose-50 to-orange-50",
-    accent: "text-rose-600",
-  },
-  {
-    title: "Home Delivery",
-    tagline: "Pooja Kits & Sacred Items",
-    description:
-      "Premium quality samagri delivered to your doorstep anywhere in India within 2–5 days. Blessed by pandits.",
-    features: ["2–5 day delivery", "Pan India shipping", "Blessed samagri"],
-    icon: "📦",
-    gradient: "from-emerald-50 to-teal-50",
-    accent: "text-emerald-600",
-  },
-];
+
 
 export const whyUs = [
   {
@@ -268,7 +249,7 @@ export const testimonials = [
     name: "Vikram Singh",
     location: "Jaipur, Rajasthan",
     rating: 5,
-    text: "Took the Kedarnath Yatra package with The Temple Puja. Everything from helicopter booking to accommodation was handled perfectly. The pandit ji accompanying us made the journey spiritual and smooth.",
+    text: "Booked Navgraha Shanti for our family — the pandit ji explained every step and the havan was performed flawlessly. The live video recording let our relatives abroad join in the blessings.",
     avatar: "VS",
     color: "from-indigo-400 to-purple-600",
   },
@@ -277,7 +258,7 @@ export const testimonials = [
 export const faqs = [
   {
     q: "How do I book a pooja on The Temple Puja?",
-    a: "Simply select your pooja, choose a date, fill in your details (name, gotra, city), add any optional items, and complete secure payment via UPI, card or net banking. Your booking is confirmed instantly and admin is notified on WhatsApp.",
+    a: "Simply select your pooja, choose a date, fill in your details (name, gotra, city, mobile number), and complete secure payment via UPI, card or net banking. Your booking is confirmed instantly and admin is notified on WhatsApp.",
   },
   {
     q: "Are the pandits certified and experienced?",
@@ -506,133 +487,19 @@ export function getPooja(slug: string): Pooja | undefined {
   return poojas.find((p) => p.slug === slug);
 }
 
-// ===================== PANDITS =====================
-
-export interface Pandit {
-  id: string;
-  name: string;
-  initials: string;
-  experience: number;
-  rating: number;
-  reviews: number;
-  languages: string[];
-  speciality: string;
-  gradient: string;
-  fee: number;
-  badge?: string;
-}
-
-export const pandits: Pandit[] = [
-  {
-    id: "pt-rama-krishna",
-    name: "Pt. Rama Krishna Sharma",
-    initials: "RS",
-    experience: 22,
-    rating: 4.9,
-    reviews: 486,
-    languages: ["Hindi", "Sanskrit", "Telugu"],
-    speciality: "Satyanarayan, Griha Pravesh",
-    gradient: "from-amber-400 to-orange-500",
-    fee: 0,
-    badge: "Most Loved",
-  },
-  {
-    id: "pt-gyanendra",
-    name: "Pt. Gyanendra Mishra",
-    initials: "GM",
-    experience: 18,
-    rating: 4.9,
-    reviews: 402,
-    languages: ["Hindi", "Sanskrit", "Bhojpuri"],
-    speciality: "Rudrabhishek, Navgraha Shanti",
-    gradient: "from-indigo-400 to-purple-500",
-    fee: 0,
-  },
-  {
-    id: "pt-umeshwar",
-    name: "Pt. Umeshwar Bhatt",
-    initials: "UB",
-    experience: 30,
-    rating: 5.0,
-    reviews: 618,
-    languages: ["Hindi", "Sanskrit", "Gujarati"],
-    speciality: "Shani Dev, Maha Mrityunjaya Jap",
-    gradient: "from-slate-500 to-gray-700",
-    fee: 700,
-    badge: "Gurukul Trained",
-  },
-  {
-    id: "pt-anand",
-    name: "Pt. Anand Tiwari",
-    initials: "AT",
-    experience: 14,
-    rating: 4.8,
-    reviews: 287,
-    languages: ["Hindi", "Sanskrit", "English"],
-    speciality: "Hanuman Pooja, Lakshmi Pooja",
-    gradient: "from-rose-400 to-pink-500",
-    fee: 0,
-  },
-  {
-    id: "pt-suryanarayan",
-    name: "Pt. Suryanarayan Iyer",
-    initials: "SI",
-    experience: 25,
-    rating: 4.9,
-    reviews: 534,
-    languages: ["Tamil", "Sanskrit", "Hindi", "English"],
-    speciality: "Griha Pravesh, Navgraha",
-    gradient: "from-emerald-400 to-teal-500",
-    fee: 500,
-  },
-  {
-    id: "pt-devkinandan",
-    name: "Pt. Devkinandan Vyas",
-    initials: "DV",
-    experience: 16,
-    rating: 4.8,
-    reviews: 341,
-    languages: ["Hindi", "Sanskrit", "Marathi"],
-    speciality: "Durga Saptashati, Saraswati",
-    gradient: "from-fuchsia-400 to-purple-500",
-    fee: 0,
-  },
-];
-
-// ===================== TIME SLOTS =====================
-
-export const timeSlots = [
-  { id: "06:00", time: "6:00 AM", label: "Brahma Muhurta", emoji: "🌅" },
-  { id: "09:00", time: "9:00 AM", label: "Morning", emoji: "☀️" },
-  { id: "11:00", time: "11:00 AM", label: "Abhijit Muhurta", emoji: "🕚" },
-  { id: "16:00", time: "4:00 PM", label: "Evening", emoji: "🌤️" },
-  { id: "19:00", time: "7:00 PM", label: "Sandhya Aarti", emoji: "🪔" },
-  { id: "21:00", time: "9:00 PM", label: "Night", emoji: "🌙" },
-];
-
-// ===================== ADD-ONS =====================
-
-export const addons = [
-  { id: "kit", label: "Blessed Pooja Kit", hint: "Samagri delivered to your home", price: 499, emoji: "📦" },
-  { id: "video", label: "HD Video Recording", hint: "Watch the ritual again anytime", price: 299, emoji: "🎥" },
-  { id: "sankalp", label: "Sankalp for 5 Family Members", hint: "Include your family in the ritual", price: 199, emoji: "🙏" },
-  { id: "kundli", label: "Detailed Kundli Reading", hint: "Personalised reading by our astrologer", price: 499, emoji: "🔮" },
-];
-
 // ===================== COUPONS =====================
 
-export type CouponKind = "percent" | "benefit" | "addon";
+export type CouponKind = "percent" | "benefit";
 
 export interface Coupon {
   kind: CouponKind;
   label: string;
   value?: number;
-  addonId?: string;
 }
 
 export const coupons: Record<string, Coupon> = {
   TEMPLE30: { kind: "percent", value: 30, label: "30% off your first booking" },
   BUNDLE20: { kind: "percent", value: 20, label: "20% off when booking 3+ poojas" },
   DAILYDARSHAN: { kind: "benefit", label: "Free daily live darshan from major temples" },
-  TEMPLEKUNDLI: { kind: "addon", addonId: "kundli", label: "Free kundli reading with your pooja" },
+  TEMPLEKUNDLI: { kind: "benefit", label: "Free kundli reading with your pooja" },
 };

@@ -4,7 +4,7 @@ import { whyUs } from "@/lib/data";
 
 export default function WhyChooseUs() {
   return (
-    <section id="why-us" className="section-pad relative overflow-hidden bg-saffron-50">
+    <section id="why-us" className="section-pad relative overflow-hidden bg-white">
       <div className="absolute inset-0 bg-radial-glow" />
       <div className="container-px relative">
         <SectionHeading

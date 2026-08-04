@@ -78,7 +78,7 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           <Link
-            href="/book"
+            href="/book/form"
             className="btn-primary hidden !px-5 !py-2.5 text-xs sm:inline-flex"
           >
             Book Pooja
@@ -111,7 +111,7 @@ export default function Header() {
             </a>
           ))}
           <Link
-            href="/book"
+            href="/book/form"
             onClick={() => setOpen(false)}
             className="btn-primary mt-2 !w-full"
           >

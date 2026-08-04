@@ -7,6 +7,7 @@ import BookingFlow from "@/components/BookingFlow";
 
 interface Props {
   params: Promise<{ service: string }>;
+  searchParams: Promise<{ date?: string; time?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -20,8 +21,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function BookServicePage({ params }: Props) {
+export default async function BookServicePage({ params, searchParams }: Props) {
   const { service } = await params;
+  const sp = await searchParams;
   const pooja = getPooja(service);
 
   if (!pooja) {
@@ -61,7 +63,11 @@ export default async function BookServicePage({ params }: Props) {
           { icon: "⭐", label: "4.9 rated pandits" },
         ]}
       />
-      <BookingFlow pooja={pooja} />
+      <BookingFlow
+        pooja={pooja}
+        initialDate={sp.date ?? null}
+        initialTime={sp.time ?? null}
+      />
     </>
   );
 }
