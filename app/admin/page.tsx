@@ -11,6 +11,7 @@ import {
   Users,
   CalendarCheck,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
 import { getUsers, isAdminSession, setAdminSession, type UserProfile } from "@/lib/storage";
@@ -74,12 +75,16 @@ export default function AdminPage() {
   }, []);
 
   const stats = useMemo(() => {
-    const bookings = users.reduce((n, u) => n + u.bookings.length, 0);
-    const revenue = users.reduce(
-      (sum, u) => sum + u.bookings.reduce((s, b) => s + b.amount, 0),
-      0
-    );
-    return { devotees: users.length, bookings, revenue };
+    const allBookings = users.flatMap((u) => u.bookings);
+    const active = allBookings.filter((b) => b.status !== "cancelled");
+    const revenue = active.reduce((s, b) => s + b.amount, 0);
+    return {
+      devotees: users.length,
+      bookings: allBookings.length,
+      active: active.length,
+      cancelled: allBookings.length - active.length,
+      revenue,
+    };
   }, [users]);
 
   if (!mounted) {
@@ -171,20 +176,21 @@ export default function AdminPage() {
         subtitle="Every devotee who completes a payment creates a profile here, with their full details and pooja history."
         facts={[
           { icon: "🙏", label: `${stats.devotees} Devotees` },
-          { icon: "🪔", label: `${stats.bookings} Bookings` },
-          { icon: "💳", label: `${formatINR(stats.revenue)} Collected` },
+          { icon: "🪔", label: `${stats.bookings} Total Bookings` },
+          { icon: "💳", label: `${formatINR(stats.revenue)} Net Collected` },
         ]}
       />
 
       <section className="section-pad bg-cream">
         <div className="container-px mx-auto max-w-4xl">
           {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              { icon: Users, label: "Total Devotees", value: stats.devotees, cls: "from-saffron-500 to-saffron-600" },
-              { icon: CalendarCheck, label: "Total Bookings", value: stats.bookings, cls: "from-emerald-500 to-teal-600" },
-              { icon: Wallet, label: "Revenue Collected", value: formatINR(stats.revenue), cls: "from-maroon-600 to-maroon-700" },
-            ].map((s) => {
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: Users, label: "Total Devotees", value: stats.devotees, cls: "from-saffron-500 to-saffron-600" },
+            { icon: CalendarCheck, label: "Active Bookings", value: stats.active, cls: "from-emerald-500 to-teal-600" },
+            { icon: Wallet, label: "Revenue (Active)", value: formatINR(stats.revenue), cls: "from-maroon-600 to-maroon-700" },
+            { icon: XCircle, label: "Cancelled", value: stats.cancelled, cls: "from-red-500 to-rose-600" },
+          ].map((s) => {
               const Icon = s.icon;
               return (
                 <div
@@ -281,9 +287,13 @@ export default function AdminPage() {
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block font-display text-base font-bold text-saffron-600">
-                          {formatINR(u.bookings.reduce((s, b) => s + b.amount, 0))}
+                          {formatINR(
+                            u.bookings
+                              .filter((b) => b.status !== "cancelled")
+                              .reduce((s, b) => s + b.amount, 0)
+                          )}
                         </span>
-                        <span className="text-[10px] font-medium text-ink-soft">lifetime</span>
+                        <span className="text-[10px] font-medium text-ink-soft">net paid</span>
                       </span>
                       <ChevronDown
                         className={`h-4 w-4 shrink-0 text-ink-soft transition-transform duration-300 ${
@@ -337,7 +347,15 @@ export default function AdminPage() {
                                     <span className="text-sm font-bold text-ink">
                                       🪔 {b.poojaTitle}
                                     </span>
-                                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                                        b.status === "cancelled"
+                                          ? "bg-red-100 text-red-600"
+                                          : b.status === "rescheduled"
+                                            ? "bg-amber-100 text-amber-700"
+                                            : "bg-emerald-100 text-emerald-700"
+                                      }`}
+                                    >
                                       {b.status}
                                     </span>
                                   </div>
@@ -357,8 +375,20 @@ export default function AdminPage() {
                                       🪔 Reason: {b.reason}
                                     </p>
                                   )}
+                                  {b.status === "cancelled" && b.cancelledAt && (
+                                    <p className="mt-1.5 text-[11px] font-semibold text-red-500">
+                                      ↩️ Cancelled on {formatDate(b.cancelledAt)} — refund
+                                      initiated
+                                    </p>
+                                  )}
                                 </div>
-                                <span className="font-display text-base font-bold text-saffron-600">
+                                <span
+                                  className={`font-display text-base font-bold ${
+                                    b.status === "cancelled"
+                                      ? "text-ink-soft/40 line-through"
+                                      : "text-saffron-600"
+                                  }`}
+                                >
                                   {formatINR(b.amount)}
                                 </span>
                               </div>

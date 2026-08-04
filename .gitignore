@@ -1,6 +1,9 @@
 # Node modules
 node_modules/
 
+# Freebuff desktop app local database
+.freebuff/
+
 # Next.js build output
 .next/
 out/
