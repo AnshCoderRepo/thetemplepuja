@@ -9,9 +9,14 @@ import {
   Phone,
   Search,
   UserRound,
+  XCircle,
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
-import { findUserByPhone, type UserProfile } from "@/lib/storage";
+import {
+  cancelBooking,
+  findUserByPhone,
+  type UserProfile,
+} from "@/lib/storage";
 import { formatINR } from "@/lib/format";
 
 const inputCls =
@@ -38,22 +43,48 @@ function formatDate(iso: string) {
   }
 }
 
+const statusStyles: Record<string, string> = {
+  confirmed: "bg-emerald-100 text-emerald-700",
+  cancelled: "bg-red-100 text-red-600",
+  rescheduled: "bg-amber-100 text-amber-700",
+};
+
 export default function ProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [inputPhone, setInputPhone] = useState("");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [cancelMsg, setCancelMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const refresh = (phone: string) => {
+    setCancelMsg(null);
+    const found = findUserByPhone(phone);
+    setProfile(found ?? null);
+    setNotFound(!found);
+  };
 
   // Read ?phone= from the URL once (avoids useSearchParams/Suspense)
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("phone") ?? "";
     if (p) {
-      const found = findUserByPhone(p);
-      setProfile(found ?? null);
-      setNotFound(!found);
+      refresh(p);
     }
     setMounted(true);
   }, []);
+
+  const handleCancel = (bookingId: string) => {
+    if (!profile) return;
+    const res = cancelBooking(profile.phone, bookingId);
+    if (res.ok) {
+      refresh(profile.phone);
+      setConfirmCancelId(null);
+      setCancelMsg({ ok: true, text: "Booking cancelled. Your refund will be processed within 5–7 business days." });
+    } else {
+      setConfirmCancelId(null);
+      setCancelMsg({ ok: false, text: "This booking can no longer be cancelled." });
+    }
+  };
 
   const lookup = (phone: string) => {
     const p = phone.trim();
@@ -110,11 +141,29 @@ export default function ProfilePage() {
                         </p>
                       </div>
                     </div>
-                    <span className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700">
-                      <BadgeCheck className="h-4 w-4" />
-                      {profile.bookings.length} Booking
-                      {profile.bookings.length !== 1 ? "s" : ""}
-                    </span>
+                    <div className="mb-1 flex flex-wrap items-center justify-end gap-2">
+                      {(() => {
+                        const activeCount = profile.bookings.filter(
+                          (b) => b.status !== "cancelled"
+                        ).length;
+                        const cancelledCount = profile.bookings.length - activeCount;
+                        return (
+                          <>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700">
+                              <BadgeCheck className="h-4 w-4" />
+                              {activeCount} Active Booking
+                              {activeCount !== 1 ? "s" : ""}
+                            </span>
+                            {cancelledCount > 0 && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-4 py-1.5 text-xs font-bold text-red-600">
+                                <XCircle className="h-4 w-4" />
+                                {cancelledCount} Cancelled
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   <dl className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -168,6 +217,19 @@ export default function ProfilePage() {
                 Your Bookings
               </h3>
 
+              {cancelMsg && (
+                <div
+                  className={`mb-5 rounded-2xl border px-5 py-3.5 text-sm font-semibold ${
+                    cancelMsg.ok
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-red-200 bg-red-50 text-red-600"
+                  }`}
+                >
+                  {cancelMsg.ok ? "✅ " : "⚠️ "}
+                  {cancelMsg.text}
+                </div>
+              )}
+
               {profile.bookings.length === 0 ? (
                 <div className="rounded-3xl border border-saffron-100 bg-white p-10 text-center shadow-soft">
                   <p className="text-3xl">🪔</p>
@@ -203,10 +265,20 @@ export default function ProfilePage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="font-display text-xl font-bold text-saffron-600">
+                            <span
+                              className={`font-display text-xl font-bold ${
+                                b.status === "cancelled"
+                                  ? "text-ink-soft/40 line-through"
+                                  : "text-saffron-600"
+                              }`}
+                            >
                               {formatINR(b.amount)}
                             </span>
-                            <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                            <span
+                              className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                                statusStyles[b.status] ?? "bg-emerald-100 text-emerald-700"
+                              }`}
+                            >
                               {b.status}
                             </span>
                           </div>
@@ -228,6 +300,41 @@ export default function ProfilePage() {
                           )}
                           <span className="ml-auto">Booked {formatDate(b.createdAt)}</span>
                         </div>
+
+                        {b.status === "confirmed" && (
+                          <div className="border-t border-dashed border-saffron-100 px-6 py-3.5">
+                            {confirmCancelId === b.bookingId ? (
+                              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                                <p className="text-xs font-semibold text-red-700">
+                                  Cancel this booking? Your seat will be released and a refund
+                                  initiated within 5–7 business days.
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleCancel(b.bookingId)}
+                                    className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-red-700"
+                                  >
+                                    Yes, Cancel Booking
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmCancelId(null)}
+                                    className="rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-100"
+                                  >
+                                    Keep Booking
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmCancelId(b.bookingId)}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                                Cancel Booking
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </article>
                     ))}
                 </div>

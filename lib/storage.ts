@@ -2,6 +2,8 @@
 // No backend exists yet, so profiles live in localStorage. All functions are
 // SSR-safe (they no-op on the server) — call them only from client effects.
 
+export type BookingStatus = "confirmed" | "cancelled" | "rescheduled";
+
 export interface BookingRecord {
   bookingId: string;
   poojaSlug: string;
@@ -14,7 +16,8 @@ export interface BookingRecord {
   couponCode: string | null;
   addonCount: number;
   createdAt: string; // ISO
-  status: "confirmed";
+  status: BookingStatus;
+  cancelledAt?: string; // ISO — set when the devotee cancels
 }
 
 export interface UserProfile {
@@ -96,6 +99,27 @@ export function upsertBooking(input: {
     saveUsers(users);
   }
   return user;
+}
+
+/**
+ * Cancel a confirmed booking for a devotee. No-op (returns false) if the
+ * booking isn't found or is already cancelled/rescheduled.
+ */
+export function cancelBooking(
+  phone: string,
+  bookingId: string
+): { ok: boolean; user?: UserProfile } {
+  const users = getUsers();
+  const user = users.find((u) => u.phone === phone.trim());
+  if (!user) return { ok: false };
+
+  const booking = user.bookings.find((b) => b.bookingId === bookingId);
+  if (!booking || booking.status !== "confirmed") return { ok: false };
+
+  booking.status = "cancelled";
+  booking.cancelledAt = new Date().toISOString();
+  saveUsers(users);
+  return { ok: true, user };
 }
 
 export function isAdminSession(): boolean {
