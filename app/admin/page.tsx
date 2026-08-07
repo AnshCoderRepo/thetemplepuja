@@ -369,6 +369,11 @@ export default function AdminPage() {
                                         🎟️ {b.couponCode}
                                       </span>
                                     )}
+                                    {b.discount > 0 && (
+                                      <span className="ml-1.5 font-semibold text-emerald-600">
+                                        🎉 saved {formatINR(b.discount)}
+                                      </span>
+                                    )}
                                   </p>
                                   {b.reason && (
                                     <p className="mt-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">

@@ -80,7 +80,7 @@ export default function Contact() {
                 booking help, and event updates — available 24/7.
               </p>
               <a
-                href="https://wa.me/919452492060"
+                href="https://wa.me/918765301563"
                 target="_blank"
                 rel="noreferrer"
                 className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-emerald-700 shadow transition-all hover:-translate-y-0.5 hover:shadow-xl"

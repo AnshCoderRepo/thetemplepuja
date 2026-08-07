@@ -38,11 +38,11 @@ export default function Header() {
               <span className="tracking-wide">Digital Spiritual Platform</span>
             </p>
             <a
-              href="tel:+919278163908"
+              href="tel:+918765301563"
               className="flex items-center gap-1.5 transition-colors hover:text-white"
             >
               <Phone className="h-3.5 w-3.5" />
-              +91 92781 63908
+              +91 87653 01563
             </a>
           </div>
         </div>

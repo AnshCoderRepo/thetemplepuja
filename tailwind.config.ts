@@ -37,6 +37,17 @@ const config: Config = {
         ink: "#2A1B12",
         "ink-soft": "#5C4A3E",
         gold: "#D9A441",
+        // shadcn-style semantic tokens used by components/ui/*
+        background: "#FFFBF4",
+        foreground: "#2A1B12",
+        muted: "#FFEFD0",
+        "muted-foreground": "#5C4A3E",
+        ring: "#F97D14",
+        primary: "#E96109",
+        "primary-foreground": "#FFFFFF",
+        card: "#FFFFFF",
+        "card-foreground": "#2A1B12",
+        border: "#FFDCA1",
       },
       fontFamily: {
         display: ["var(--font-display)", "serif"],
@@ -85,7 +96,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;
