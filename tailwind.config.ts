@@ -43,6 +43,11 @@ const config: Config = {
         muted: "#FFEFD0",
         "muted-foreground": "#5C4A3E",
         ring: "#F97D14",
+        primary: "#E96109",
+        "primary-foreground": "#FFFFFF",
+        card: "#FFFFFF",
+        "card-foreground": "#2A1B12",
+        border: "#FFDCA1",
       },
       fontFamily: {
         display: ["var(--font-display)", "serif"],

@@ -85,7 +85,6 @@ export default function UpcomingEvents() {
               loop
               showCaption
               showPagination
-              showNavigation
               label="Upcoming live poojas"
               onSlideChange={setActiveIndex}
               className="mx-auto max-w-5xl"

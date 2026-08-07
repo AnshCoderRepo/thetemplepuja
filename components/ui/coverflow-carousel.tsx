@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,6 @@ export interface CoverflowCarouselProps {
   loop?: boolean;
   showCaption?: boolean;
   showPagination?: boolean;
-  showNavigation?: boolean;
   /** Names the carousel for assistive tech. */
   label?: string;
   /** Fired whenever the centre slide changes (settle or drag). */
@@ -64,7 +63,6 @@ export function CoverflowCarousel({
   loop = true,
   showCaption = false,
   showPagination = false,
-  showNavigation = false,
   label = "Cover carousel",
   onSlideChange,
   className,
@@ -257,6 +255,15 @@ export function CoverflowCarousel({
     [],
   );
 
+  // Hand the frame focus on load so keyboard users can arrow through the
+  // slides immediately — without yanking the page's scroll position.
+  useIsoLayoutEffect(() => {
+    // `focusVisible` forces :focus-visible to match on programmatic focus
+    // (supported in Chromium); older engines just ignore it.
+    const opts = { preventScroll: true, focusVisible: true } as FocusOptions;
+    frameRef.current?.focus(opts);
+  }, []);
+
   const active = slides[selected];
 
   return (
@@ -285,7 +292,7 @@ export function CoverflowCarousel({
             }
           }}
           // Vertical padding keeps the drop shadows clear of the overflow clip.
-          className="cursor-grab overflow-hidden py-10 outline-none ring-ring focus-visible:ring-2 active:cursor-grabbing"
+          className="cursor-grab overflow-hidden rounded-2xl py-10 outline-none focus:ring-4 focus:ring-saffron-400/70 active:cursor-grabbing"
           style={{
             perspective: `calc(var(--cf-card) * ${perspective})`,
             // Horizontal drag is ours; the page keeps vertical scrolling.
@@ -368,26 +375,6 @@ export function CoverflowCarousel({
           </div>
         </div>
 
-        {showNavigation && (
-          <>
-            <button
-              type="button"
-              aria-label="Previous slide"
-              onClick={() => nudge(-1)}
-              className="absolute left-3 top-1/2 z-[200] -translate-y-1/2 rounded-full bg-background/70 p-2 text-foreground backdrop-blur transition hover:bg-background"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Next slide"
-              onClick={() => nudge(1)}
-              className="absolute right-3 top-1/2 z-[200] -translate-y-1/2 rounded-full bg-background/70 p-2 text-foreground backdrop-blur transition hover:bg-background"
-            >
-              <ChevronRight className="size-5" />
-            </button>
-          </>
-        )}
       </div>
 
       {showCaption && active?.title && (
@@ -433,6 +420,14 @@ export function CoverflowCarousel({
           ))}
         </div>
       )}
+
+      {/* Screen-reader announcement: the active slide's name is spoken
+          whenever the centre of the rake changes. */}
+      <p aria-live="polite" className="sr-only">
+        {active?.title
+          ? `${active.title}, slide ${selected + 1} of ${count}`
+          : ""}
+      </p>
     </div>
   );
 }
