@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Check,
   Copy,
+  Gift,
   Lock,
   MessageCircle,
   ShieldCheck,
@@ -14,6 +15,8 @@ import {
 } from "lucide-react";
 import { upsertBooking } from "@/lib/storage";
 import { coupons, poojas, type Coupon, type Pooja } from "@/lib/data";
+import { couponDiscount, couponProblem } from "@/lib/coupons";
+import { isValidIndianPhone, validateBookingInput } from "@/lib/validation";
 import { formatINR } from "@/lib/format";
 import RazorpayCheckout from "./RazorpayCheckout";
 
@@ -31,6 +34,7 @@ interface ConfirmedBooking {
 interface AppliedCoupon {
   code: string;
   label: string;
+  description: string;
   kind: Coupon["kind"];
   value?: number;
 }
@@ -91,16 +95,43 @@ export default function BookingFlow({
   }, []);
 
   const selectedPooja = poojas.find((p) => p.slug === prayerSlug);
+  const basePrice = selectedPooja?.price ?? 0;
+
+  /**
+   * Check whether a coupon qualifies right now. Returns an error string, or
+   * null when it is valid.
+   */
+  const couponEligibility = (code: string): string | null =>
+    couponProblem(code, {
+      phone: form.phone,
+      price: basePrice,
+      poojaTitle: selectedPooja?.title ?? "this pooja",
+    });
 
   const applyCoupon = () => {
     const code = coupon.trim().toUpperCase();
     if (!code) return;
-    const c = coupons[code];
-    if (!c) {
-      setCouponMsg({ ok: false, text: `"${code}" is not a valid coupon. Try TEMPLE30.` });
+    const problem = couponEligibility(code);
+    if (problem) {
+      setApplied(null);
+      setCouponMsg({ ok: false, text: problem });
       return;
     }
-    setApplied({ code, label: c.label, kind: c.kind, value: c.value });
+    const c = coupons[code];
+    setApplied({ code, label: c.label, description: c.description, kind: c.kind, value: c.value });
+    setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
+  };
+
+  const quickApply = (code: string) => {
+    setCoupon(code);
+    const problem = couponEligibility(code);
+    if (problem) {
+      setApplied(null);
+      setCouponMsg({ ok: false, text: problem });
+      return;
+    }
+    const c = coupons[code];
+    setApplied({ code, label: c.label, description: c.description, kind: c.kind, value: c.value });
     setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
   };
 
@@ -109,28 +140,37 @@ export default function BookingFlow({
     setCouponMsg(null);
   };
 
-  const basePrice = selectedPooja?.price ?? 0;
+  // Re-validate the applied coupon if the prayer changes (a minAmount coupon
+  // may stop qualifying), and clear it if it no longer applies.
+  useEffect(() => {
+    if (applied && couponEligibility(applied.code) !== null) {
+      setApplied(null);
+      setCouponMsg({ ok: false, text: `${applied.code} no longer applies to the selected pooja — please re-apply or choose another coupon.` });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prayerSlug]);
+
   const discount = useMemo(
-    () =>
-      applied?.kind === "percent" && applied.value
-        ? Math.round((basePrice * applied.value) / 100)
-        : 0,
+    () => (applied ? couponDiscount(applied.code, basePrice) : 0),
     [applied, basePrice]
   );
   const total = Math.max(basePrice - discount, 0);
 
   const fromEvent = Boolean(initialDate);
   const today = todayISO();
-  const phoneValid = /^[6-9]\d{9}$/.test(form.phone.trim());
-  const detailsValid =
-    prayerSlug !== "" &&
-    form.name.trim().length > 1 &&
-    form.gotra.trim().length > 0 &&
-    form.city.trim().length > 1 &&
-    form.reason.trim().length > 2 &&
-    phoneValid &&
-    date.length === 10 &&
-    (fromEvent || date >= today);
+  const phoneValid = isValidIndianPhone(form.phone);
+  const input = {
+    prayerSlug,
+    name: form.name,
+    gotra: form.gotra,
+    city: form.city,
+    reason: form.reason,
+    phone: form.phone,
+    date,
+    fromEvent,
+    today,
+  };
+  const detailsValid = validateBookingInput(input).length === 0;
 
   // Modal's onSuccess stores the booking; the confirmation screen only appears
   // after the modal's "Done" closes it, so the modal success phase stays visible.
@@ -168,6 +208,7 @@ export default function BookingFlow({
           panditName: bookingData.panditName ?? "Assigned by The Temple Puja",
           reason: bookingData.reason,
           amount: bookingData.total,
+          discount,
           couponCode: applied?.code ?? null,
           addonCount: 0,
           createdAt: new Date().toISOString(),
@@ -179,20 +220,23 @@ export default function BookingFlow({
 
   const proceed = () => {
     setFormError("");
-    if (!detailsValid) {
-      const missing: string[] = [];
-      if (prayerSlug === "") missing.push("choose a prayer");
-      if (form.name.trim().length <= 1) missing.push("your name");
-      if (form.gotra.trim().length === 0) missing.push("gotra");
-      if (form.city.trim().length <= 1) missing.push("city");
-      if (form.reason.trim().length <= 2) missing.push("why you want this puja");
-      if (!phoneValid) missing.push("a valid 10-digit mobile number");
-      if (!date) missing.push("a date");
-      else if (!fromEvent && date < today) missing.push("a future date");
+    const missing = validateBookingInput(input);
+    if (missing.length > 0) {
       setFormError(
         `Please ${missing.join(", ")} to continue — these are required for your booking.`
       );
       return;
+    }
+    // Final guard: the applied coupon must still be valid at payment time
+    if (applied) {
+      const problem = couponEligibility(applied.code);
+      if (problem) {
+        setApplied(null);
+        setFormError(
+          `${problem} Please re-apply a valid coupon or continue without one.`
+        );
+        return;
+      }
     }
     setCheckoutOpen(true);
   };
@@ -201,12 +245,11 @@ export default function BookingFlow({
     if (!confirmed) return;
     try {
       await navigator.clipboard.writeText(confirmed.id);
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
     } catch {
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
+      // clipboard unavailable — ignore
     }
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
   };
 
   const waText = confirmed
@@ -217,6 +260,7 @@ export default function BookingFlow({
           `Time: ${confirmed.time}\n` +
           `Pandit: ${confirmed.panditName ?? "Assigned by The Temple Puja"}\n` +
           `Reason: ${confirmed.reason}\n` +
+          (applied ? `Coupon: ${applied.code} (${applied.label})\n` : "") +
           `Amount: ${formatINR(confirmed.total)}\n\n` +
           `Please confirm my booking. Om Shanti!`
       )
@@ -293,6 +337,44 @@ export default function BookingFlow({
               ))}
             </dl>
 
+            {/* Payment summary with coupon savings */}
+            <div className="mt-6 rounded-2xl border border-saffron-100 bg-cream/70 p-5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+                Payment Summary
+              </p>
+              <dl className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between text-ink-soft">
+                  <dt>Pooja Price</dt>
+                  <dd>{formatINR(basePrice)}</dd>
+                </div>
+                {discount > 0 && applied && (
+                  <div className="flex justify-between font-semibold text-emerald-600">
+                    <dt>
+                      Coupon ({applied.code}) — {applied.label}
+                    </dt>
+                    <dd>−{formatINR(discount)}</dd>
+                  </div>
+                )}
+                {applied?.kind === "benefit" && (
+                  <div className="flex justify-between font-semibold text-saffron-600">
+                    <dt>Benefit ({applied.code})</dt>
+                    <dd>{applied.label}</dd>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-saffron-200 pt-2.5">
+                  <dt className="font-bold text-ink">Total Paid</dt>
+                  <dd className="font-display text-xl font-bold text-saffron-600">
+                    {formatINR(confirmed.total)}
+                  </dd>
+                </div>
+              </dl>
+              {discount > 0 && (
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3.5 py-1.5 text-xs font-bold text-emerald-700">
+                  🎉 You saved {formatINR(discount)} with {applied?.code}
+                </p>
+              )}
+            </div>
+
             <p className="mt-5 rounded-2xl bg-saffron-50 px-5 py-4 text-center text-xs leading-relaxed text-ink-soft">
               Your private streaming link and confirmation will be sent to your
               WhatsApp within 2 minutes. Our admin has been notified instantly.
@@ -300,7 +382,7 @@ export default function BookingFlow({
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <a
-                href={`https://wa.me/919452492060?text=${waText}`}
+                href={`https://wa.me/918765301563?text=${waText}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-primary !flex-1"
@@ -513,22 +595,29 @@ export default function BookingFlow({
                     Coupon Code (optional)
                   </label>
                   {applied ? (
-                    <div className="flex items-center justify-between rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="rounded-lg bg-emerald-600 px-2.5 py-1 font-mono text-xs font-bold tracking-widest text-white">
-                          {applied.code}
-                        </span>
-                        <span className="text-xs font-semibold text-emerald-700">
-                          {applied.label}
-                        </span>
+                    <div className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="rounded-lg bg-emerald-600 px-2.5 py-1 font-mono text-xs font-bold tracking-widest text-white">
+                            {applied.code}
+                          </span>
+                          <span className="text-xs font-semibold text-emerald-700">
+                            {applied.label}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeCoupon}
+                          className="text-xs font-bold text-maroon-600 transition-colors hover:text-maroon-700"
+                        >
+                          Remove
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={removeCoupon}
-                        className="text-xs font-bold text-maroon-600 transition-colors hover:text-maroon-700"
-                      >
-                        Remove
-                      </button>
+                      <p className="mt-2 text-[11px] leading-relaxed text-emerald-800/80">
+                        {applied.kind === "percent" && discount > 0
+                          ? `${applied.description} You save ${formatINR(discount)} on this pooja.`
+                          : applied.description}
+                      </p>
                     </div>
                   ) : (
                     <>
@@ -557,6 +646,26 @@ export default function BookingFlow({
                           {couponMsg.text}
                         </p>
                       )}
+                      {/* Quick-apply chips */}
+                      <div className="mt-3">
+                        <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ink-soft/70">
+                          <Gift className="h-3.5 w-3.5 text-saffron-500" />
+                          Tap a coupon to apply:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(coupons).map(([code, c]) => (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => quickApply(code)}
+                              className="rounded-full border border-saffron-200 bg-saffron-50 px-3 py-1.5 text-[11px] font-bold text-saffron-700 transition-all hover:border-saffron-400 hover:bg-saffron-100"
+                              title={c.description}
+                            >
+                              {code}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>
@@ -642,6 +751,11 @@ export default function BookingFlow({
                           {formatINR(total)}
                         </span>
                       </div>
+                      {discount > 0 && (
+                        <p className="rounded-lg bg-emerald-50 px-3 py-1.5 text-center text-[11px] font-bold text-emerald-600">
+                          🎉 You save {formatINR(discount)} ({applied?.code})
+                        </p>
+                      )}
                     </div>
 
                     <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-[11px] font-semibold text-emerald-700">

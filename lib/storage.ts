@@ -13,6 +13,7 @@ export interface BookingRecord {
   panditName: string;
   reason?: string; // why the devotee wants this puja
   amount: number;
+  discount: number; // coupon savings (0 when none)
   couponCode: string | null;
   addonCount: number;
   createdAt: string; // ISO

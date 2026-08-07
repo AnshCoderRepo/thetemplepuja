@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Clock, Users, Video, CalendarX2 } from "lucide-react";
+import { CalendarX2, Clock, Video } from "lucide-react";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 import { getUpcomingEvents } from "@/lib/data";
+import {
+  CoverflowCarousel,
+  type CoverflowSlide,
+} from "@/components/ui/coverflow-carousel";
+
 
 export default function UpcomingEvents() {
   const [today, setToday] = useState<Date | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   // Compute "today" only after mount so server and client renders match.
   useEffect(() => {
@@ -17,6 +23,24 @@ export default function UpcomingEvents() {
 
   const events = today ? getUpcomingEvents(today) : [];
 
+  const slides: CoverflowSlide[] = events.map((event) => ({
+    // Emoji + gradient tiles, like the original event cards.
+    alt: event.title,
+    emoji: event.emoji,
+    gradient: event.gradient,
+    live: event.live,
+    // Muhurat stamp on the tile; caption stays title + meta only.
+    dateLabel: `${event.date} · ${event.time}`,
+    title: event.title,
+    meta: [
+      { label: "Seats", value: event.seats },
+      { label: "Price", value: event.price },
+      { label: "Status", value: event.live ? "🔴 Live" : "Upcoming" },
+    ],
+  }));
+
+  const active = events[activeIndex] ?? events[0];
+
   return (
     <section id="events" className="section-pad relative bg-saffron-50">
       <div className="absolute inset-0 bg-mandala-fade" />
@@ -24,29 +48,17 @@ export default function UpcomingEvents() {
         <SectionHeading
           eyebrow="Live & Upcoming"
           title="Sacred Events & Live Poojas"
-          subtitle="Book your spot in scheduled live group rituals before they fill up!"
+          subtitle="Swipe through our scheduled live group rituals and book your spot before they fill up!"
         />
 
         {today === null ? (
           /* Skeleton while the date is being computed post-mount —
              keeps SSR HTML free of a misleading empty state. */
           <div
-            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+            className="mx-auto flex h-[340px] max-w-2xl items-center justify-center"
             aria-hidden
           >
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="animate-pulse overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-soft"
-              >
-                <div className="h-36 bg-saffron-100" />
-                <div className="space-y-3 p-5">
-                  <div className="h-5 w-3/4 rounded-full bg-saffron-100" />
-                  <div className="h-3 w-1/2 rounded-full bg-saffron-50" />
-                  <div className="h-8 w-1/2 rounded-full bg-saffron-100" />
-                </div>
-              </div>
-            ))}
+            <div className="h-24 w-24 animate-pulse rounded-full bg-saffron-100" />
           </div>
         ) : events.length === 0 ? (
           <Reveal>
@@ -67,56 +79,35 @@ export default function UpcomingEvents() {
             </div>
           </Reveal>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {events.map((event, i) => (
-              <Reveal key={event.slug} delay={i * 80}>
-                <article className="group card-hover flex h-full flex-col overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-soft">
-                  {/* Card banner */}
-                  <div
-                    className={`relative h-36 bg-gradient-to-br ${event.gradient}`}
-                  >
-                    <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
-                    <span className="absolute right-4 top-4 text-4xl drop-shadow-lg transition-transform duration-500 group-hover:scale-125 group-hover:-rotate-6">
-                      {event.emoji}
-                    </span>
-                    {event.live && (
-                      <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-maroon-700 shadow">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-                        Live
-                      </span>
-                    )}
-                    <div className="absolute bottom-3 left-4 flex items-center gap-2 text-xs font-semibold text-white">
-                      <CalendarDays className="h-4 w-4" />
-                      {event.date} · {event.time}
-                    </div>
-                  </div>
+          <Reveal>
+            <CoverflowCarousel
+              slides={slides}
+              loop
+              showCaption
+              showPagination
+              showNavigation
+              label="Upcoming live poojas"
+              onSlideChange={setActiveIndex}
+              className="mx-auto max-w-5xl"
+            />
 
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="font-display text-xl font-bold text-ink">
-                      {event.title}
-                    </h3>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-ink-soft/70">
-                      <Users className="h-3.5 w-3.5" />
-                      {event.seats}
-                    </p>
-
-                    <div className="mt-auto flex items-center justify-between pt-5">
-                      <span className="font-display text-2xl font-bold text-saffron-600">
-                        {event.price}
-                      </span>
-                      <Link
-                        href={`/book/${event.slug}?date=${event.dateISO}&time=${encodeURIComponent(event.time)}`}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-saffron-100 px-4 py-2 text-xs font-semibold text-saffron-700 transition-all hover:bg-gradient-to-r hover:from-saffron-500 hover:to-saffron-600 hover:text-white"
-                      >
-                        <Clock className="h-3.5 w-3.5" />
-                        Book Slot
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
-          </div>
+            {/* Book Slot for whichever pooja is in the centre of the rake */}
+            {active && (
+              <div className="mt-8 flex flex-col items-center gap-3">
+                <Link
+                  href={`/book/${active.slug}?date=${active.dateISO}&time=${encodeURIComponent(active.time)}`}
+                  className="btn-primary"
+                >
+                  <Clock className="h-4 w-4" />
+                  Book Slot — {active.title}
+                </Link>
+                <p className="text-xs font-medium text-ink-soft/70">
+                  Drag or use the arrows to pick your pooja · {events.length}{" "}
+                  live events
+                </p>
+              </div>
+            )}
+          </Reveal>
         )}
 
         {today !== null && events.length > 0 && (

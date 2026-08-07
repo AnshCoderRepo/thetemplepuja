@@ -53,7 +53,19 @@ export interface UpcomingEvent {
   gradient: string;
 }
 
-const upcomingEventSpecs = [
+export interface UpcomingEventSpec {
+  title: string;
+  slug: string;
+  daysFromToday: number;
+  time: string;
+  seats: string;
+  live: boolean;
+  price: string;
+  emoji: string;
+  gradient: string;
+}
+
+const upcomingEventSpecs: UpcomingEventSpec[] = [
   {
     title: "Hanuman Pooja",
     slug: "hanuman-pooja",
@@ -122,9 +134,12 @@ const upcomingEventSpecs = [
   },
 ];
 
-export function getUpcomingEvents(today: Date = new Date()): UpcomingEvent[] {
+export function getUpcomingEvents(
+  today: Date = new Date(),
+  specs: UpcomingEventSpec[] = upcomingEventSpecs
+): UpcomingEvent[] {
   const todayISO = toISODate(today);
-  return upcomingEventSpecs
+  return specs
     .map((spec) => {
       const d = addDays(today, spec.daysFromToday);
       return {
@@ -286,14 +301,14 @@ export const contactInfo = [
   {
     icon: "📱",
     label: "WhatsApp",
-    value: "+91 9452492060",
-    href: "https://wa.me/919452492060",
+    value: "+91 87653 01563",
+    href: "https://wa.me/918765301563",
   },
   {
     icon: "📞",
     label: "Phone",
-    value: "+91 9278163908",
-    href: "tel:+919278163908",
+    value: "+91 87653 01563",
+    href: "tel:+918765301563",
   },
   {
     icon: "✉️",
@@ -494,12 +509,41 @@ export type CouponKind = "percent" | "benefit";
 export interface Coupon {
   kind: CouponKind;
   label: string;
+  description: string;
+  /** Percent off — only used when kind === "percent" */
   value?: number;
+  /** Only valid for a devotee's very first booking (TEMPLE30) */
+  firstBookingOnly?: boolean;
+  /** Minimum total bookings (this + past confirmed) needed to use the coupon */
+  minBookings?: number;
+  /** Minimum pooja price required to use the coupon */
+  minAmount?: number;
 }
 
 export const coupons: Record<string, Coupon> = {
-  TEMPLE30: { kind: "percent", value: 30, label: "30% off your first booking" },
-  BUNDLE20: { kind: "percent", value: 20, label: "20% off when booking 3+ poojas" },
-  DAILYDARSHAN: { kind: "benefit", label: "Free daily live darshan from major temples" },
-  TEMPLEKUNDLI: { kind: "benefit", label: "Free kundli reading with your pooja" },
+  TEMPLE30: {
+    kind: "percent",
+    value: 30,
+    label: "30% off your first booking",
+    description: "New devotees get 30% off their very first pooja.",
+    firstBookingOnly: true,
+  },
+  BUNDLE20: {
+    kind: "percent",
+    value: 20,
+    label: "20% off when booking 3+ poojas",
+    description: "Book three or more poojas and save 20% on this one.",
+    minBookings: 3,
+  },
+  DAILYDARSHAN: {
+    kind: "benefit",
+    label: "Free daily live darshan",
+    description: "Watch live darshan from major temples every morning — free.",
+  },
+  TEMPLEKUNDLI: {
+    kind: "benefit",
+    label: "Free kundli reading with your pooja",
+    description: "Book any pooja above ₹1,500 and get a free kundli reading.",
+    minAmount: 1500,
+  },
 };

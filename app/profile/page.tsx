@@ -298,6 +298,11 @@ export default function ProfilePage() {
                               🎟️ {b.couponCode}
                             </span>
                           )}
+                          {b.discount > 0 && (
+                            <span className="font-semibold text-emerald-600">
+                              🎉 saved {formatINR(b.discount)}
+                            </span>
+                          )}
                           <span className="ml-auto">Booked {formatDate(b.createdAt)}</span>
                         </div>
 

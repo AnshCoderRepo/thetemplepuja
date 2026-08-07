@@ -37,7 +37,7 @@ const replies: { match: RegExp; answer: string }[] = [
   {
     match: /(contact|phone|email|whatsapp|help|support)/i,
     answer:
-      "📞 Reach us anytime! WhatsApp +91 94524 92060, Phone +91 92781 63908, or email supportsatyakarm@gmail.com. Our team is available 24/7.",
+      "📞 Reach us anytime! WhatsApp +91 87653 01563, Phone +91 87653 01563, or email supportsatyakarm@gmail.com. Our team is available 24/7.",
   },
 ];
 
@@ -48,7 +48,7 @@ function getBotReply(input: string): string {
   for (const r of replies) {
     if (r.match.test(input)) return r.answer;
   }
-  return "🪔 That's a lovely question! I'd recommend speaking with our team — you can reach us on WhatsApp at +91 94524 92060 for personalised guidance. Om Shanti!";
+  return "🪔 That's a lovely question! I'd recommend speaking with our team — you can reach us on WhatsApp at +91 87653 01563 for personalised guidance. Om Shanti!";
 }
 
 export default function AIGuide() {
