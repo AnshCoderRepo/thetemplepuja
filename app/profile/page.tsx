@@ -12,11 +12,8 @@ import {
   XCircle,
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
-import {
-  cancelBooking,
-  findUserByPhone,
-  type UserProfile,
-} from "@/lib/storage";
+import { cancelBookingRemote, fetchUserByPhone } from "@/lib/api";
+import type { UserProfile } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
 
 const inputCls =
@@ -57,9 +54,11 @@ export default function ProfilePage() {
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [cancelMsg, setCancelMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const refresh = (phone: string) => {
+  // Server-backed (falls back to the local cache offline) so a devotee sees
+  // their history from any device.
+  const refresh = async (phone: string) => {
     setCancelMsg(null);
-    const found = findUserByPhone(phone);
+    const found = await fetchUserByPhone(phone);
     setProfile(found ?? null);
     setNotFound(!found);
   };
@@ -68,16 +67,16 @@ export default function ProfilePage() {
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("phone") ?? "";
     if (p) {
-      refresh(p);
+      void refresh(p);
     }
     setMounted(true);
   }, []);
 
-  const handleCancel = (bookingId: string) => {
+  const handleCancel = async (bookingId: string) => {
     if (!profile) return;
-    const res = cancelBooking(profile.phone, bookingId);
+    const res = await cancelBookingRemote(profile.phone, bookingId);
     if (res.ok) {
-      refresh(profile.phone);
+      await refresh(profile.phone);
       setConfirmCancelId(null);
       setCancelMsg({ ok: true, text: "Booking cancelled. Your refund will be processed within 5–7 business days." });
     } else {
@@ -86,14 +85,14 @@ export default function ProfilePage() {
     }
   };
 
-  const lookup = (phone: string) => {
+  const lookup = async (phone: string) => {
     const p = phone.trim();
     if (!/^[6-9]\d{9}$/.test(p)) {
       setNotFound(true);
       setProfile(null);
       return;
     }
-    const found = findUserByPhone(p);
+    const found = await fetchUserByPhone(p);
     setProfile(found ?? null);
     setNotFound(!found);
   };
@@ -346,9 +345,9 @@ export default function ProfilePage() {
               )}
 
               <p className="mt-8 rounded-2xl bg-saffron-50 px-5 py-4 text-center text-xs leading-relaxed text-ink-soft">
-                ℹ️ This demo stores your profile in this browser&apos;s local
-                storage — it&apos;s only visible on this device. A real backend
-                will sync it across devices and to your WhatsApp.
+                ℹ️ Your profile is stored securely on our server — you can view
+                it from any device with this mobile number. It also syncs to
+                our admin dashboard instantly.
               </p>
             </>
           ) : (

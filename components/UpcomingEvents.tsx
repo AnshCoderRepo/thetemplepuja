@@ -6,6 +6,7 @@ import { CalendarX2, Clock, Video } from "lucide-react";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 import { getUpcomingEvents } from "@/lib/data";
+import { useCatalog } from "./useCatalog";
 import {
   CoverflowCarousel,
   type CoverflowSlide,
@@ -15,13 +16,15 @@ import {
 export default function UpcomingEvents() {
   const [today, setToday] = useState<Date | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const { events: catalogEvents, loaded } = useCatalog();
 
   // Compute "today" only after mount so server and client renders match.
   useEffect(() => {
     setToday(new Date());
   }, []);
 
-  const events = today ? getUpcomingEvents(today) : [];
+  const specs = loaded ? catalogEvents : null;
+  const events = today && specs ? getUpcomingEvents(today, specs) : [];
 
   const slides: CoverflowSlide[] = events.map((event) => ({
     // Emoji + gradient tiles, like the original event cards.
@@ -51,7 +54,7 @@ export default function UpcomingEvents() {
           subtitle="Swipe through our scheduled live group rituals and book your spot before they fill up!"
         />
 
-        {today === null ? (
+        {today === null || specs === null ? (
           /* Skeleton while the date is being computed post-mount —
              keeps SSR HTML free of a misleading empty state. */
           <div
@@ -109,7 +112,7 @@ export default function UpcomingEvents() {
           </Reveal>
         )}
 
-        {today !== null && events.length > 0 && (
+        {today !== null && specs !== null && events.length > 0 && (
           <Reveal className="mt-10 text-center">
             <Link href="/book" className="btn-outline">
               <Video className="h-4 w-4" />

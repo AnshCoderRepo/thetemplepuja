@@ -87,9 +87,9 @@ describe("couponProblem — eligibility rules", () => {
     expect(couponProblem("TEMPLEKUNDLI", ctx(1501))).toBeNull();
   });
 
-  it("DAILYDARSHAN is always valid (benefit coupon)", () => {
-    expect(couponProblem("DAILYDARSHAN", ctx(501))).toBeNull();
-    expect(couponProblem("DAILYDARSHAN", ctx(0))).toBeNull();
+  it("MUHURAT is always valid (benefit coupon)", () => {
+    expect(couponProblem("MUHURAT", ctx(501))).toBeNull();
+    expect(couponProblem("MUHURAT", ctx(0))).toBeNull();
   });
 });
 
@@ -104,7 +104,7 @@ describe("couponDiscount — price math", () => {
   });
 
   it("benefit coupons give no cash discount", () => {
-    expect(couponDiscount("DAILYDARSHAN", 1101)).toBe(0);
+    expect(couponDiscount("MUHURAT", 1101)).toBe(0);
     expect(couponDiscount("TEMPLEKUNDLI", 2501)).toBe(0);
   });
 

@@ -76,7 +76,19 @@ export default function Header() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/login"
+            className="btn-outline hidden !px-4 !py-2.5 text-xs sm:inline-flex"
+          >
+            Login
+          </Link>
+          <Link
+            href="/signup"
+            className="btn-primary hidden !px-4 !py-2.5 text-xs sm:inline-flex"
+          >
+            Signup
+          </Link>
           <Link
             href="/book/form"
             className="btn-primary hidden !px-5 !py-2.5 text-xs sm:inline-flex"
@@ -110,6 +122,22 @@ export default function Header() {
               {link.label}
             </a>
           ))}
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="btn-outline !w-full"
+            >
+              Login
+            </Link>
+            <Link
+              href="/signup"
+              onClick={() => setOpen(false)}
+              className="btn-primary !w-full"
+            >
+              Signup
+            </Link>
+          </div>
           <Link
             href="/book/form"
             onClick={() => setOpen(false)}

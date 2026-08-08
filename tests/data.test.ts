@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { coupons, getPooja, getUpcomingEvents, poojas } from "../lib/data";
+import {
+  activePoojas,
+  coupons,
+  getPooja,
+  getUpcomingEvents,
+  isPoojaActive,
+  poojas,
+} from "../lib/data";
 
 describe("pooja catalog", () => {
   it("has 12 poojas with unique slugs and positive prices", () => {
@@ -17,13 +24,29 @@ describe("pooja catalog", () => {
     expect(getPooja("satyanarayan-katha")?.title).toBe("Satyanarayan Katha");
     expect(getPooja("does-not-exist")).toBeUndefined();
   });
+
+  it("every default pooja is active (missing flag counts as active)", () => {
+    for (const p of poojas) expect(isPoojaActive(p)).toBe(true);
+  });
+
+  it("activePoojas hides admin-deactivated poojas and keeps the rest", () => {
+    const [satya, rudra] = poojas;
+    const hidden = { ...rudra, active: false };
+    const visible = activePoojas([satya, hidden]);
+    expect(visible).toEqual([satya]);
+
+    // Legacy data without the field still shows.
+    const legacy = { ...satya, active: undefined };
+    expect(isPoojaActive(legacy)).toBe(true);
+    expect(activePoojas([legacy, hidden])).toEqual([legacy]);
+  });
 });
 
 describe("coupon registry integrity", () => {
   it("defines every coupon the UI advertises", () => {
     expect(Object.keys(coupons).sort()).toEqual([
       "BUNDLE20",
-      "DAILYDARSHAN",
+      "MUHURAT",
       "TEMPLE30",
       "TEMPLEKUNDLI",
     ]);
@@ -46,11 +69,11 @@ describe("coupon registry integrity", () => {
     expect(coupons.TEMPLEKUNDLI.minAmount).toBe(1500);
   });
 
-  it("DAILYDARSHAN is a free benefit with no restrictions", () => {
-    expect(coupons.DAILYDARSHAN.kind).toBe("benefit");
-    expect(coupons.DAILYDARSHAN.firstBookingOnly).toBeUndefined();
-    expect(coupons.DAILYDARSHAN.minBookings).toBeUndefined();
-    expect(coupons.DAILYDARSHAN.minAmount).toBeUndefined();
+  it("MUHURAT is a free benefit with no restrictions", () => {
+    expect(coupons.MUHURAT.kind).toBe("benefit");
+    expect(coupons.MUHURAT.firstBookingOnly).toBeUndefined();
+    expect(coupons.MUHURAT.minBookings).toBeUndefined();
+    expect(coupons.MUHURAT.minAmount).toBeUndefined();
   });
 });
 

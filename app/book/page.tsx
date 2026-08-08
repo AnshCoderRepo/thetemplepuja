@@ -18,7 +18,7 @@ export default function BookPage() {
             Choose Your <span className="text-amber-200">Sacred Pooja</span>
           </>
         }
-        subtitle="Select the ritual that speaks to your heart — every pooja is performed by certified pandits following ancient scriptures, with live darshan and sankalp on your behalf."
+        subtitle="Select the ritual that speaks to your heart — every pooja is performed by certified pandits following ancient scriptures, with video recording and sankalp on your behalf."
         facts={[
           { icon: "🕉️", label: "50+ Poojas" },
           { icon: "🙏", label: "200+ Certified Pandits" },

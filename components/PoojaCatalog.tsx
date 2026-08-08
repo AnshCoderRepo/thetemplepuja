@@ -1,10 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import Reveal from "./Reveal";
-import { poojas } from "@/lib/data";
+import { activePoojas } from "@/lib/data";
 import { formatINR } from "@/lib/format";
+import { useCatalog } from "./useCatalog";
 
 export default function PoojaCatalog({ notice }: { notice?: string }) {
+  // Static defaults on first render (SSR-safe); swaps to the server catalog.
+  // Inactive poojas (admin toggle) are hidden from visitors.
+  const { poojas } = useCatalog();
+  const list = activePoojas(poojas);
+
   return (
     <div className="container-px pb-24">
       {notice && (
@@ -13,7 +21,7 @@ export default function PoojaCatalog({ notice }: { notice?: string }) {
         </div>
       )}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {poojas.map((p, i) => (
+        {list.map((p, i) => (
           <Reveal key={p.slug} delay={(i % 3) * 80}>
             <Link
               href={`/book/${p.slug}`}

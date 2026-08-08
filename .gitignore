@@ -45,3 +45,6 @@ Thumbs.db
 
 # Build output
 out/
+
+# Server-side admin data (catalog overrides, credentials, sessions)
+.data/

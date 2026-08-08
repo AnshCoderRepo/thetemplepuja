@@ -1,6 +1,6 @@
 // Pure, testable coupon logic shared by the booking flow. Kept free of React so
 // the rules can be unit-tested directly (see tests/coupons.test.ts).
-import { coupons } from "./data";
+import { coupons, type Coupon } from "./data";
 import { formatINR } from "./format";
 import { findUserByPhone } from "./storage";
 
@@ -23,9 +23,17 @@ export interface CouponContext {
  * Returns an error message when `code` is not usable for this context, or null
  * when it qualifies. Mirrors the rules declared on each coupon in data.ts
  * (firstBookingOnly, minBookings, minAmount).
+ *
+ * `couponMap` lets the booking flow evaluate admin-managed coupons (see
+ * lib/catalog.ts); it defaults to the static catalog so existing callers and
+ * tests keep working unchanged.
  */
-export function couponProblem(code: string, ctx: CouponContext): string | null {
-  const c = coupons[code];
+export function couponProblem(
+  code: string,
+  ctx: CouponContext,
+  couponMap: Record<string, Coupon> = coupons
+): string | null {
+  const c = couponMap[code];
   if (!c) return `"${code}" is not a valid coupon code.`;
   if (c.firstBookingOnly) {
     if (ctx.phone.trim().length < 10)
@@ -49,8 +57,12 @@ export function couponProblem(code: string, ctx: CouponContext): string | null {
  * Cash discount a coupon produces for a given price. Percent coupons round to
  * the nearest rupee; benefit coupons (and unknown codes) give ₹0.
  */
-export function couponDiscount(code: string, price: number): number {
-  const c = coupons[code];
+export function couponDiscount(
+  code: string,
+  price: number,
+  couponMap: Record<string, Coupon> = coupons
+): number {
+  const c = couponMap[code];
   if (c?.kind === "percent" && c.value) return Math.round((price * c.value) / 100);
   return 0;
 }
