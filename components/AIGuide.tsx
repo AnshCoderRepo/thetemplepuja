@@ -20,9 +20,9 @@ const replies: { match: RegExp; answer: string }[] = [
       "🔮 Book any pooja above ₹1,500 and get a FREE kundli reading! Use code TEMPLEKUNDLI at checkout. Our AI guide can also recommend poojas based on your rashi & nakshatra.",
   },
   {
-    match: /(darshan|live|stream)/i,
+    match: /(record|video|watch)/i,
     answer:
-      "🎥 You can watch live darshan from Kashi Vishwanath, Tirupati & Kedarnath! Your private streaming link is unlocked instantly after payment — just book any live pooja.",
+      "📹 Every pooja is recorded in HD and the recording link is shared with you right after the ritual — relive the blessings from anywhere, anytime!",
   },
   {
     match: /(kit|samagri|deliver)/i,
@@ -79,7 +79,11 @@ export default function AIGuide() {
     }, 900);
   };
 
-  const quickChips = ["Which pooja should I do?", "Book a live darshan", "Pooja kit delivery"];
+  const quickChips = [
+    "Which pooja should I do?",
+    "Will I get a video recording?",
+    "Pooja kit delivery",
+  ];
 
   return (
     <>

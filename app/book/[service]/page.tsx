@@ -1,30 +1,36 @@
-import type { Metadata } from "next";
-import { getPooja } from "@/lib/data";
-import { formatINR } from "@/lib/format";
+"use client";
+
+import Link from "next/link";
+import { Suspense, useEffect } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import BookPageHeader from "@/components/BookPageHeader";
 import PoojaCatalog from "@/components/PoojaCatalog";
 import BookingFlow from "@/components/BookingFlow";
+import { useCatalog } from "@/components/useCatalog";
+import { isPoojaActive } from "@/lib/data";
+import { formatINR } from "@/lib/format";
 
-interface Props {
-  params: Promise<{ service: string }>;
-  searchParams: Promise<{ date?: string; time?: string }>;
-}
+function ServiceInner() {
+  const params = useParams();
+  const search = useSearchParams();
+  const service = typeof params.service === "string" ? params.service : "";
+  // Resolve from the backend catalog (falls back to the static list).
+  const { poojas, loaded } = useCatalog();
+  const pooja = loaded ? (poojas.find((p) => p.slug === service) ?? null) : undefined;
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { service } = await params;
-  const pooja = getPooja(service);
-  return {
-    title: pooja ? `Book ${pooja.title} Online | The Temple Puja` : "Book Pooja Online | The Temple Puja",
-    description: pooja
-      ? pooja.description
-      : "Book certified pandits for authentic Vedic poojas online with secure payment.",
-  };
-}
+  useEffect(() => {
+    document.title = pooja
+      ? `Book ${pooja.title} Online | The Temple Puja`
+      : "Book Pooja Online | The Temple Puja";
+  }, [pooja]);
 
-export default async function BookServicePage({ params, searchParams }: Props) {
-  const { service } = await params;
-  const sp = await searchParams;
-  const pooja = getPooja(service);
+  if (pooja === undefined) {
+    return (
+      <section className="section-pad bg-cream">
+        <div className="mx-auto h-64 max-w-3xl animate-pulse rounded-3xl bg-saffron-100/60" />
+      </section>
+    );
+  }
 
   if (!pooja) {
     return (
@@ -38,6 +44,35 @@ export default async function BookServicePage({ params, searchParams }: Props) {
           <PoojaCatalog
             notice={`"${service}" isn't a valid pooja — here are all our sacred services instead.`}
           />
+        </section>
+      </>
+    );
+  }
+
+  // An admin-deactivated pooja is hidden from the site — visitors get a gentle
+  // "unavailable" note instead of the booking flow.
+  if (!isPoojaActive(pooja)) {
+    return (
+      <>
+        <BookPageHeader
+          eyebrow="🪔 Pooja Booking"
+          title="Pooja Currently Unavailable"
+          subtitle={`${pooja.title} is temporarily paused by our team. It will be back soon — meanwhile, browse our other sacred services.`}
+        />
+        <section className="section-pad bg-cream">
+          <div className="mx-auto max-w-md rounded-3xl border border-saffron-100 bg-white p-10 text-center shadow-card">
+            <span className="text-5xl">{pooja.emoji}</span>
+            <h2 className="mt-4 font-display text-xl font-bold text-ink">
+              {pooja.title} is unavailable right now
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              This pooja has been temporarily paused and cannot be booked at the
+              moment. Check back soon, or pick another ritual from our catalogue.
+            </p>
+            <Link href="/book" className="btn-primary mt-6">
+              Browse Other Poojas
+            </Link>
+          </div>
         </section>
       </>
     );
@@ -65,9 +100,23 @@ export default async function BookServicePage({ params, searchParams }: Props) {
       />
       <BookingFlow
         pooja={pooja}
-        initialDate={sp.date ?? null}
-        initialTime={sp.time ?? null}
+        initialDate={search.get("date")}
+        initialTime={search.get("time")}
       />
     </>
+  );
+}
+
+export default function BookServicePage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="section-pad bg-cream">
+          <div className="mx-auto h-64 max-w-3xl animate-pulse rounded-3xl bg-saffron-100/60" />
+        </section>
+      }
+    >
+      <ServiceInner />
+    </Suspense>
   );
 }

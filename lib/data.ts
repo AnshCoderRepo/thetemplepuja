@@ -7,7 +7,7 @@ export const stats = [
 
 export const heroCtas = [
   { label: "Book Pooja", href: "/book/form", primary: true },
-  { label: "Live E-Pooja", href: "#events" },
+  { label: "Explore Events", href: "#events" },
 ];
 
 export const navLinks = [
@@ -65,7 +65,7 @@ export interface UpcomingEventSpec {
   gradient: string;
 }
 
-const upcomingEventSpecs: UpcomingEventSpec[] = [
+export const upcomingEventSpecs: UpcomingEventSpec[] = [
   {
     title: "Hanuman Pooja",
     slug: "hanuman-pooja",
@@ -181,10 +181,10 @@ export const whyUs = [
       "Admin notified on WhatsApp the moment payment is confirmed. Zero delay.",
   },
   {
-    icon: "🎥",
-    title: "Live Streaming",
+    icon: "📹",
+    title: "Video Recording",
     description:
-      "Watch live darshan from Kashi Vishwanath, Tirupati, Kedarnath. Link unlocked after payment.",
+      "Every pooja is recorded in HD and the recording link is shared with you right after the ritual.",
   },
   {
     icon: "🤖",
@@ -211,11 +211,11 @@ export const deals = [
   },
   {
     badge: "FREE",
-    title: "Daily Live Darshan",
-    description: "Watch live darshan from major temples every morning free.",
-    code: "DAILYDARSHAN",
-    icon: "🌅",
-    gradient: "from-rose-500 to-maroon-700",
+    title: "Shubh Muhurat",
+    description: "Get a personalised shubh muhurat recommendation with every pooja booking.",
+    code: "MUHURAT",
+    icon: "🪔",
+    gradient: "from-sky-500 to-indigo-700",
   },
   {
     badge: "20% OFF",
@@ -248,7 +248,7 @@ export const testimonials = [
     name: "Rajesh Kumar",
     location: "New Delhi",
     rating: 5,
-    text: "The live darshan from Kashi Vishwanath was an unforgettable experience. The streaming quality was excellent and the booking process took less than 2 minutes. Truly blessed!",
+    text: "The HD video recording of our pooja was an unforgettable experience. The clarity was excellent and the booking process took less than 2 minutes. Truly blessed!",
     avatar: "RK",
     color: "from-saffron-400 to-orange-600",
   },
@@ -264,7 +264,7 @@ export const testimonials = [
     name: "Vikram Singh",
     location: "Jaipur, Rajasthan",
     rating: 5,
-    text: "Booked Navgraha Shanti for our family — the pandit ji explained every step and the havan was performed flawlessly. The live video recording let our relatives abroad join in the blessings.",
+    text: "Booked Navgraha Shanti for our family — the pandit ji explained every step and the havan was performed flawlessly. The video recording let our relatives abroad join in the blessings.",
     avatar: "VS",
     color: "from-indigo-400 to-purple-600",
   },
@@ -280,8 +280,8 @@ export const faqs = [
     a: "Yes. All our pandits are certified Vedic scholars with 10+ years of experience. Each one is verified through a rigorous background check and regularly reviewed by our devotees.",
   },
   {
-    q: "Can I watch the pooja live from anywhere?",
-    a: "Absolutely! Once your payment is confirmed, you receive a private streaming link. You can watch the live darshan and pooja in HD from anywhere in the world on any device.",
+    q: "Will I receive a video recording of my pooja?",
+    a: "Yes! Every pooja is recorded in HD, and we share the recording link with you right after the ritual — so you and your family can relive the blessings from anywhere, anytime.",
   },
   {
     q: "How long does home delivery of pooja kits take?",
@@ -337,6 +337,20 @@ export interface Pooja {
   bestMuhurat: string;
   description: string;
   benefits: string[];
+  /** Admin toggle — when false the pooja is hidden from the site (booking
+   * form, catalogue and detail pages) until it is turned back on. Absent on
+   * older stored data, which is treated as active. */
+  active?: boolean;
+}
+
+/** True unless the admin explicitly deactivated the pooja. */
+export function isPoojaActive(p: Pooja): boolean {
+  return p.active !== false;
+}
+
+/** The poojas visitors should see — inactive ones are filtered out. */
+export function activePoojas(list: Pooja[]): Pooja[] {
+  return list.filter(isPoojaActive);
 }
 
 export const poojas: Pooja[] = [
@@ -535,10 +549,10 @@ export const coupons: Record<string, Coupon> = {
     description: "Book three or more poojas and save 20% on this one.",
     minBookings: 3,
   },
-  DAILYDARSHAN: {
+  MUHURAT: {
     kind: "benefit",
-    label: "Free daily live darshan",
-    description: "Watch live darshan from major temples every morning — free.",
+    label: "Free shubh muhurat guidance",
+    description: "Get a personalised shubh muhurat for your pooja — free with every booking.",
   },
   TEMPLEKUNDLI: {
     kind: "benefit",

@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   cancelBooking,
+  clearAdminToken,
+  deleteUser,
   findUserByPhone,
+  getAdminToken,
   getUsers,
   isAdminSession,
-  setAdminSession,
+  markBookingRefunded,
+  setAdminToken,
   upsertBooking,
   type BookingRecord,
 } from "../lib/storage";
@@ -138,12 +142,65 @@ describe("cancelBooking", () => {
   });
 });
 
-describe("admin session", () => {
-  it("defaults to logged-out and toggles correctly", () => {
+describe("deleteUser (admin)", () => {
+  it("removes the profile and all its bookings", () => {
+    const user = upsertBooking({ ...details, booking: booking() });
+    upsertBooking({
+      ...details,
+      booking: booking({ bookingId: "BK1002", poojaTitle: "Satyanarayan Katha" }),
+    });
+    expect(getUsers()).toHaveLength(1);
+
+    expect(deleteUser(user.id).ok).toBe(true);
+    expect(getUsers()).toHaveLength(0);
+    expect(findUserByPhone("9876543210")).toBeUndefined();
+  });
+
+  it("is a no-op for an unknown id", () => {
+    upsertBooking({ ...details, booking: booking() });
+    expect(deleteUser("USR-NOPE").ok).toBe(false);
+    expect(getUsers()).toHaveLength(1);
+  });
+});
+
+describe("markBookingRefunded (admin)", () => {
+  it("refunds a confirmed booking and stamps refundedAt", () => {
+    const user = upsertBooking({ ...details, booking: booking() });
+    const res = markBookingRefunded(user.id, "BK1001");
+    expect(res.ok).toBe(true);
+    expect(res.user!.bookings[0].status).toBe("refunded");
+    expect(res.user!.bookings[0].refundedAt).toBeTruthy();
+  });
+
+  it("refunds a rescheduled booking too", () => {
+    const user = upsertBooking({
+      ...details,
+      booking: booking({ status: "rescheduled" }),
+    });
+    expect(markBookingRefunded(user.id, "BK1001").ok).toBe(true);
+  });
+
+  it("refuses to refund a cancelled or already-refunded booking", () => {
+    const user = upsertBooking({ ...details, booking: booking() });
+    expect(markBookingRefunded(user.id, "BK1001").ok).toBe(true);
+    expect(markBookingRefunded(user.id, "BK1001").ok).toBe(false);
+  });
+
+  it("refuses unknown user or booking ids", () => {
+    const user = upsertBooking({ ...details, booking: booking() });
+    expect(markBookingRefunded(user.id, "NOPE").ok).toBe(false);
+    expect(markBookingRefunded("USR-NOPE", "BK1001").ok).toBe(false);
+  });
+});
+
+describe("admin session (token)", () => {
+  it("is logged out without a token and logged in with one", () => {
     expect(isAdminSession()).toBe(false);
-    setAdminSession(true);
+    expect(getAdminToken()).toBeNull();
+    setAdminToken("tok_abc123");
+    expect(getAdminToken()).toBe("tok_abc123");
     expect(isAdminSession()).toBe(true);
-    setAdminSession(false);
+    clearAdminToken();
     expect(isAdminSession()).toBe(false);
   });
 });
@@ -157,6 +214,8 @@ describe("SSR safety", () => {
       expect(getUsers()).toEqual([]); // nothing persisted
       expect(findUserByPhone("9876543210")).toBeUndefined();
       expect(cancelBooking("9876543210", "BK1001").ok).toBe(false);
+      expect(deleteUser("USR1").ok).toBe(false);
+      expect(markBookingRefunded("USR1", "BK1001").ok).toBe(false);
       expect(isAdminSession()).toBe(false);
     } finally {
       (globalThis as { window?: unknown }).window = win;

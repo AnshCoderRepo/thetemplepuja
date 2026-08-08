@@ -22,9 +22,9 @@ const devanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "The Temple Puja | Online Pooja Booking & Live Darshan",
+  title: "The Temple Puja | Online Pooja Booking & Sacred Rituals",
   description:
-    "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals, live darshan from sacred temples.",
+    "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals and HD video recordings of every pooja.",
 };
 
 export default function RootLayout({

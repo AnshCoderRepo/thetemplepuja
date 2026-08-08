@@ -8,9 +8,6 @@ const validInput = {
   city: "New Delhi",
   reason: "For my daughter's wedding",
   phone: "9876543210",
-  date: "2026-08-15",
-  fromEvent: false,
-  today: "2026-08-07",
 };
 
 describe("isValidIndianPhone", () => {
@@ -42,9 +39,6 @@ describe("validateBookingInput", () => {
       city: "",
       reason: "",
       phone: "",
-      date: "",
-      fromEvent: false,
-      today: "2026-08-07",
     });
     expect(missing).toEqual([
       "choose a prayer",
@@ -53,26 +47,11 @@ describe("validateBookingInput", () => {
       "city",
       "why you want this puja",
       "a valid 10-digit mobile number",
-      "a date",
     ]);
   });
 
-  it("rejects a past date for manual bookings", () => {
-    expect(validateBookingInput({ ...validInput, date: "2026-08-06" })).toEqual([
-      "a future date",
-    ]);
-  });
-
-  it("accepts today for a manual booking", () => {
-    expect(validateBookingInput({ ...validInput, date: "2026-08-07" })).toEqual(
-      []
-    );
-  });
-
-  it("does not enforce the future-date rule on fixed event slots", () => {
-    expect(
-      validateBookingInput({ ...validInput, fromEvent: true, date: "2026-08-06" })
-    ).toEqual([]);
+  it("does not require a date — the date comes from a fixed event slot", () => {
+    expect(validateBookingInput(validInput)).toEqual([]);
   });
 
   it("enforces minimum lengths (name > 1, city > 1, reason > 2)", () => {

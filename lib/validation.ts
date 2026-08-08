@@ -15,12 +15,6 @@ export interface BookingFormInput {
   city: string;
   reason: string;
   phone: string;
-  /** Pooja date as YYYY-MM-DD ("" when none chosen). */
-  date: string;
-  /** True when the date comes from a fixed event slot. */
-  fromEvent: boolean;
-  /** Today as YYYY-MM-DD — used to reject past manual dates. */
-  today: string;
 }
 
 /**
@@ -36,8 +30,5 @@ export function validateBookingInput(input: BookingFormInput): string[] {
   if (input.reason.trim().length <= 2) missing.push("why you want this puja");
   if (!isValidIndianPhone(input.phone))
     missing.push("a valid 10-digit mobile number");
-  if (!input.date) missing.push("a date");
-  else if (!input.fromEvent && input.date < input.today)
-    missing.push("a future date");
   return missing;
 }

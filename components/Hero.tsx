@@ -33,7 +33,7 @@ export default function Hero() {
             <h1 className="mt-6 font-display text-4xl font-bold leading-[1.12] tracking-tight text-ink sm:text-6xl md:text-7xl">
               Book Trusted Pooja
               <br />
-              <span className="shimmer-text">& Live Darshan</span>
+              <span className="shimmer-text">& Sacred Rituals</span>
             </h1>
           </Reveal>
 
@@ -44,16 +44,9 @@ export default function Hero() {
             </p>
           </Reveal>
 
-          {/* Live status + rating */}
+          {/* Rating */}
           <Reveal delay={300}>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-maroon-700 to-maroon-600 px-4 py-2 text-xs font-semibold text-white shadow-soft">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-300 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-200" />
-                </span>
-                Live Now: Hanuman Pooja
-              </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700">
                 <span className="text-sm">🙏</span>
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />

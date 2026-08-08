@@ -32,8 +32,8 @@ export default function Footer() {
             </a>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-cream/60">
               India&apos;s trusted digital spiritual platform. Certified
-              pandits, authentic Vedic rituals, live darshan and blessed
-              samagri — bringing the divine to your doorstep.
+              pandits, authentic Vedic rituals, HD video recordings and
+              blessed samagri — bringing the divine to your doorstep.
             </p>
             <p className="mt-4 font-devanagari text-sm text-saffron-300/80">
               🙏 विश्वास, पवित्रता और भक्ति का संगम

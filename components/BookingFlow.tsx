@@ -13,11 +13,18 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { upsertBooking } from "@/lib/storage";
-import { coupons, poojas, type Coupon, type Pooja } from "@/lib/data";
+import { submitBooking, syncUserFromServer } from "@/lib/api";
+import {
+  activePoojas,
+  coupons,
+  poojas,
+  type Coupon,
+  type Pooja,
+} from "@/lib/data";
 import { couponDiscount, couponProblem } from "@/lib/coupons";
 import { isValidIndianPhone, validateBookingInput } from "@/lib/validation";
 import { formatINR } from "@/lib/format";
+import { useCatalog } from "./useCatalog";
 import RazorpayCheckout from "./RazorpayCheckout";
 
 interface ConfirmedBooking {
@@ -42,13 +49,6 @@ interface AppliedCoupon {
 const inputCls =
   "w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200";
 
-function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
-
 function formatDate(iso: string): string {
   if (!iso) return "—";
   const d = new Date(`${iso}T00:00:00`);
@@ -71,7 +71,6 @@ export default function BookingFlow({
   initialDate = null,
   initialTime = null,
 }: Props) {
-  const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState({
     name: "",
     gotra: "",
@@ -80,7 +79,9 @@ export default function BookingFlow({
     reason: "",
   });
   const [prayerSlug, setPrayerSlug] = useState(pooja?.slug ?? "");
-  const [date, setDate] = useState(initialDate ?? "");
+  // The date is only ever provided by a fixed event slot — never chosen in
+  // the form itself, so it doesn't need to be state.
+  const date = initialDate ?? "";
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState<AppliedCoupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -90,11 +91,12 @@ export default function BookingFlow({
   const [copiedId, setCopiedId] = useState(false);
   const [formError, setFormError] = useState("");
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Admin-managed catalog (poojas + coupons) from the backend. Initial render
+  // uses the static defaults so SSR matches; once fetched we swap in the
+  // server catalog.
+  const { poojas: catalogPoojas, coupons: catalogCoupons } = useCatalog();
 
-  const selectedPooja = poojas.find((p) => p.slug === prayerSlug);
+  const selectedPooja = catalogPoojas.find((p) => p.slug === prayerSlug);
   const basePrice = selectedPooja?.price ?? 0;
 
   /**
@@ -102,11 +104,15 @@ export default function BookingFlow({
    * null when it is valid.
    */
   const couponEligibility = (code: string): string | null =>
-    couponProblem(code, {
-      phone: form.phone,
-      price: basePrice,
-      poojaTitle: selectedPooja?.title ?? "this pooja",
-    });
+    couponProblem(
+      code,
+      {
+        phone: form.phone,
+        price: basePrice,
+        poojaTitle: selectedPooja?.title ?? "this pooja",
+      },
+      catalogCoupons
+    );
 
   const applyCoupon = () => {
     const code = coupon.trim().toUpperCase();
@@ -117,7 +123,7 @@ export default function BookingFlow({
       setCouponMsg({ ok: false, text: problem });
       return;
     }
-    const c = coupons[code];
+    const c = catalogCoupons[code];
     setApplied({ code, label: c.label, description: c.description, kind: c.kind, value: c.value });
     setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
   };
@@ -130,7 +136,7 @@ export default function BookingFlow({
       setCouponMsg({ ok: false, text: problem });
       return;
     }
-    const c = coupons[code];
+    const c = catalogCoupons[code];
     setApplied({ code, label: c.label, description: c.description, kind: c.kind, value: c.value });
     setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
   };
@@ -150,14 +156,22 @@ export default function BookingFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prayerSlug]);
 
+  // First-booking coupon rules should see the devotee's real history, not just
+  // this browser's cache — pull the profile from the server when a phone is
+  // entered so eligibility is judged against cross-device truth.
+  useEffect(() => {
+    if (isValidIndianPhone(form.phone)) {
+      void syncUserFromServer(form.phone);
+    }
+  }, [form.phone]);
+
   const discount = useMemo(
-    () => (applied ? couponDiscount(applied.code, basePrice) : 0),
-    [applied, basePrice]
+    () => (applied ? couponDiscount(applied.code, basePrice, catalogCoupons) : 0),
+    [applied, basePrice, catalogCoupons]
   );
   const total = Math.max(basePrice - discount, 0);
 
   const fromEvent = Boolean(initialDate);
-  const today = todayISO();
   const phoneValid = isValidIndianPhone(form.phone);
   const input = {
     prayerSlug,
@@ -166,9 +180,6 @@ export default function BookingFlow({
     city: form.city,
     reason: form.reason,
     phone: form.phone,
-    date,
-    fromEvent,
-    today,
   };
   const detailsValid = validateBookingInput(input).length === 0;
 
@@ -178,7 +189,7 @@ export default function BookingFlow({
     setBookingData({
       id,
       total,
-      date: formatDate(date),
+      date: date ? formatDate(date) : "To be confirmed",
       time: initialTime ?? "—",
       panditName: null,
       name: form.name.trim() || "Devotee",
@@ -193,7 +204,9 @@ export default function BookingFlow({
       setConfirmed(bookingData);
       // Persist the devotee's profile + booking (creates a fresh profile on
       // first payment, appends to it on later bookings from the same number).
-      upsertBooking({
+      // Written to the local cache instantly and mirrored to the server, so
+      // the admin dashboard sees it on any device.
+      void submitBooking({
         phone: form.phone.trim(),
         name: form.name.trim(),
         gotra: form.gotra.trim(),
@@ -376,8 +389,9 @@ export default function BookingFlow({
             </div>
 
             <p className="mt-5 rounded-2xl bg-saffron-50 px-5 py-4 text-center text-xs leading-relaxed text-ink-soft">
-              Your private streaming link and confirmation will be sent to your
-              WhatsApp within 2 minutes. Our admin has been notified instantly.
+              Your booking confirmation will be sent to your WhatsApp within
+              2 minutes. After the ritual, you&apos;ll receive the HD video
+              recording link. Our admin has been notified instantly.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -454,7 +468,7 @@ export default function BookingFlow({
                       <option value="" disabled>
                         Select your prayer…
                       </option>
-                      {poojas.map((p) => (
+                      {activePoojas(catalogPoojas).map((p) => (
                         <option key={p.slug} value={p.slug}>
                           {p.title} — {formatINR(p.price)}
                         </option>
@@ -466,45 +480,29 @@ export default function BookingFlow({
                   </div>
                 </div>
 
-                {/* Date */}
-                <div className="sm:col-span-2">
-                  <label htmlFor="bk-date" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
-                    Date of Pooja *
-                  </label>
-                  {fromEvent ? (
-                    <>
-                      <div className="flex items-center gap-3 rounded-xl border border-saffron-100 bg-saffron-50/60 px-4 py-3">
-                        <CalendarDays className="h-5 w-5 shrink-0 text-saffron-600" />
-                        <span className="flex-1 text-sm font-semibold text-ink">
-                          {formatDate(date)}
-                          {initialTime ? ` · ${initialTime}` : ""}
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-saffron-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-saffron-700">
-                          🔒 Fixed Slot
-                        </span>
-                      </div>
-                      <p className="mt-1.5 text-xs text-ink-soft/70">
-                        This event is scheduled for {formatDate(date)}
-                        {initialTime ? ` at ${initialTime}` : ""} — the date is fixed
-                        for this live slot.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <input
-                        id="bk-date"
-                        type="date"
-                        value={date}
-                        min={mounted ? today : undefined}
-                        onChange={(e) => setDate(e.target.value)}
-                        className={inputCls}
-                      />
-                      <p className="mt-1.5 text-xs text-ink-soft/70">
-                        Choose the specific date on which you want this pooja performed.
-                      </p>
-                    </>
-                  )}
-                </div>
+                {/* Date — only shown when booked from a fixed event slot */}
+                {fromEvent && (
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                      Date of Pooja
+                    </label>
+                    <div className="flex items-center gap-3 rounded-xl border border-saffron-100 bg-saffron-50/60 px-4 py-3">
+                      <CalendarDays className="h-5 w-5 shrink-0 text-saffron-600" />
+                      <span className="flex-1 text-sm font-semibold text-ink">
+                        {formatDate(date)}
+                        {initialTime ? ` · ${initialTime}` : ""}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-saffron-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-saffron-700">
+                        🔒 Fixed Slot
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-ink-soft/70">
+                      This event is scheduled for {formatDate(date)}
+                      {initialTime ? ` at ${initialTime}` : ""} — the date is fixed
+                      for this slot.
+                    </p>
+                  </div>
+                )}
 
                 {/* Name */}
                 <div>
@@ -653,7 +651,7 @@ export default function BookingFlow({
                           Tap a coupon to apply:
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {Object.entries(coupons).map(([code, c]) => (
+                          {Object.entries(catalogCoupons).map(([code, c]) => (
                             <button
                               key={code}
                               type="button"
@@ -723,7 +721,7 @@ export default function BookingFlow({
                           <CalendarDays className="h-3.5 w-3.5" /> Date
                         </dt>
                         <dd className="font-semibold text-ink">
-                          {formatDate(date)}
+                          {date ? formatDate(date) : "To be confirmed"}
                         </dd>
                       </div>
                       <div className="flex items-center justify-between">
