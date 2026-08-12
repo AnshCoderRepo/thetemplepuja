@@ -63,20 +63,7 @@ Sign in at **/admin** with the admin email + password (credentials in section 9)
 ### Account tab
 - **Change the admin email and password** — credentials are stored hashed on the server, never hardcoded. Reset to the demo credentials anytime.
 
----
 
-## 5. Coupons (currently live)
-
-| Code | Offer | Rules |
-|---|---|---|
-| **TEMPLE30** | 30% off your first booking | First booking only (checked against the phone number's real history) |
-| **BUNDLE20** | 20% off | Needs 3+ poojas booked on the number |
-| **MUHURAT** | Free shubh-muhurat guidance | Always valid |
-| **TEMPLEKUNDLI** | Free kundli reading | Poojas above ₹1,500 |
-
-Coupon eligibility is validated **server-side** at payment time (against the devotee's true booking history across devices), so codes can't be exploited by clearing the browser cache.
-
----
 
 ## 6. Live Events
 
