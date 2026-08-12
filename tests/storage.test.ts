@@ -8,6 +8,7 @@ import {
   getUsers,
   isAdminSession,
   markBookingRefunded,
+  rescheduleBooking,
   setAdminToken,
   upsertBooking,
   type BookingRecord,
@@ -142,6 +143,90 @@ describe("cancelBooking", () => {
   });
 });
 
+describe("rescheduleBooking", () => {
+  it("moves a confirmed booking, stamps rescheduledAt and keeps the audit trail", () => {
+    upsertBooking({ ...details, booking: booking() });
+    const res = rescheduleBooking("9876543210", "BK1001", {
+      date: "Sat, 22 Aug",
+      time: "10:00 AM IST",
+    });
+    expect(res.ok).toBe(true);
+    const b = res.user!.bookings[0];
+    expect(b.status).toBe("rescheduled");
+    expect(b.date).toBe("Sat, 22 Aug");
+    expect(b.time).toBe("10:00 AM IST");
+    expect(b.rescheduledAt).toBeTruthy();
+    expect(b.previousDate).toBe("Fri, 14 Aug");
+    expect(b.previousTime).toBe("7:00 PM IST");
+  });
+
+  it("allows moving an already-rescheduled booking again", () => {
+    upsertBooking({ ...details, booking: booking({ status: "rescheduled" }) });
+    const res = rescheduleBooking("9876543210", "BK1001", {
+      date: "Sun, 23 Aug",
+      time: "9:00 AM",
+    });
+    expect(res.ok).toBe(true);
+    expect(res.user!.bookings[0].status).toBe("rescheduled");
+  });
+
+  it("moves the event seat: updates eventDateISO and keeps the previous one", () => {
+    upsertBooking({
+      ...details,
+      booking: booking({ eventDateISO: "2026-08-20", seatCount: 1 }),
+    });
+    const res = rescheduleBooking("9876543210", "BK1001", {
+      date: "Sat, 22 Aug",
+      time: "7:00 PM IST",
+      dateISO: "2026-08-22",
+    });
+    const b = res.user!.bookings[0];
+    expect(b.eventDateISO).toBe("2026-08-22");
+    expect(b.previousEventDateISO).toBe("2026-08-20");
+  });
+
+  it("refuses to reschedule cancelled or refunded bookings", () => {
+    // Bookings are created confirmed, so build the refused states through the
+    // real transitions (cancel / refund) rather than injecting the status.
+    upsertBooking({ ...details, booking: booking() });
+    expect(cancelBooking("9876543210", "BK1001").ok).toBe(true);
+    expect(
+      rescheduleBooking("9876543210", "BK1001", { date: "X", time: "Y" }).ok
+    ).toBe(false);
+
+    const user = upsertBooking({
+      ...details,
+      booking: booking({ bookingId: "BK2" }),
+    });
+    expect(markBookingRefunded(user.id, "BK2").ok).toBe(true);
+    expect(
+      rescheduleBooking("9876543210", "BK2", { date: "X", time: "Y" }).ok
+    ).toBe(false);
+  });
+
+  it("refuses unknown booking ids or phones", () => {
+    upsertBooking({ ...details, booking: booking() });
+    expect(
+      rescheduleBooking("9876543210", "NOPE", { date: "X", time: "Y" }).ok
+    ).toBe(false);
+    expect(
+      rescheduleBooking("9999999999", "BK1001", { date: "X", time: "Y" }).ok
+    ).toBe(false);
+  });
+
+  it("a rescheduled booking can still be cancelled", () => {
+    upsertBooking({ ...details, booking: booking() });
+    expect(
+      rescheduleBooking("9876543210", "BK1001", {
+        date: "Sat, 22 Aug",
+        time: "10:00 AM IST",
+      }).ok
+    ).toBe(true);
+    expect(cancelBooking("9876543210", "BK1001").ok).toBe(true);
+    expect(findUserByPhone("9876543210")!.bookings[0].status).toBe("cancelled");
+  });
+});
+
 describe("deleteUser (admin)", () => {
   it("removes the profile and all its bookings", () => {
     const user = upsertBooking({ ...details, booking: booking() });
@@ -214,6 +299,9 @@ describe("SSR safety", () => {
       expect(getUsers()).toEqual([]); // nothing persisted
       expect(findUserByPhone("9876543210")).toBeUndefined();
       expect(cancelBooking("9876543210", "BK1001").ok).toBe(false);
+      expect(
+        rescheduleBooking("9876543210", "BK1001", { date: "X", time: "Y" }).ok
+      ).toBe(false);
       expect(deleteUser("USR1").ok).toBe(false);
       expect(markBookingRefunded("USR1", "BK1001").ok).toBe(false);
       expect(isAdminSession()).toBe(false);

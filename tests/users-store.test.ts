@@ -89,6 +89,42 @@ describe("devotee store", () => {
     expect(await store.findUserByPhone("9123456789")).toBeTruthy();
     expect(await store.findUserByPhone("9999999999")).toBeUndefined();
   });
+
+  it("finds a booking by id across all devotees (public receipt lookup)", async () => {
+    await store.upsertUserBooking(bookingInput("9812345670", "BK1001"));
+    await store.upsertUserBooking(bookingInput("9123456789", "BK2002"));
+    // Case-insensitive, like the site's SK… ids.
+    const found = await store.findBookingById("bk1001");
+    expect(found?.booking.bookingId).toBe("BK1001");
+    expect(found?.user.phone).toBe("9812345670");
+    expect(await store.findBookingById("NOPE")).toBeUndefined();
+    expect(await store.findBookingById("")).toBeUndefined();
+  });
+
+  it("concurrent bookings on different phones all persist", async () => {
+    await Promise.all([
+      store.upsertUserBooking(bookingInput("9000000001", "BK1")),
+      store.upsertUserBooking(bookingInput("9000000002", "BK2")),
+      store.upsertUserBooking(bookingInput("9000000003", "BK3")),
+    ]);
+    const users = await store.getAllUsers();
+    expect(users.map((u) => u.phone).sort()).toEqual([
+      "9000000001",
+      "9000000002",
+      "9000000003",
+    ]);
+    expect(users.every((u) => u.bookings.length === 1)).toBe(true);
+  });
+
+  it("concurrent first bookings on the same phone merge into one profile", async () => {
+    await Promise.all([
+      store.upsertUserBooking(bookingInput("9000000005", "BK-A")),
+      store.upsertUserBooking(bookingInput("9000000005", "BK-B")),
+    ]);
+    const user = await store.findUserByPhone("9000000005");
+    expect(user).toBeTruthy();
+    expect(user!.bookings.map((b) => b.bookingId).sort()).toEqual(["BK-A", "BK-B"]);
+  });
 });
 
 describe("booking lifecycle (server)", () => {
@@ -98,6 +134,11 @@ describe("booking lifecycle (server)", () => {
     expect(res.ok).toBe(true);
     expect(res.user?.bookings[0].status).toBe("cancelled");
     expect(res.user?.bookings[0].cancelledAt).toBeTruthy();
+    // The mutation must survive a re-read (store round-trip), not just the
+    // in-memory return value.
+    const reread = await store.findUserByPhone("9812345670");
+    expect(reread?.bookings[0].status).toBe("cancelled");
+    expect(reread?.bookings[0].cancelledAt).toBeTruthy();
     // Cannot cancel twice
     expect((await store.cancelUserBooking("9812345670", "BK1")).ok).toBe(false);
   });

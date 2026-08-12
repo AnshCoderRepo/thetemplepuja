@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withEventBookedSeats } from "@/lib/data";
 import {
   clearCatalogOverrides,
+  getAllUsers,
   getResolvedCatalog,
   isValidSessionToken,
   saveCatalogOverrides,
@@ -16,7 +18,16 @@ function bearerToken(req: NextRequest): string | null {
 }
 
 export async function GET() {
-  return NextResponse.json(await getResolvedCatalog());
+  const catalog = await getResolvedCatalog();
+  // Attach confirmed-seat counts per event so the home page and admin show
+  // live, cross-device availability (remaining = capacity − confirmed seats,
+  // so cancellations free a seat automatically on the next fetch).
+  const users = await getAllUsers();
+  const bookings = users.flatMap((u) => u.bookings);
+  return NextResponse.json({
+    ...catalog,
+    events: withEventBookedSeats(catalog.events, bookings),
+  });
 }
 
 export async function POST(req: NextRequest) {

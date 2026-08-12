@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarX2, Clock, Video } from "lucide-react";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
-import { getUpcomingEvents } from "@/lib/data";
+import { getUpcomingEvents, isEventFull, seatsLabel } from "@/lib/data";
 import { useCatalog } from "./useCatalog";
 import {
   CoverflowCarousel,
@@ -36,7 +36,7 @@ export default function UpcomingEvents() {
     dateLabel: `${event.date} · ${event.time}`,
     title: event.title,
     meta: [
-      { label: "Seats", value: event.seats },
+      { label: "Seats", value: seatsLabel(event) },
       { label: "Price", value: event.price },
       { label: "Status", value: event.live ? "🔴 Live" : "Upcoming" },
     ],
@@ -96,13 +96,23 @@ export default function UpcomingEvents() {
             {/* Book Slot for whichever pooja is in the centre of the rake */}
             {active && (
               <div className="mt-8 flex flex-col items-center gap-3">
-                <Link
-                  href={`/book/${active.slug}?date=${active.dateISO}&time=${encodeURIComponent(active.time)}`}
-                  className="btn-primary"
-                >
-                  <Clock className="h-4 w-4" />
-                  Book Slot — {active.title}
-                </Link>
+                {isEventFull(active) ? (
+                  <span
+                    aria-disabled="true"
+                    className="btn-primary !cursor-not-allowed !opacity-60"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Fully Booked — {active.title}
+                  </span>
+                ) : (
+                  <Link
+                    href={`/book/${active.slug}?date=${active.dateISO}&time=${encodeURIComponent(active.time)}`}
+                    className="btn-primary"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Book Slot — {active.title}
+                  </Link>
+                )}
                 <p className="text-xs font-medium text-ink-soft/70">
                   Drag or use the arrows to pick your pooja · {events.length}{" "}
                   live events

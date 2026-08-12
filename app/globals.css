@@ -72,6 +72,50 @@ body {
   transform: translateY(0);
 }
 
+/* ---------- Print styles: booking receipt ---------- */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  /* Hide interactive chrome (buttons, links, nav) */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Receipt page: strip section padding and cream background */
+  #receipt-page {
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Receipt card: flat, full-bleed, one page */
+  #receipt-card {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  /* Keep brand colours (gradient header, status pills, coupon chips) */
+  #receipt-card * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Tighten inner padding so the whole receipt fits comfortably */
+  #receipt-card > div:last-child {
+    padding: 1.25rem 1.5rem !important;
+  }
+}
+
 /* Shimmer text for hero accent */
 .shimmer-text {
   background: linear-gradient(

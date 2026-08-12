@@ -32,6 +32,10 @@ function writeJson(name: string, data: unknown): void {
 }
 
 export function createJsonStore(): PersistenceStore {
+  function getUsersFromFile(): UserProfile[] {
+    return readJson<UserProfile[]>("users.json", []);
+  }
+
   return {
     async getCatalogOverrides(): Promise<CatalogOverrides> {
       return readJson<CatalogOverrides>("catalog.json", {});
@@ -64,8 +68,50 @@ export function createJsonStore(): PersistenceStore {
     async getUsers(): Promise<UserProfile[]> {
       return readJson<UserProfile[]>("users.json", []);
     },
-    async saveUsers(users): Promise<void> {
+    async findUserByPhone(phone): Promise<UserProfile | undefined> {
+      return getUsersFromFile().find((u) => u.phone === phone.trim());
+    },
+    async findUserById(id): Promise<UserProfile | undefined> {
+      return getUsersFromFile().find((u) => u.id === id);
+    },
+    async saveUser(user): Promise<void> {
+      const users = getUsersFromFile();
+      // Phone-keyed merge (mirrors MongoDB): append only bookings that aren't
+      // already on the devotee, so concurrent same-phone saves merge instead
+      // of duplicating the profile.
+      const byPhone = users.findIndex((u) => u.phone === user.phone);
+      if (byPhone >= 0) {
+        const existing = users[byPhone];
+        const existingIds = new Set(existing.bookings.map((b) => b.bookingId));
+        for (const b of user.bookings) {
+          if (!existingIds.has(b.bookingId)) existing.bookings.push(b);
+          else {
+            // Already known booking — take the incoming (possibly mutated:
+            // cancelled / rescheduled / refunded) version.
+            const i = existing.bookings.findIndex(
+              (x) => x.bookingId === b.bookingId
+            );
+            existing.bookings[i] = b;
+          }
+        }
+        existing.name = user.name;
+        existing.gotra = user.gotra;
+        existing.city = user.city;
+        existing.email = user.email;
+        writeJson("users.json", users);
+        return;
+      }
+      const idx = users.findIndex((u) => u.id === user.id);
+      if (idx >= 0) users[idx] = user;
+      else users.push(user);
       writeJson("users.json", users);
+    },
+    async deleteUserById(id): Promise<boolean> {
+      const users = getUsersFromFile();
+      const next = users.filter((u) => u.id !== id);
+      if (next.length === users.length) return false;
+      writeJson("users.json", next);
+      return true;
     },
   };
 }

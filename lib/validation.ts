@@ -8,6 +8,15 @@ export function isValidIndianPhone(phone: string): boolean {
   return PHONE_RE.test(phone.trim());
 }
 
+/** Reduce any phone input (with/without +91, spaces, dashes) to 10 digits.
+ * Used when matching phones across the client, API and store. */
+export function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  return digits.length > 10 && digits.startsWith("91")
+    ? digits.slice(2)
+    : digits;
+}
+
 export interface BookingFormInput {
   prayerSlug: string;
   name: string;

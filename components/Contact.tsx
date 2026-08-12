@@ -5,11 +5,30 @@ import { Send, MessageCircle } from "lucide-react";
 import Reveal from "./Reveal";
 import { contactInfo } from "@/lib/data";
 
+const WHATSAPP_NUMBER = "918765301563";
+
 export default function Contact() {
   const [sent, setSent] = useState(false);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = String(data.get("name") ?? "").trim();
+    const email = String(data.get("email") ?? "").trim();
+    const message = String(data.get("message") ?? "").trim();
+    // Deliver the enquiry straight to the team's WhatsApp (the channel the
+    // whole site already uses) — no silent dead-end form.
+    const text = encodeURIComponent(
+      `🙏 New enquiry — The Temple Puja\n\n` +
+        `Name: ${name || "—"}\n` +
+        (email ? `Email: ${email}\n` : "") +
+        `Message: ${message}`
+    );
+    window.open(
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
     setSent(true);
   };
 

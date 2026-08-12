@@ -13,16 +13,31 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { createRazorpayOrderRemote } from "@/lib/api";
 import { formatINR } from "@/lib/format";
 
 type Tab = "upi" | "card" | "netbanking" | "wallet";
+
+export interface PaymentProof {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}
 
 interface Props {
   open: boolean;
   amount: number;
   poojaTitle: string;
+  /** Used to create the real Razorpay order server-side (price is derived
+   * from the catalog on the server, never from the client). */
+  poojaSlug?: string;
+  couponCode?: string | null;
+  devoteeName?: string;
+  phone?: string;
   onClose: () => void;
-  onSuccess: (bookingId: string) => void;
+  /** `payment` is present when the payment went through real Razorpay; the
+   * booking route verifies its signature before confirming. */
+  onSuccess: (bookingId: string, payment?: PaymentProof) => void;
 }
 
 const tabs: { id: Tab; label: string; icon: typeof Smartphone }[] = [
@@ -74,10 +89,49 @@ function detectBrand(num: string) {
 const inputCls =
   "w-full rounded-lg border border-gray-200 bg-white px-3.5 py-3 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[#3395ff] focus:ring-2 focus:ring-[#3395ff]/20";
 
+const CHECKOUT_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
+
+let scriptPromise: Promise<boolean> | null = null;
+
+/** Inject Razorpay's checkout script once and cache the result. */
+function loadRazorpayScript(): Promise<boolean> {
+  if (!scriptPromise) {
+    scriptPromise = new Promise((resolve) => {
+      if (typeof document === "undefined") {
+        resolve(false);
+        return;
+      }
+      if (document.querySelector(`script[src="${CHECKOUT_SCRIPT}"]`)) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = CHECKOUT_SCRIPT;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  }
+  return scriptPromise;
+}
+
+type RealMode =
+  | { kind: "none" } // demo mode — simulated flow
+  | { kind: "ready"; keyId: string; orderId: string; amount: number; currency: string }
+  | { kind: "error"; message: string }; // configured but order creation failed
+
+function newBookingId(): string {
+  return "SK" + Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
 export default function RazorpayCheckout({
   open,
   amount,
   poojaTitle,
+  poojaSlug,
+  couponCode,
+  devoteeName,
+  phone,
   onClose,
   onSuccess,
 }: Props) {
@@ -90,20 +144,137 @@ export default function RazorpayCheckout({
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [realMode, setRealMode] = useState<RealMode>({ kind: "none" });
+  const [paymentNote, setPaymentNote] = useState("");
 
+  // On open, ask the server for a real order. In demo mode (no keys) this
+  // resolves to `none` and the simulated flow below runs as before.
   useEffect(() => {
-    if (open) {
-      setPhase("form");
-      setError("");
-      setTab("upi");
-      setCopied(false);
+    if (!open) return;
+    setPhase("form");
+    setError("");
+    setTab("upi");
+    setCopied(false);
+    setPaymentNote("");
+    setRealMode({ kind: "none" });
+    let stale = false;
+
+    if (!poojaSlug) {
+      setRealMode({ kind: "none" });
+      return;
     }
-  }, [open]);
+    void (async () => {
+      const start = await createRazorpayOrderRemote({
+        poojaSlug,
+        couponCode: couponCode ?? null,
+        phone: phone ?? "",
+      });
+      if (stale) return;
+      if (start.configured && start.orderId && start.keyId) {
+        setRealMode({
+          kind: "ready",
+          keyId: start.keyId,
+          orderId: start.orderId,
+          amount: start.amount ?? Math.round(amount * 100),
+          currency: start.currency ?? "INR",
+        });
+      } else if (start.configured && start.error) {
+        setRealMode({ kind: "error", message: start.error });
+      } else {
+        setRealMode({ kind: "none" });
+      }
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [open, poojaSlug, couponCode, phone, amount]);
 
   if (!open) return null;
 
+  // The authoritative payable amount: whatever the server priced the order at
+  // (paise), falling back to the client-computed total in demo mode.
+  const displayAmount =
+    realMode.kind === "ready" ? realMode.amount / 100 : amount;
+  const realReady = realMode.kind === "ready";
+  const realBlocked = realMode.kind === "error";
+
+  const simulatePay = () => {
+    setPhase("processing");
+    setTimeout(() => {
+      const id = newBookingId();
+      setBookingId(id);
+      setPhase("success");
+      onSuccess(id);
+    }, 2000);
+  };
+
+  const openRazorpay = async () => {
+    if (realMode.kind !== "ready") return;
+    setError("");
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      setError("Razorpay couldn't load — please try again.");
+      return;
+    }
+    const Rzp = (window as unknown as { Razorpay: new (o: object) => { open: () => void } }).Razorpay;
+    if (!Rzp) {
+      setError("Razorpay couldn't load — please try again.");
+      return;
+    }
+    const rzp = new Rzp({
+      key: realMode.keyId,
+      amount: realMode.amount,
+      currency: realMode.currency,
+      order_id: realMode.orderId,
+      name: "The Temple Puja",
+      description: poojaTitle,
+      prefill: {
+        name: devoteeName ?? "",
+        contact: phone ?? "",
+      },
+      theme: { color: "#0b245b" },
+      handler: (response: {
+        razorpay_payment_id?: string;
+        razorpay_order_id?: string;
+        razorpay_signature?: string;
+      }) => {
+        const paymentId = response.razorpay_payment_id;
+        const orderId = response.razorpay_order_id;
+        const signature = response.razorpay_signature;
+        if (!paymentId || !orderId || !signature) {
+          setPaymentNote("Payment was not completed — no booking was created. You can try again.");
+          return;
+        }
+        setPhase("processing");
+        setTimeout(() => {
+          const id = newBookingId();
+          setBookingId(id);
+          setPhase("success");
+          onSuccess(id, {
+            razorpayOrderId: orderId,
+            razorpayPaymentId: paymentId,
+            razorpaySignature: signature,
+          });
+        }, 1200);
+      },
+      modal: {
+        ondismiss: () => {
+          // User closed the Razorpay modal without paying — stay on the form.
+          setPaymentNote("Payment was not completed — your booking has not been created yet. You can try again.");
+        },
+      },
+    });
+    rzp.open();
+  };
+
   const pay = () => {
     setError("");
+    if (realReady) {
+      void openRazorpay();
+      return;
+    }
+    if (realBlocked) return;
+
     if (tab === "upi" && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(vpa)) {
       setError("Enter a valid UPI ID, e.g. name@okhdfcbank");
       return;
@@ -135,14 +306,7 @@ export default function RazorpayCheckout({
       setError("Select a wallet");
       return;
     }
-
-    setPhase("processing");
-    setTimeout(() => {
-      const id = "SK" + Math.random().toString(36).slice(2, 8).toUpperCase();
-      setBookingId(id);
-      setPhase("success");
-      onSuccess(id);
-    }, 2000);
+    simulatePay();
   };
 
   const copyId = async () => {
@@ -185,7 +349,7 @@ export default function RazorpayCheckout({
               <div className="mt-0.5 text-[11px] text-[#a9c6ff]">{poojaTitle}</div>
             </div>
             <div className="text-right">
-              <div className="font-display text-xl font-bold">{formatINR(amount)}</div>
+              <div className="font-display text-xl font-bold">{formatINR(displayAmount)}</div>
               <div className="text-[10px] text-[#a9c6ff]">payable now</div>
             </div>
           </div>
@@ -232,7 +396,15 @@ export default function RazorpayCheckout({
 
             {/* Body */}
             <div className="space-y-4 bg-[#f3f7fa] px-6 py-5">
-              {tab === "upi" && (
+              {realReady && (
+                <p className="flex items-center gap-2 rounded-lg bg-[#0b245b]/5 px-3 py-2.5 text-[11px] font-semibold text-[#0b245b]">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
+                  You&apos;ll be redirected to Razorpay&apos;s secure payment
+                  page to complete this payment.
+                </p>
+              )}
+
+              {!realReady && !realBlocked && tab === "upi" && (
                 <>
                   <div className="flex items-center gap-2.5">
                     {upiApps.map((app) => (
@@ -273,7 +445,7 @@ export default function RazorpayCheckout({
                 </>
               )}
 
-              {tab === "card" && (
+              {!realReady && !realBlocked && tab === "card" && (
                 <>
                   <div>
                     <div className="mb-1 flex items-center justify-between">
@@ -353,7 +525,7 @@ export default function RazorpayCheckout({
                 </>
               )}
 
-              {tab === "netbanking" && (
+              {!realReady && !realBlocked && tab === "netbanking" && (
                 <div className="grid grid-cols-2 gap-2">
                   {banks.map((b) => (
                     <button
@@ -371,7 +543,7 @@ export default function RazorpayCheckout({
                 </div>
               )}
 
-              {tab === "wallet" && (
+              {!realReady && !realBlocked && tab === "wallet" && (
                 <div className="grid grid-cols-2 gap-2">
                   {wallets.map((w) => (
                     <button
@@ -389,6 +561,18 @@ export default function RazorpayCheckout({
                 </div>
               )}
 
+              {realBlocked && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-800">
+                  {realMode.message} Please close and try again in a moment.
+                </p>
+              )}
+
+              {paymentNote && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-800">
+                  {paymentNote}
+                </p>
+              )}
+
               {error && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
                   {error}
@@ -397,10 +581,11 @@ export default function RazorpayCheckout({
 
               <button
                 onClick={pay}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#3395ff] py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#2b7fd9] active:scale-[0.99]"
+                disabled={realBlocked}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#3395ff] py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#2b7fd9] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Lock className="h-4 w-4" />
-                Pay {formatINR(amount)}
+                {realReady ? `Pay ${formatINR(displayAmount)} via Razorpay` : `Pay ${formatINR(displayAmount)}`}
               </button>
 
               <div className="flex items-center justify-center gap-1.5 text-center text-[11px] text-gray-400">
@@ -420,7 +605,7 @@ export default function RazorpayCheckout({
             </div>
             <div className="mt-1.5 text-xs text-gray-500">
               Please do not close this window. You are being redirected to{" "}
-              {tab === "upi" ? "your UPI app" : "Razorpay"}.
+              {realReady ? "Razorpay" : tab === "upi" ? "your UPI app" : "Razorpay"}.
             </div>
             <div className="mt-6 w-full max-w-[220px] overflow-hidden rounded-full bg-gray-200">
               <div className="h-1.5 animate-pulse rounded-full bg-[#3395ff]" />
@@ -440,7 +625,7 @@ export default function RazorpayCheckout({
               Payment Successful!
             </div>
             <div className="mt-1 text-xs text-gray-500">
-              {formatINR(amount)} paid to The Temple Puja · {poojaTitle}
+              {formatINR(displayAmount)} paid to The Temple Puja · {poojaTitle}
             </div>
             <button
               onClick={copyId}

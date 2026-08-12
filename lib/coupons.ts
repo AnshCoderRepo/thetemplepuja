@@ -27,24 +27,34 @@ export interface CouponContext {
  * `couponMap` lets the booking flow evaluate admin-managed coupons (see
  * lib/catalog.ts); it defaults to the static catalog so existing callers and
  * tests keep working unchanged.
+ *
+ * `bookingCount` lets server-side callers pass a phone's confirmed-booking
+ * count from the backend (the browser-based `confirmedBookingCount` reads
+ * localStorage, which is always 0 on the server). When omitted the local
+ * cache is used, keeping client behaviour unchanged.
  */
 export function couponProblem(
   code: string,
   ctx: CouponContext,
-  couponMap: Record<string, Coupon> = coupons
+  couponMap: Record<string, Coupon> = coupons,
+  bookingCount?: number
 ): string | null {
   const c = couponMap[code];
   if (!c) return `"${code}" is not a valid coupon code.`;
+  const countOf =
+    bookingCount !== undefined
+      ? () => bookingCount
+      : () => confirmedBookingCount(ctx.phone);
   if (c.firstBookingOnly) {
     if (ctx.phone.trim().length < 10)
       return "Enter your 10-digit mobile number first so we can check your first-booking eligibility.";
-    if (confirmedBookingCount(ctx.phone) > 0)
+    if (countOf() > 0)
       return `${code} is only for your first booking — you already have a confirmed pooja on this number.`;
   }
   if (c.minBookings) {
     if (ctx.phone.trim().length < 10)
       return "Enter your 10-digit mobile number first so we can check how many poojas you've booked.";
-    const booked = confirmedBookingCount(ctx.phone);
+    const booked = countOf();
     if (booked + 1 < c.minBookings)
       return `${code} needs ${c.minBookings}+ poojas booked — you have ${booked + 1} (including this one).`;
   }

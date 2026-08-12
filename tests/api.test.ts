@@ -4,6 +4,7 @@ import {
   cancelBookingRemote,
   deleteUserRemote,
   fetchAllUsers,
+  fetchBooking,
   fetchCatalog,
   fetchUserByPhone,
   refundBookingRemote,
@@ -11,6 +12,7 @@ import {
   saveCatalogSection,
   submitBooking,
 } from "../lib/api";
+import { getUsers } from "../lib/storage";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -212,6 +214,88 @@ describe("submitBooking", () => {
     const res = await submitBooking(bookingInput);
     expect(res.ok).toBe(true); // local save counts as success offline
     expect(res.user?.bookings[0].bookingId).toBe("BK1001");
+  });
+
+  it("does not keep a phantom booking when the server rejects it", async () => {
+    // Seed the local cache with the same booking first (as if a previous
+    // attempt had optimistically saved it), then reject on the server.
+    await submitBooking(bookingInput);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ error: "Payment verification failed." }, 402))
+    );
+
+    const res = await submitBooking(bookingInput);
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe(402);
+    // The optimistic local copy must be rolled back — no phantom booking.
+    const cached = getUsers();
+    const cachedUser = cached.find((u) => u.phone === bookingInput.phone);
+    expect(cachedUser?.bookings.some((b) => b.bookingId === "BK1001")).toBe(false);
+  });
+});
+
+describe("fetchBooking", () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    window.localStorage.removeItem("ttp_profiles_v1");
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("returns the booking + holder from the server (id + matching phone)", async () => {
+    const serverBody = {
+      booking: { ...bookingInput.booking, bookingId: "SKABC123" },
+      holder: {
+        name: "Aarav Sharma",
+        phone: "9876543210",
+        gotra: "Kashyap",
+        city: "New Delhi",
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(serverBody)));
+
+    const res = await fetchBooking("skabc123", "9876543210");
+    expect(res?.booking?.bookingId).toBe("SKABC123");
+    expect(res?.holder?.phone).toBe("9876543210");
+    const url = (vi.mocked(fetch).mock.calls[0] as [string])[0];
+    expect(url).toBe("/api/bookings/SKABC123?phone=9876543210");
+  });
+
+  it("returns null when the phone is missing or invalid", async () => {
+    expect(await fetchBooking("SKABC123", "")).toBeNull();
+  });
+
+  it("returns null on a 404", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ error: "not found" }, 404))
+    );
+    expect(await fetchBooking("SKNOPE1", "9876543210")).toBeNull();
+  });
+
+  it("falls back to the local cache when the server is unreachable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    // Seed the local cache first.
+    await submitBooking({
+      ...bookingInput,
+      booking: { ...bookingInput.booking, bookingId: "SKLOCAL1" },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    const res = await fetchBooking("SKLOCAL1", "9876543210");
+    expect(res?.booking?.bookingId).toBe("SKLOCAL1");
+    expect(res?.holder?.phone).toBe("9876543210");
+  });
+
+  it("does not leak a local booking when the phone does not match", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    await submitBooking({
+      ...bookingInput,
+      booking: { ...bookingInput.booking, bookingId: "SKLOCAL2" },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    expect(await fetchBooking("SKLOCAL2", "9999999999")).toBeNull();
   });
 });
 
