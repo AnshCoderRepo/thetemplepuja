@@ -300,7 +300,11 @@ function DevoteesPanel({
                     <span className="block font-display text-base font-bold text-saffron-600">
                       {formatINR(
                         u.bookings
-                          .filter((b) => b.status !== "cancelled")
+                          .filter(
+                            (b) =>
+                              b.status !== "cancelled" &&
+                              b.status !== "refunded"
+                          )
                           .reduce((s, b) => s + b.amount, 0)
                       )}
                     </span>
@@ -411,6 +415,14 @@ function DevoteesPanel({
                               {b.status === "refunded" && b.refundedAt && (
                                 <p className="mt-1.5 text-[11px] font-semibold text-indigo-600">
                                   💸 Refunded on {formatDate(b.refundedAt)}
+                                </p>
+                              )}
+                              {b.status === "rescheduled" && b.rescheduledAt && (
+                                <p className="mt-1.5 text-[11px] font-semibold text-amber-600">
+                                  🔁 Rescheduled on {formatDate(b.rescheduledAt)}
+                                  {b.previousDate && !b.previousDate.startsWith("To be")
+                                    ? ` — was ${b.previousDate}${b.previousTime && b.previousTime !== "—" ? ` · ${b.previousTime}` : ""}`
+                                    : ""}
                                 </p>
                               )}
                             </div>

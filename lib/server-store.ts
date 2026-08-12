@@ -18,10 +18,13 @@ import { createJsonStore } from "./json-store";
 import { DEMO_USERS } from "./demo-users";
 import {
   cancelIn,
-  deleteFrom,
   refundIn,
+  remindIn,
+  rescheduleIn,
   upsertInto,
   type BookingInput,
+  type BookingRecord,
+  type RescheduleInput,
   type UserProfile,
 } from "./storage";
 
@@ -223,7 +226,8 @@ export async function getAllUsers(): Promise<UserProfile[]> {
   const users = await withFallback((s) => s.getUsers());
   if (users.length === 0 && !usersSeeded) {
     usersSeeded = true;
-    await withFallback((s) => s.saveUsers(DEMO_USERS));
+    // Seed one document per devotee.
+    await Promise.all(DEMO_USERS.map((u) => withFallback((s) => s.saveUser(u))));
     return DEMO_USERS;
   }
   return users;
@@ -234,38 +238,84 @@ export async function getAllUsers(): Promise<UserProfile[]> {
 export async function findUserByPhone(
   phone: string
 ): Promise<UserProfile | undefined> {
-  const users = await withFallback((s) => s.getUsers());
-  return users.find((u) => u.phone === phone.trim());
+  return withFallback((s) => s.findUserByPhone(phone));
 }
 
-/** Create/refresh a devotee profile and append their booking. */
+/** Public receipt lookup: find one booking anywhere in the store by its
+ * booking id (case-insensitive — ids are shown as SK… on the site). Raw read
+ * (no demo seeding) so a random id can't write demo data. */
+export async function findBookingById(
+  bookingId: string
+): Promise<{ user: UserProfile; booking: BookingRecord } | undefined> {
+  const id = bookingId.trim().toUpperCase();
+  if (!id) return undefined;
+  const users = await withFallback((s) => s.getUsers());
+  for (const user of users) {
+    const booking = user.bookings.find((b) => b.bookingId === id);
+    if (booking) return { user, booking };
+  }
+  return undefined;
+}
+
+/** Create/refresh a devotee profile and append their booking. Reads and writes
+ * ONLY that devotee's document, so concurrent bookings on different phones
+ * (and duplicate submits on the same phone) never overwrite each other. */
 export async function upsertUserBooking(
   input: BookingInput
 ): Promise<UserProfile> {
-  const users = await withFallback((s) => s.getUsers());
-  const { users: next, user } = upsertInto(users, input);
-  await withFallback((s) => s.saveUsers(next));
+  const existing = await withFallback((s) => s.findUserByPhone(input.phone));
+  const { user } = upsertInto(existing ? [existing] : [], input);
+  await withFallback((s) => s.saveUser(user));
   return user;
 }
 
-/** Cancel a devotee's confirmed booking. */
+/** Cancel a devotee's confirmed/rescheduled booking. */
 export async function cancelUserBooking(
   phone: string,
   bookingId: string
 ): Promise<{ ok: boolean; user?: UserProfile }> {
-  const users = await withFallback((s) => s.getUsers());
-  const { users: next, ok, user } = cancelIn(users, phone, bookingId);
-  if (ok) await withFallback((s) => s.saveUsers(next));
-  return { ok, user };
+  const user = await withFallback((s) => s.findUserByPhone(phone));
+  if (!user) return { ok: false };
+  const { users, ok } = cancelIn([user], phone, bookingId);
+  if (!ok) return { ok: false };
+  await withFallback((s) => s.saveUser(users[0]));
+  return { ok: true, user: users[0] };
+}
+
+/** Move a devotee's confirmed/rescheduled booking to a new muhurat. */
+export async function rescheduleUserBooking(
+  phone: string,
+  bookingId: string,
+  next: RescheduleInput
+): Promise<{ ok: boolean; user?: UserProfile }> {
+  const user = await withFallback((s) => s.findUserByPhone(phone));
+  if (!user) return { ok: false };
+  const { users, ok } = rescheduleIn([user], phone, bookingId, next);
+  if (!ok) return { ok: false };
+  await withFallback((s) => s.saveUser(users[0]));
+  return { ok: true, user: users[0] };
+}
+
+/** Stamp a booking as reminded for a muhurat date (YYYY-MM-DD). Idempotent —
+ * a second call for the same date is a no-op. Used by the daily reminder job. */
+export async function markBookingReminded(
+  phone: string,
+  bookingId: string,
+  dateISO: string
+): Promise<{ ok: boolean }> {
+  const user = await withFallback((s) => s.findUserByPhone(phone));
+  if (!user) return { ok: false };
+  const { users, ok } = remindIn([user], phone, bookingId, dateISO);
+  if (!ok) return { ok: false };
+  await withFallback((s) => s.saveUser(users[0]));
+  return { ok: true };
 }
 
 /** Permanently remove a devotee profile (admin). */
 export async function deleteUserRecord(
   id: string
 ): Promise<{ ok: boolean }> {
-  const users = await withFallback((s) => s.getUsers());
-  const { users: next, ok } = deleteFrom(users, id);
-  if (ok) await withFallback((s) => s.saveUsers(next));
+  const ok = await withFallback((s) => s.deleteUserById(id));
   return { ok };
 }
 
@@ -274,8 +324,10 @@ export async function refundUserBooking(
   userId: string,
   bookingId: string
 ): Promise<{ ok: boolean; user?: UserProfile }> {
-  const users = await withFallback((s) => s.getUsers());
-  const { users: next, ok, user } = refundIn(users, userId, bookingId);
-  if (ok) await withFallback((s) => s.saveUsers(next));
-  return { ok, user };
+  const user = await withFallback((s) => s.findUserById(userId));
+  if (!user) return { ok: false };
+  const { users, ok } = refundIn([user], userId, bookingId);
+  if (!ok) return { ok: false };
+  await withFallback((s) => s.saveUser(users[0]));
+  return { ok: true, user: users[0] };
 }

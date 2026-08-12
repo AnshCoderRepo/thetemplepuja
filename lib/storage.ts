@@ -20,6 +20,30 @@ export interface BookingRecord {
   status: BookingStatus;
   cancelledAt?: string; // ISO — set when the devotee cancels
   refundedAt?: string; // ISO — set when the admin marks the booking refunded
+  /** Set when this booking came from a live-event slot — the event's
+   * machine-readable date (YYYY-MM-DD). Seats held on the event are counted
+   * against its capacity from this field, so cancelling releases the seat. */
+  eventDateISO?: string;
+  /** Seats held on the event's capacity (1 per booking today). */
+  seatCount?: number;
+  /** ISO — set when the devotee moves the booking to a new muhurat. */
+  rescheduledAt?: string;
+  /** Audit: the date/time shown before the last reschedule. */
+  previousDate?: string;
+  previousTime?: string;
+  /** Audit: the event occurrence held before the last reschedule (seat moves). */
+  previousEventDateISO?: string;
+  /** Razorpay order created server-side for this booking (real payments). */
+  razorpayOrderId?: string;
+  /** Razorpay payment id — set once the payment signature is verified. */
+  razorpayPaymentId?: string;
+  /** Razorpay signature verified server-side before the booking is confirmed. */
+  razorpaySignature?: string;
+  /** ISO — when the payment was captured (real payments only). */
+  paidAt?: string;
+  /** YYYY-MM-DD muhurat this devotee was sent a WhatsApp reminder for. Set
+   * once, so a daily reminder job never double-sends for the same date. */
+  reminderSentForDate?: string;
 }
 
 export interface UserProfile {
@@ -105,12 +129,15 @@ export function upsertInto(
   // Guard against duplicate saves of the same booking (e.g. modal close
   // firing twice) — never append the same bookingId twice.
   if (!user.bookings.some((b) => b.bookingId === input.booking.bookingId)) {
-    user.bookings.push(input.booking);
+    // A booking is always created confirmed — never trust the client to set
+    // the status (cancel/refund/reschedule go through their own routes).
+    const booking: BookingRecord = { ...input.booking, status: "confirmed" };
+    user.bookings.push(booking);
   }
   return { users, user };
 }
 
-/** Cancel a confirmed booking. No-op unless the booking is confirmed. */
+/** Cancel a confirmed or rescheduled booking. No-op otherwise. */
 export function cancelIn(
   users: UserProfile[],
   phone: string,
@@ -120,10 +147,60 @@ export function cancelIn(
   if (!user) return { users, ok: false };
 
   const booking = user.bookings.find((b) => b.bookingId === bookingId);
-  if (!booking || booking.status !== "confirmed") return { users, ok: false };
+  if (
+    !booking ||
+    (booking.status !== "confirmed" && booking.status !== "rescheduled")
+  ) {
+    return { users, ok: false };
+  }
 
   booking.status = "cancelled";
   booking.cancelledAt = new Date().toISOString();
+  return { users, ok: true, user };
+}
+
+/** The fields a devotee can change when moving a booking to a new muhurat. */
+export interface RescheduleInput {
+  /** Display date, e.g. "Sat, 22 Aug". */
+  date: string;
+  /** Display time, e.g. "10:00 AM IST". */
+  time: string;
+  /** Machine date for event-slot bookings — moves the held seat to the new
+   * event occurrence. Leave undefined for ordinary pooja bookings. */
+  dateISO?: string;
+}
+
+/** Move a confirmed (or already-rescheduled) booking to a new muhurat. Keeps
+ * the previous date/time for the audit trail and stamps rescheduledAt. For
+ * event-slot bookings the eventDateISO moves too, which frees the old seat
+ * and takes a new one via the derived seat counter. */
+export function rescheduleIn(
+  users: UserProfile[],
+  phone: string,
+  bookingId: string,
+  next: RescheduleInput
+): { users: UserProfile[]; ok: boolean; user?: UserProfile } {
+  const user = users.find((u) => u.phone === phone.trim());
+  if (!user) return { users, ok: false };
+
+  const booking = user.bookings.find((b) => b.bookingId === bookingId);
+  if (
+    !booking ||
+    (booking.status !== "confirmed" && booking.status !== "rescheduled")
+  ) {
+    return { users, ok: false };
+  }
+
+  booking.previousDate = booking.date;
+  booking.previousTime = booking.time;
+  booking.date = next.date;
+  booking.time = next.time;
+  booking.status = "rescheduled";
+  booking.rescheduledAt = new Date().toISOString();
+  if (next.dateISO) {
+    booking.previousEventDateISO = booking.eventDateISO;
+    booking.eventDateISO = next.dateISO;
+  }
   return { users, ok: true, user };
 }
 
@@ -134,6 +211,25 @@ export function deleteFrom(
 ): { users: UserProfile[]; ok: boolean } {
   const next = users.filter((u) => u.id !== id);
   return { users: next, ok: next.length !== users.length };
+}
+
+/** Stamp a booking as reminded for a muhurat date (YYYY-MM-DD). No-op (false)
+ * if the booking isn't found or was already reminded for that exact date, so
+ * a daily reminder job is idempotent per muhurat. */
+export function remindIn(
+  users: UserProfile[],
+  phone: string,
+  bookingId: string,
+  dateISO: string
+): { users: UserProfile[]; ok: boolean; user?: UserProfile } {
+  const user = users.find((u) => u.phone === phone.trim());
+  if (!user) return { users, ok: false };
+  const booking = user.bookings.find((b) => b.bookingId === bookingId);
+  if (!booking || booking.reminderSentForDate === dateISO) {
+    return { users, ok: false };
+  }
+  booking.reminderSentForDate = dateISO;
+  return { users, ok: true, user };
 }
 
 /** Mark a confirmed/rescheduled booking as refunded (admin action). */
@@ -179,8 +275,8 @@ export function upsertBooking(input: BookingInput): UserProfile {
 }
 
 /**
- * Cancel a confirmed booking for a devotee. No-op (returns false) if the
- * booking isn't found or is already cancelled/rescheduled.
+ * Cancel a confirmed/rescheduled booking for a devotee. No-op (returns
+ * false) if the booking isn't found or is already cancelled/refunded.
  */
 export function cancelBooking(
   phone: string,
@@ -189,6 +285,35 @@ export function cancelBooking(
   const users = getUsers();
   const { users: next, ok, user } = cancelIn(users, phone, bookingId);
   if (ok) saveUsers(next);
+  return { ok, user };
+}
+
+/** Remove one booking entirely from a devotee's history (used when the
+ * server rejects a booking the client optimistically saved — e.g. a payment
+ * that failed signature verification). No-op if the booking isn't found. */
+export function removeBooking(
+  phone: string,
+  bookingId: string
+): { ok: boolean; user?: UserProfile } {
+  const users = getUsers();
+  const user = users.find((u) => u.phone === phone.trim());
+  if (!user) return { ok: false };
+  const before = user.bookings.length;
+  user.bookings = user.bookings.filter((b) => b.bookingId !== bookingId);
+  if (user.bookings.length === before) return { ok: false };
+  saveUsers(users);
+  return { ok: true, user };
+}
+
+/** Move a confirmed/rescheduled booking to a new muhurat. No-op otherwise. */
+export function rescheduleBooking(
+  phone: string,
+  bookingId: string,
+  next: RescheduleInput
+): { ok: boolean; user?: UserProfile } {
+  const users = getUsers();
+  const { users: nextUsers, ok, user } = rescheduleIn(users, phone, bookingId, next);
+  if (ok) saveUsers(nextUsers);
   return { ok, user };
 }
 

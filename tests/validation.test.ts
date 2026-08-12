@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isValidIndianPhone, validateBookingInput } from "../lib/validation";
+import {
+  isValidIndianPhone,
+  normalizePhone,
+  validateBookingInput,
+} from "../lib/validation";
 
 const validInput = {
   prayerSlug: "hanuman-pooja",
@@ -23,6 +27,30 @@ describe("isValidIndianPhone", () => {
     expect(isValidIndianPhone("98765432101")).toBe(false); // 11 digits
     expect(isValidIndianPhone("98765abc10")).toBe(false); // letters
     expect(isValidIndianPhone("")).toBe(false);
+  });
+});
+
+describe("normalizePhone", () => {
+  it("returns plain 10-digit numbers as-is", () => {
+    expect(normalizePhone("9876543210")).toBe("9876543210");
+  });
+
+  it("strips spaces, dashes and leading zeros/digits formatting", () => {
+    expect(normalizePhone(" 98765 43210 ")).toBe("9876543210");
+    expect(normalizePhone("98765-43210")).toBe("9876543210");
+  });
+
+  it("drops a leading +91 country code", () => {
+    expect(normalizePhone("+91 9876543210")).toBe("9876543210");
+    expect(normalizePhone("919876543210")).toBe("9876543210");
+  });
+
+  it("keeps non-91 strings of more than 10 digits intact for comparison", () => {
+    expect(normalizePhone("0019876543210")).toBe("0019876543210");
+  });
+
+  it("handles empty input", () => {
+    expect(normalizePhone("")).toBe("");
   });
 });
 

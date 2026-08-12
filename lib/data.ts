@@ -51,6 +51,12 @@ export interface UpcomingEvent {
   price: string;
   emoji: string;
   gradient: string;
+  /** Total seats for this live event occurrence. When set, availability is
+   * derived from confirmed bookings instead of the `seats` label. */
+  capacity?: number;
+  /** Confirmed seats already taken — attached by the catalog API (server) or
+   * the local cache (offline fallback) so the card shows live numbers. */
+  bookedSeats?: number;
 }
 
 export interface UpcomingEventSpec {
@@ -63,6 +69,13 @@ export interface UpcomingEventSpec {
   price: string;
   emoji: string;
   gradient: string;
+  /** Total seats for the live event. When set, availability is computed from
+   * confirmed bookings (auto seat release on cancel); when absent the curated
+   * `seats` label is shown as-is. */
+  capacity?: number;
+  /** Confirmed seats already taken for this occurrence — attached by the
+   * catalog API (server) or the local cache (offline fallback). */
+  bookedSeats?: number;
 }
 
 export const upcomingEventSpecs: UpcomingEventSpec[] = [
@@ -72,6 +85,7 @@ export const upcomingEventSpecs: UpcomingEventSpec[] = [
     daysFromToday: 8,
     time: "7:00 PM IST",
     seats: "Only 12 seats left",
+    capacity: 20,
     live: true,
     price: "₹501",
     emoji: "🐒",
@@ -83,6 +97,7 @@ export const upcomingEventSpecs: UpcomingEventSpec[] = [
     daysFromToday: 10,
     time: "6:30 PM IST",
     seats: "18 spots open",
+    capacity: 30,
     live: true,
     price: "₹1,101",
     emoji: "📿",
@@ -94,6 +109,7 @@ export const upcomingEventSpecs: UpcomingEventSpec[] = [
     daysFromToday: 12,
     time: "5:00 AM IST",
     seats: "Only 9 seats left",
+    capacity: 15,
     live: true,
     price: "₹2,501",
     emoji: "🕉️",
@@ -105,6 +121,7 @@ export const upcomingEventSpecs: UpcomingEventSpec[] = [
     daysFromToday: 13,
     time: "10:00 AM IST",
     seats: "5 slots available",
+    capacity: 10,
     live: false,
     price: "₹3,501",
     emoji: "🏠",
@@ -116,6 +133,7 @@ export const upcomingEventSpecs: UpcomingEventSpec[] = [
     daysFromToday: 14,
     time: "9:00 PM IST",
     seats: "20 spots open",
+    capacity: 40,
     live: true,
     price: "₹1,001",
     emoji: "🪐",
@@ -127,6 +145,7 @@ export const upcomingEventSpecs: UpcomingEventSpec[] = [
     daysFromToday: 18,
     time: "8:00 AM IST",
     seats: "Only 15 seats left",
+    capacity: 25,
     live: false,
     price: "₹5,001",
     emoji: "✨",
@@ -153,10 +172,86 @@ export function getUpcomingEvents(
         price: spec.price,
         emoji: spec.emoji,
         gradient: spec.gradient,
+        capacity: spec.capacity,
+        bookedSeats: spec.bookedSeats,
       };
     })
     .filter((e) => e.dateISO >= todayISO)
     .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+}
+
+// ===================== EVENT SEAT INVENTORY =====================
+// Live events hold a fixed number of seats. A booking made from an event slot
+// records which occurrence it took (eventDateISO) and how many seats it holds
+// (seatCount). Remaining seats are ALWAYS derived from confirmed bookings — so
+// cancelling (or refunding) a booking frees its seat automatically, with no
+// separate release step that could drift out of sync.
+
+/** The minimal booking fields the seat counter needs — structural so this
+ * module stays free of lib/storage.ts imports (no circular dependency). */
+export interface SeatCountingBooking {
+  poojaSlug: string;
+  eventDateISO?: string;
+  seatCount?: number;
+  status: string;
+}
+
+function specDateISO(spec: { daysFromToday?: number }, today: Date): string | null {
+  if (spec.daysFromToday === undefined) return null;
+  return toISODate(addDays(today, spec.daysFromToday));
+}
+
+/** Confirmed seats taken for one event occurrence (slug + date). Only
+ * confirmed/rescheduled bookings hold a seat — cancelled and refunded ones
+ * are excluded, which is what releases them automatically. */
+export function eventBookedSeats(
+  event: { slug: string; dateISO?: string; daysFromToday?: number },
+  bookings: SeatCountingBooking[],
+  today: Date = new Date()
+): number {
+  const dateISO = event.dateISO ?? specDateISO(event, today);
+  if (!dateISO) return 0;
+  return bookings
+    .filter((b) => b.status === "confirmed" || b.status === "rescheduled")
+    .filter((b) => b.poojaSlug === event.slug && b.eventDateISO === dateISO)
+    .reduce((n, b) => n + (b.seatCount ?? 1), 0);
+}
+
+/** Attach bookedSeats to a list of event specs so every consumer (catalog
+ * API, offline fallback, admin manager) shows the same live availability. */
+export function withEventBookedSeats(
+  specs: UpcomingEventSpec[],
+  bookings: SeatCountingBooking[],
+  today: Date = new Date()
+): UpcomingEventSpec[] {
+  return specs.map((s) => ({
+    ...s,
+    bookedSeats: eventBookedSeats(s, bookings, today),
+  }));
+}
+
+/** True when the event has a capacity and every seat is taken. */
+export function isEventFull(event: {
+  capacity?: number;
+  bookedSeats?: number;
+  seats?: string;
+}): boolean {
+  if (event.capacity === undefined) return false;
+  return event.capacity - (event.bookedSeats ?? 0) <= 0;
+}
+
+/** The seats line for an event card: a live count when capacity is set, else
+ * the curated text label (legacy events without capacity). */
+export function seatsLabel(event: {
+  capacity?: number;
+  bookedSeats?: number;
+  seats?: string;
+}): string {
+  if (event.capacity !== undefined) {
+    const left = Math.max(event.capacity - (event.bookedSeats ?? 0), 0);
+    return left === 0 ? "Fully booked" : `${left} of ${event.capacity} seats left`;
+  }
+  return event.seats ?? "Open";
 }
 
 

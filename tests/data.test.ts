@@ -2,11 +2,35 @@ import { describe, expect, it } from "vitest";
 import {
   activePoojas,
   coupons,
+  eventBookedSeats,
   getPooja,
   getUpcomingEvents,
+  isEventFull,
   isPoojaActive,
   poojas,
+  seatsLabel,
+  withEventBookedSeats,
 } from "../lib/data";
+import { cancelIn, rescheduleIn, type BookingRecord, type UserProfile } from "../lib/storage";
+
+function booking(
+  partial: Partial<BookingRecord> & { bookingId: string }
+): BookingRecord {
+  return {
+    poojaSlug: "hanuman-pooja",
+    poojaTitle: "Hanuman Pooja",
+    date: "Thu, 20 Aug",
+    time: "7:00 PM IST",
+    panditName: "Assigned by The Temple Puja",
+    amount: 501,
+    discount: 0,
+    couponCode: null,
+    addonCount: 0,
+    createdAt: "2026-08-12T05:00:00.000Z",
+    status: "confirmed",
+    ...partial,
+  };
+}
 
 describe("pooja catalog", () => {
   it("has 12 poojas with unique slugs and positive prices", () => {
@@ -74,6 +98,147 @@ describe("coupon registry integrity", () => {
     expect(coupons.MUHURAT.firstBookingOnly).toBeUndefined();
     expect(coupons.MUHURAT.minBookings).toBeUndefined();
     expect(coupons.MUHURAT.minAmount).toBeUndefined();
+  });
+});
+
+describe("event seat inventory", () => {
+  // Fixed "today" so the computed event dates are deterministic.
+  const today = new Date("2026-08-07T12:00:00");
+  const hanuman = getUpcomingEvents(today).find(
+    (e) => e.slug === "hanuman-pooja"
+  )!; // dateISO = 2026-08-15
+
+  it("counts only confirmed/rescheduled bookings for that event occurrence", () => {
+    const bookings = [
+      booking({ bookingId: "A", eventDateISO: hanuman.dateISO, seatCount: 1 }),
+      booking({ bookingId: "B", eventDateISO: hanuman.dateISO, status: "rescheduled" }),
+      booking({ bookingId: "C", eventDateISO: hanuman.dateISO, status: "cancelled" }),
+      booking({ bookingId: "D", eventDateISO: hanuman.dateISO, status: "refunded" }),
+      booking({ bookingId: "E", eventDateISO: "2026-08-16" }), // another occurrence
+      booking({ bookingId: "F", poojaSlug: "rudrabhishek", eventDateISO: hanuman.dateISO }),
+    ];
+    expect(eventBookedSeats(hanuman, bookings)).toBe(2);
+  });
+
+  it("sums seatCount and defaults to 1 when absent", () => {
+    const bookings = [
+      booking({ bookingId: "A", eventDateISO: hanuman.dateISO, seatCount: 2 }),
+      booking({ bookingId: "B", eventDateISO: hanuman.dateISO }),
+    ];
+    expect(eventBookedSeats(hanuman, bookings)).toBe(3);
+  });
+
+  it("counts against the spec's computed date when given a spec", () => {
+    const spec = { slug: "hanuman-pooja", daysFromToday: 8 };
+    const bookings = [booking({ bookingId: "A", eventDateISO: "2026-08-15" })];
+    expect(eventBookedSeats(spec, bookings, today)).toBe(1);
+  });
+
+  it("seatsLabel shows a live count when capacity is set, else the text label", () => {
+    expect(seatsLabel({ capacity: 20, bookedSeats: 3 })).toBe("17 of 20 seats left");
+    expect(seatsLabel({ capacity: 20, bookedSeats: 20 })).toBe("Fully booked");
+    expect(seatsLabel({ capacity: 20, bookedSeats: 25 })).toBe("Fully booked"); // clamped
+    expect(seatsLabel({ seats: "Only 12 seats left" })).toBe("Only 12 seats left");
+    expect(seatsLabel({})).toBe("Open");
+  });
+
+  it("isEventFull only when every seat is taken", () => {
+    expect(isEventFull({ capacity: 10, bookedSeats: 10 })).toBe(true);
+    expect(isEventFull({ capacity: 10, bookedSeats: 9 })).toBe(false);
+    expect(isEventFull({ seats: "Only 1 seat left" })).toBe(false); // no capacity
+  });
+
+  it("rescheduling an event booking moves its seat to the new occurrence", () => {
+    const users: UserProfile[] = [
+      {
+        id: "USR1",
+        name: "Devotee",
+        gotra: "Kaushik",
+        city: "Indore",
+        phone: "9000000015",
+        email: "",
+        createdAt: "2026-08-12T05:00:00.000Z",
+        bookings: [
+          booking({ bookingId: "SK1", eventDateISO: "2026-08-15", seatCount: 1 }),
+        ],
+      },
+    ];
+    const oldDate = { slug: "hanuman-pooja", dateISO: "2026-08-15" };
+    const newDate = { slug: "hanuman-pooja", dateISO: "2026-08-22" };
+    const booked = (ev: { slug: string; dateISO: string }) =>
+      eventBookedSeats(ev, users.flatMap((u) => u.bookings));
+
+    expect(booked(oldDate)).toBe(1);
+    expect(booked(newDate)).toBe(0);
+
+    const { ok } = rescheduleIn(users, "9000000015", "SK1", {
+      date: "Sat, 22 Aug",
+      time: "7:00 PM IST",
+      dateISO: "2026-08-22",
+    });
+    expect(ok).toBe(true);
+
+    expect(booked(oldDate)).toBe(0); // old seat freed
+    expect(booked(newDate)).toBe(1); // new seat taken
+  });
+
+  it("cancelling a booking frees its seat automatically (auto seat release)", () => {
+    const users: UserProfile[] = [
+      {
+        id: "USR1",
+        name: "Devotee",
+        gotra: "Kaushik",
+        city: "Indore",
+        phone: "9000000015",
+        email: "",
+        createdAt: "2026-08-12T05:00:00.000Z",
+        bookings: [
+          booking({ bookingId: "SK1", eventDateISO: hanuman.dateISO, seatCount: 1 }),
+        ],
+      },
+    ];
+    const booked = () => eventBookedSeats(hanuman, users.flatMap((u) => u.bookings));
+    expect(booked()).toBe(1);
+
+    const { ok } = cancelIn(users, "9000000015", "SK1");
+    expect(ok).toBe(true);
+    expect(booked()).toBe(0); // the seat is free again
+  });
+
+  it("withEventBookedSeats attaches bookedSeats to every spec", () => {
+    const specs = [
+      {
+        title: "Hanuman Pooja",
+        slug: "hanuman-pooja",
+        daysFromToday: 8,
+        time: "7:00 PM IST",
+        seats: "open",
+        live: true,
+        price: "₹501",
+        emoji: "🐒",
+        gradient: "from-orange-400 to-rose-500",
+        capacity: 20,
+      },
+      {
+        title: "Rudrabhishek",
+        slug: "rudrabhishek",
+        daysFromToday: 12,
+        time: "5:00 AM IST",
+        seats: "open",
+        live: true,
+        price: "₹2,501",
+        emoji: "🕉️",
+        gradient: "from-indigo-500 to-purple-600",
+        capacity: 15,
+      },
+    ];
+    const enriched = withEventBookedSeats(
+      specs,
+      [booking({ bookingId: "A", eventDateISO: "2026-08-15", seatCount: 1 })],
+      today
+    );
+    expect(enriched.find((s) => s.slug === "hanuman-pooja")?.bookedSeats).toBe(1);
+    expect(enriched.find((s) => s.slug === "rudrabhishek")?.bookedSeats).toBe(0);
   });
 });
 

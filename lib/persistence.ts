@@ -26,9 +26,14 @@ export interface PersistenceStore {
   /** token -> expiry timestamp */
   getSessions(): Promise<Record<string, number>>;
   saveSessions(sessions: Record<string, number>): Promise<void>;
-  /** Devotee profiles + bookings. */
+  /** Devotee profiles + bookings — one document/entry per devotee. */
   getUsers(): Promise<UserProfile[]>;
-  saveUsers(users: UserProfile[]): Promise<void>;
+  findUserByPhone(phone: string): Promise<UserProfile | undefined>;
+  findUserById(id: string): Promise<UserProfile | undefined>;
+  /** Create or fully replace one devotee's document. */
+  saveUser(user: UserProfile): Promise<void>;
+  /** Permanently remove one devotee. Returns true when a doc was removed. */
+  deleteUserById(id: string): Promise<boolean>;
 }
 
 /** In-memory store — data lives for the lifetime of the process only. */
@@ -37,6 +42,34 @@ export function createMemoryStore(): PersistenceStore {
   let creds: AdminCreds = { email: "", passwordHash: "" };
   let sessions: Record<string, number> = {};
   let users: UserProfile[] = [];
+
+  // Mirrors the MongoDB store's saveUser semantics: phone-keyed, appending
+  // only bookings that aren't already on the devotee, so concurrent saves on
+  // the same phone merge instead of duplicating the profile.
+  const saveUser = (user: UserProfile): void => {
+    const byPhone = users.findIndex((u) => u.phone === user.phone);
+    if (byPhone >= 0) {
+      const existing = users[byPhone];
+      const existingIds = new Set(existing.bookings.map((b) => b.bookingId));
+      for (const b of user.bookings) {
+        if (!existingIds.has(b.bookingId)) existing.bookings.push(b);
+        else {
+          // Already known booking — take the incoming (possibly mutated:
+          // cancelled / rescheduled / refunded) version.
+          const i = existing.bookings.findIndex((x) => x.bookingId === b.bookingId);
+          existing.bookings[i] = b;
+        }
+      }
+      existing.name = user.name;
+      existing.gotra = user.gotra;
+      existing.city = user.city;
+      existing.email = user.email;
+      return;
+    }
+    const byId = users.findIndex((u) => u.id === user.id);
+    if (byId >= 0) users[byId] = user;
+    else users.push(user);
+  };
 
   return {
     async getCatalogOverrides() {
@@ -69,8 +102,19 @@ export function createMemoryStore(): PersistenceStore {
     async getUsers() {
       return users;
     },
-    async saveUsers(u) {
-      users = u;
+    async findUserByPhone(phone) {
+      return users.find((u) => u.phone === phone.trim());
+    },
+    async findUserById(id) {
+      return users.find((u) => u.id === id);
+    },
+    async saveUser(user) {
+      saveUser(user);
+    },
+    async deleteUserById(id) {
+      const before = users.length;
+      users = users.filter((u) => u.id !== id);
+      return users.length !== before;
     },
   };
 }

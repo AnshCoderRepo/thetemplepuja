@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BadgeCheck,
+  CalendarClock,
   CalendarDays,
   MapPin,
   Phone,
@@ -12,8 +13,8 @@ import {
   XCircle,
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
-import { cancelBookingRemote, fetchUserByPhone } from "@/lib/api";
-import type { UserProfile } from "@/lib/storage";
+import { cancelBookingRemote, fetchUserByPhone, rescheduleBookingRemote } from "@/lib/api";
+import type { BookingRecord, UserProfile } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
 
 const inputCls =
@@ -40,6 +41,17 @@ function formatDate(iso: string) {
   }
 }
 
+/** "2026-08-22" → "Sat, 22 Aug" — matches the booking form's display. */
+function displayDate(iso: string) {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 const statusStyles: Record<string, string> = {
   confirmed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-600",
@@ -53,11 +65,16 @@ export default function ProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [cancelMsg, setCancelMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [reschedId, setReschedId] = useState<string | null>(null);
+  const [reschedDate, setReschedDate] = useState("");
+  const [reschedTime, setReschedTime] = useState("");
+  const [reschedMsg, setReschedMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Server-backed (falls back to the local cache offline) so a devotee sees
   // their history from any device.
   const refresh = async (phone: string) => {
     setCancelMsg(null);
+    setReschedMsg(null);
     const found = await fetchUserByPhone(phone);
     setProfile(found ?? null);
     setNotFound(!found);
@@ -82,6 +99,43 @@ export default function ProfilePage() {
     } else {
       setConfirmCancelId(null);
       setCancelMsg({ ok: false, text: "This booking can no longer be cancelled." });
+    }
+  };
+
+  const openResched = (b: BookingRecord) => {
+    setConfirmCancelId(null);
+    setReschedMsg(null);
+    setReschedDate("");
+    setReschedTime(b.time === "—" ? "" : b.time);
+    setReschedId(b.bookingId);
+  };
+
+  const handleReschedule = async (b: BookingRecord) => {
+    if (!profile) return;
+    if (!reschedDate) {
+      setReschedMsg({ ok: false, text: "Pick a new date for your pooja." });
+      return;
+    }
+    if (!reschedTime.trim()) {
+      setReschedMsg({ ok: false, text: "Enter the time for your new muhurat." });
+      return;
+    }
+    const res = await rescheduleBookingRemote(profile.phone, b.bookingId, {
+      date: displayDate(reschedDate),
+      time: reschedTime.trim(),
+      // Event-slot bookings move their held seat to the new occurrence.
+      dateISO: b.eventDateISO ? reschedDate : undefined,
+    });
+    if (res.ok) {
+      await refresh(profile.phone);
+      setReschedId(null);
+      setReschedDate("");
+      setReschedTime("");
+      // Success shows in the top banner (the form closes on success);
+      // failures stay inline inside the form.
+      setCancelMsg({ ok: true, text: "Booking rescheduled — your new muhurat is confirmed." });
+    } else {
+      setReschedMsg({ ok: false, text: "This booking can no longer be rescheduled." });
     }
   };
 
@@ -289,6 +343,14 @@ export default function ProfilePage() {
                               🪔 {b.reason}
                             </span>
                           )}
+                          {b.status === "rescheduled" &&
+                            b.previousDate &&
+                            !b.previousDate.startsWith("To be") && (
+                              <span className="font-semibold text-amber-600">
+                                ↩️ Moved from {b.previousDate}
+                                {b.previousTime && b.previousTime !== "—" ? ` · ${b.previousTime}` : ""}
+                              </span>
+                            )}
                           {b.addonCount > 0 && (
                             <span>🎁 {b.addonCount} add-on{b.addonCount > 1 ? "s" : ""}</span>
                           )}
@@ -302,12 +364,84 @@ export default function ProfilePage() {
                               🎉 saved {formatINR(b.discount)}
                             </span>
                           )}
+                          <Link
+                            href={`/booking/${b.bookingId}?phone=${encodeURIComponent(
+                              profile.phone
+                            )}`}
+                            className="font-semibold text-saffron-600 transition-colors hover:text-saffron-700 hover:underline"
+                          >
+                            🧾 Receipt
+                          </Link>
                           <span className="ml-auto">Booked {formatDate(b.createdAt)}</span>
                         </div>
 
-                        {b.status === "confirmed" && (
+                        {(b.status === "confirmed" || b.status === "rescheduled") && (
                           <div className="border-t border-dashed border-saffron-100 px-6 py-3.5">
-                            {confirmCancelId === b.bookingId ? (
+                            {reschedId === b.bookingId ? (
+                              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+                                <p className="text-xs font-bold text-amber-800">
+                                  📅 Move this booking to a new muhurat
+                                </p>
+                                <p className="mt-1 text-[11px] leading-relaxed text-amber-700/80">
+                                  {b.eventDateISO
+                                    ? "This is an event slot — rescheduling moves your held seat to the new date."
+                                    : "Pick a fresh date and time — the pandit will perform the pooja then."}
+                                </p>
+                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                                      New Date *
+                                    </label>
+                                    <input
+                                      type="date"
+                                      min={new Date().toLocaleDateString("en-CA")}
+                                      value={reschedDate}
+                                      onChange={(e) => setReschedDate(e.target.value)}
+                                      className={inputCls}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                                      New Time *
+                                    </label>
+                                    <input
+                                      value={reschedTime}
+                                      onChange={(e) => setReschedTime(e.target.value)}
+                                      placeholder="e.g. 7:00 PM IST"
+                                      className={inputCls}
+                                    />
+                                  </div>
+                                </div>
+                                {reschedMsg && (
+                                  <p
+                                    className={`mt-2.5 text-xs font-semibold ${
+                                      reschedMsg.ok ? "text-emerald-700" : "text-red-600"
+                                    }`}
+                                  >
+                                    {reschedMsg.ok ? "✅ " : "⚠️ "}
+                                    {reschedMsg.text}
+                                  </p>
+                                )}
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => handleReschedule(b)}
+                                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700"
+                                  >
+                                    <CalendarClock className="h-3.5 w-3.5" />
+                                    Save New Muhurat
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setReschedId(null);
+                                      setReschedMsg(null);
+                                    }}
+                                    className="rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100"
+                                  >
+                                    Keep Current Date
+                                  </button>
+                                </div>
+                              </div>
+                            ) : confirmCancelId === b.bookingId ? (
                               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
                                 <p className="text-xs font-semibold text-red-700">
                                   Cancel this booking? Your seat will be released and a refund
@@ -329,13 +463,22 @@ export default function ProfilePage() {
                                 </div>
                               </div>
                             ) : (
-                              <button
-                                onClick={() => setConfirmCancelId(b.bookingId)}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
-                              >
-                                <XCircle className="h-3.5 w-3.5" />
-                                Cancel Booking
-                              </button>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  onClick={() => openResched(b)}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+                                >
+                                  <CalendarClock className="h-3.5 w-3.5" />
+                                  Reschedule
+                                </button>
+                                <button
+                                  onClick={() => setConfirmCancelId(b.bookingId)}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Cancel Booking
+                                </button>
+                              </div>
                             )}
                           </div>
                         )}

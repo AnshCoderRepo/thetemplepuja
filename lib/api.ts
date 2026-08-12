@@ -7,7 +7,7 @@ import {
   getCatalogEventSpecs,
   getCatalogPoojas,
 } from "./catalog";
-import type { Coupon, Pooja, UpcomingEventSpec } from "./data";
+import { withEventBookedSeats, type Coupon, type Pooja, type UpcomingEventSpec } from "./data";
 import {
   cancelBooking,
   deleteUser,
@@ -15,10 +15,15 @@ import {
   getUsers,
   markBookingRefunded,
   mergeUserFromServer,
+  removeBooking,
+  rescheduleBooking,
   upsertBooking,
   type BookingInput,
+  type BookingRecord,
+  type RescheduleInput,
   type UserProfile,
 } from "./storage";
+import { normalizePhone } from "./validation";
 
 export interface ResolvedCatalog {
   poojas: Pooja[];
@@ -52,10 +57,15 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
         }
         throw new Error("unexpected catalog payload");
       } catch {
-        // Server unreachable — use local overrides, then static defaults.
+        // Server unreachable — use local overrides, then static defaults,
+        // and count seats from the local profile cache so availability still
+        // reflects confirmed bookings made on this device.
         return {
           poojas: getCatalogPoojas(),
-          events: getCatalogEventSpecs(),
+          events: withEventBookedSeats(
+            getCatalogEventSpecs(),
+            getUsers().flatMap((u) => u.bookings)
+          ),
           coupons: getCatalogCoupons(),
         };
       }
@@ -178,6 +188,51 @@ export async function adminLogout(token: string): Promise<void> {
   }
 }
 
+// ===================== RAZORPAY (real payments) =====================
+
+export interface RazorpayOrderStart {
+  configured: boolean;
+  keyId?: string;
+  orderId?: string;
+  amount?: number; // paise
+  currency?: string;
+  receipt?: string;
+  error?: string;
+}
+
+/** Ask the server to create a Razorpay order for a pooja at the server-side
+ * price (coupon-validated). Returns `{ configured: false }` in demo mode so
+ * the checkout can fall back to its simulated payment. */
+export async function createRazorpayOrderRemote(input: {
+  poojaSlug: string;
+  couponCode: string | null;
+  phone: string;
+}): Promise<RazorpayOrderStart> {
+  try {
+    const res = await fetch("/api/payments/razorpay/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const body = (await res.json().catch(() => ({}))) as Partial<RazorpayOrderStart>;
+    if (res.ok && body.configured === false) return { configured: false };
+    if (res.ok && body.configured) {
+      return {
+        configured: true,
+        keyId: body.keyId,
+        orderId: body.orderId,
+        amount: body.amount,
+        currency: body.currency,
+        receipt: body.receipt,
+      };
+    }
+    return { configured: false, error: body.error ?? "Order failed" };
+  } catch {
+    // Server unreachable — demo mode.
+    return { configured: false };
+  }
+}
+
 // ===================== DEVOTEES & BOOKINGS =====================
 // The server is the source of truth; the localStorage cache (lib/storage.ts)
 // is written first so reads stay instant and the site still works offline.
@@ -199,6 +254,48 @@ export async function fetchAllUsers(
     throw new Error("unexpected users payload");
   } catch {
     return getUsers();
+  }
+}
+
+/** Receipt lookup guarded by the devotee's mobile number: the booking id
+ * (shown on the confirmation screen) must be matched with the phone used at
+ * booking. Any mismatch returns null. Falls back to the local cache when
+ * offline, still requiring the phone to match the holder. */
+export async function fetchBooking(
+  bookingId: string,
+  phone: string
+): Promise<{
+  booking?: BookingRecord;
+  holder?: { name: string; phone: string; gotra: string; city: string };
+} | null> {
+  const id = bookingId.trim().toUpperCase();
+  const p = phone.trim();
+  if (!id || !p) return null;
+  try {
+    const res = await fetch(
+      `/api/bookings/${encodeURIComponent(id)}?phone=${encodeURIComponent(p)}`,
+      { cache: "no-store" }
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error("lookup failed");
+    const body = (await res.json()) as {
+      booking?: BookingRecord;
+      holder?: { name: string; phone: string; gotra: string; city: string };
+    };
+    if (body.booking) return body;
+    return null;
+  } catch {
+    for (const u of getUsers()) {
+      if (normalizePhone(u.phone) !== normalizePhone(p)) continue;
+      const booking = u.bookings.find((b) => b.bookingId === id);
+      if (booking) {
+        return {
+          booking,
+          holder: { name: u.name, phone: u.phone, gotra: u.gotra, city: u.city },
+        };
+      }
+    }
+    return null;
   }
 }
 
@@ -235,12 +332,15 @@ export async function syncUserFromServer(phone: string): Promise<void> {
   }
 }
 
-/** Persist a devotee's profile + booking after payment. Writes the local cache
- * first, then mirrors to the server; never throws. */
+/** Persist a devotee's profile + booking after payment. The server is the
+ * authority: on success the returned profile is merged into the local cache;
+ * if the server REJECTS the booking (e.g. a Razorpay signature or amount
+ * check failed) the optimistic local copy is removed so the app never shows a
+ * "confirmed" booking the admin never saw. Only when the server is
+ * unreachable does it fall back to saving locally (offline). Never throws. */
 export async function submitBooking(
   input: BookingInput
 ): Promise<{ ok: boolean; status?: number; user?: UserProfile }> {
-  const localUser = upsertBooking(input);
   try {
     const res = await fetch("/api/users/booking", {
       method: "POST",
@@ -252,9 +352,12 @@ export async function submitBooking(
       mergeUserFromServer(body.user);
       return { ok: true, user: body.user };
     }
-    return { ok: false, status: res.status, user: localUser };
+    // Server reachable but rejected — don't keep a phantom booking locally.
+    removeBooking(input.phone, input.booking.bookingId);
+    return { ok: false, status: res.status };
   } catch {
-    return { ok: true, user: localUser }; // offline — saved locally
+    const localUser = upsertBooking(input); // offline — saved locally
+    return { ok: true, user: localUser };
   }
 }
 
@@ -269,6 +372,31 @@ export async function cancelBookingRemote(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, bookingId }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { user?: UserProfile };
+    if (res.ok && body.user) {
+      mergeUserFromServer(body.user);
+      return { ok: true, user: body.user };
+    }
+    return { ok: local.ok, user: local.user };
+  } catch {
+    return local;
+  }
+}
+
+/** Move a booking to a new muhurat from the profile page. Local first, then
+ * server (authoritative when reachable). */
+export async function rescheduleBookingRemote(
+  phone: string,
+  bookingId: string,
+  next: RescheduleInput
+): Promise<{ ok: boolean; user?: UserProfile }> {
+  const local = rescheduleBooking(phone, bookingId, next);
+  try {
+    const res = await fetch("/api/users/reschedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, bookingId, ...next }),
     });
     const body = (await res.json().catch(() => ({}))) as { user?: UserProfile };
     if (res.ok && body.user) {

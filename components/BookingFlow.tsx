@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Check,
   Copy,
+  FileText,
   Gift,
   Lock,
   MessageCircle,
@@ -25,7 +26,7 @@ import { couponDiscount, couponProblem } from "@/lib/coupons";
 import { isValidIndianPhone, validateBookingInput } from "@/lib/validation";
 import { formatINR } from "@/lib/format";
 import { useCatalog } from "./useCatalog";
-import RazorpayCheckout from "./RazorpayCheckout";
+import RazorpayCheckout, { type PaymentProof } from "./RazorpayCheckout";
 
 interface ConfirmedBooking {
   id: string;
@@ -87,6 +88,7 @@ export default function BookingFlow({
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [bookingData, setBookingData] = useState<ConfirmedBooking | null>(null);
+  const [paymentProof, setPaymentProof] = useState<PaymentProof | undefined>(undefined);
   const [confirmed, setConfirmed] = useState<ConfirmedBooking | null>(null);
   const [copiedId, setCopiedId] = useState(false);
   const [formError, setFormError] = useState("");
@@ -185,7 +187,8 @@ export default function BookingFlow({
 
   // Modal's onSuccess stores the booking; the confirmation screen only appears
   // after the modal's "Done" closes it, so the modal success phase stays visible.
-  const handleSuccess = (id: string) => {
+  const handleSuccess = (id: string, payment?: PaymentProof) => {
+    setPaymentProof(payment);
     setBookingData({
       id,
       total,
@@ -198,15 +201,15 @@ export default function BookingFlow({
     });
   };
 
-  const handleCheckoutClose = () => {
+  const handleCheckoutClose = async () => {
     setCheckoutOpen(false);
     if (bookingData && selectedPooja) {
-      setConfirmed(bookingData);
       // Persist the devotee's profile + booking (creates a fresh profile on
       // first payment, appends to it on later bookings from the same number).
-      // Written to the local cache instantly and mirrored to the server, so
-      // the admin dashboard sees it on any device.
-      void submitBooking({
+      // The server is the authority — if it rejects the booking (e.g. a real
+      // payment failed signature verification) we show an error instead of a
+      // false confirmation, and the optimistic local copy is rolled back.
+      const res = await submitBooking({
         phone: form.phone.trim(),
         name: form.name.trim(),
         gotra: form.gotra.trim(),
@@ -226,8 +229,27 @@ export default function BookingFlow({
           addonCount: 0,
           createdAt: new Date().toISOString(),
           status: "confirmed",
+          // Live-event slot: tag the occurrence and the seat it holds, so the
+          // event's remaining capacity counts it (and releases it on cancel).
+          eventDateISO: date ? date : undefined,
+          seatCount: date ? 1 : undefined,
+          // Verified real payment (present only when Razorpay was used).
+          razorpayOrderId: paymentProof?.razorpayOrderId,
+          razorpayPaymentId: paymentProof?.razorpayPaymentId,
+          razorpaySignature: paymentProof?.razorpaySignature,
+          paidAt: paymentProof ? new Date().toISOString() : undefined,
         },
       });
+      if (res.ok) {
+        setConfirmed(bookingData);
+      } else {
+        setPaymentProof(undefined);
+        setBookingData(null);
+        setFormError(
+          "We couldn't confirm your booking — the payment verification didn't " +
+            "go through. Please try again, or contact us on WhatsApp +91 87653 01563."
+        );
+      }
     }
   };
 
@@ -309,6 +331,15 @@ export default function BookingFlow({
                 <Copy className="h-3.5 w-3.5 text-white/70" />
               )}
             </button>
+            <Link
+              href={`/booking/${confirmed.id}?phone=${encodeURIComponent(
+                form.phone.trim()
+              )}`}
+              className="relative mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-100 underline-offset-2 hover:underline"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              View Receipt
+            </Link>
           </div>
 
           <div className="px-8 py-8">
@@ -348,6 +379,15 @@ export default function BookingFlow({
                   <dd className="text-right font-semibold text-ink">{row.value}</dd>
                 </div>
               ))}
+              {fromEvent && (
+                <div className="flex items-start justify-between gap-4 border-b border-dashed border-saffron-100 pb-4">
+                  <dt className="flex shrink-0 items-center gap-2 text-ink-soft">
+                    <span className="text-lg">🎟️</span>
+                    Seat
+                  </dt>
+                  <dd className="text-right font-semibold text-ink">1 seat held</dd>
+                </div>
+              )}
             </dl>
 
             {/* Payment summary with coupon savings */}
@@ -788,6 +828,10 @@ export default function BookingFlow({
         open={checkoutOpen}
         amount={total}
         poojaTitle={selectedPooja?.title ?? "Pooja"}
+        poojaSlug={selectedPooja?.slug}
+        couponCode={applied?.code ?? null}
+        devoteeName={form.name.trim()}
+        phone={form.phone.trim()}
         onClose={handleCheckoutClose}
         onSuccess={handleSuccess}
       />

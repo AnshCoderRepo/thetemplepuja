@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { fetchCatalog, resetCatalogSection, saveCatalogSection } from "@/lib/api";
-import type { UpcomingEventSpec } from "@/lib/data";
+import { seatsLabel, type UpcomingEventSpec } from "@/lib/data";
 import {
   Field,
   GradientPicker,
@@ -20,6 +20,7 @@ interface Draft {
   daysFromToday: string;
   time: string;
   seats: string;
+  capacity: string;
   live: boolean;
   price: string;
   emoji: string;
@@ -32,6 +33,7 @@ const emptyDraft: Draft = {
   daysFromToday: "7",
   time: "7:00 PM IST",
   seats: "20 spots open",
+  capacity: "",
   live: true,
   price: "₹1,001",
   emoji: "🪔",
@@ -75,6 +77,10 @@ export default function EventsManager({
     if (!draft.time.trim() || !draft.price.trim()) {
       return "Time and price are required.";
     }
+    const cap = Number(draft.capacity);
+    if (draft.capacity.trim() && (!Number.isInteger(cap) || cap < 1)) {
+      return "Capacity must be a whole number of 1 or more (leave blank for unlimited).";
+    }
     if (list.some((e) => e.slug === draft.slug.trim() && e.slug !== editing)) {
       return "Another event already uses this slug.";
     }
@@ -87,6 +93,7 @@ export default function EventsManager({
     daysFromToday: Number(draft.daysFromToday),
     time: draft.time.trim(),
     seats: draft.seats.trim() || "Open",
+    capacity: draft.capacity.trim() ? Number(draft.capacity.trim()) : undefined,
     live: draft.live,
     price: draft.price.trim(),
     emoji: draft.emoji.trim() || "🪔",
@@ -165,6 +172,7 @@ export default function EventsManager({
       daysFromToday: String(e.daysFromToday),
       time: e.time,
       seats: e.seats,
+      capacity: e.capacity != null ? String(e.capacity) : "",
       live: e.live,
       price: e.price,
       emoji: e.emoji,
@@ -238,7 +246,15 @@ export default function EventsManager({
                 placeholder="7:00 PM IST"
               />
             </Field>
-            <Field label="Seats">
+            <Field label="Capacity (optional)" hint="Total seats; availability is computed from confirmed bookings, so a cancel frees a seat automatically">
+              <NumberInput
+                value={draft.capacity}
+                onChange={(e) => setDraft((d) => ({ ...d, capacity: e.target.value }))}
+                placeholder="e.g. 20"
+                min={1}
+              />
+            </Field>
+            <Field label="Seats label" hint="Fallback text shown when no capacity is set">
               <TextInput
                 value={draft.seats}
                 onChange={(e) => setDraft((d) => ({ ...d, seats: e.target.value }))}
@@ -315,7 +331,7 @@ export default function EventsManager({
                 </p>
                 <p className="truncate font-mono text-[11px] text-ink-soft">
                   {e.slug} · in {e.daysFromToday} day{e.daysFromToday === 1 ? "" : "s"} · {e.time} ·{" "}
-                  {e.seats}
+                  {seatsLabel(e)}
                 </p>
               </div>
               <span className="font-display text-sm font-bold text-saffron-600">
