@@ -65,34 +65,7 @@ Sign in at **/admin** with the admin email + password (credentials in section 9)
 ### Account tab
 - **Change the admin email and password** — credentials are stored hashed on the server, never hardcoded. Reset to the demo credentials anytime.
 
----
 
-## 5. Coupons (currently live)
-
-| Code | Offer | Rules |
-|---|---|---|
-| **TEMPLE30** | 30% off your first booking | First booking only (checked against the phone number's real history) |
-| **BUNDLE20** | 20% off | Needs 3+ poojas booked on the number |
-| **MUHURAT** | Free shubh-muhurat guidance | Always valid |
-| **TEMPLEKUNDLI** | Free kundli reading | Poojas above ₹1,500 |
-
-Coupon eligibility is validated **server-side** at payment time (against the devotee's true booking history across devices), so codes can't be exploited by clearing the browser cache. The coupon entry — input plus quick-apply chips — appears **only on the payment page**; the booking form, home page and AI guide no longer show any coupon codes.
-
----
-
-## 5b. Pooja Experience Video
-
-- A **scroll-to-expand hero** (`components/ui/scroll-expansion-hero.tsx`) plays a real aarti-at-the-mandir clip: as the visitor scrolls, the video card expands until it fills the screen, then reveals a content section with booking CTAs.
-- Embedded in two places: **home** ("Experience a Sacred Pooja" — Watch Before You Book) and the **devotee profile** ("Your Pooja Experience").
-- The scroll-lock interaction only engages while the section is on screen, so it never hijacks normal page scrolling elsewhere.
-- The media URLs are constants in `components/PoojaExperience.tsx` — swap them for real pooja recordings whenever available.
-
-### FAQ image accordion
-
-- The FAQ section (`components/FAQ.tsx`) uses an **interactive image accordion** (`components/ui/interactive-image-accordion.tsx`): each FAQ is a photo tile that expands on hover/click, and the answer for the active question renders in a card below the tiles.
-- Tiles use verified Unsplash imagery; the FAQ questions/answers come from the same `faqs` data in `lib/data.ts`.
-
----
 
 ## 6. Live Events
 
