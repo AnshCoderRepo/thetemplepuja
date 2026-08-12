@@ -190,7 +190,7 @@ export default function CouponsManager({
     <ManagerCard>
       <ManagerHeader
         title="Coupons"
-        subtitle="Coupons appear on the booking form (apply / quick chips) and the home page deals. Percent coupons give a cash discount; benefit coupons are free perks."
+        subtitle="Coupons are applied at the secure payment checkout only — percent coupons give a cash discount; benefit coupons are free perks."
         count={entries.length}
         onAdd={() => {
           setAdding(true);
@@ -259,7 +259,7 @@ export default function CouponsManager({
                 />
               </div>
             )}
-            <Field label="Label *" hint="Shown on the applied-coupon chip and deals card">
+            <Field label="Label *" hint="Shown on the applied-coupon chip at checkout">
               <TextInput
                 value={draft.label}
                 onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))}
@@ -365,8 +365,7 @@ export default function CouponsManager({
 
       <p className="mt-5 flex items-center gap-1.5 text-[11px] text-ink-soft/70">
         <Plus className="h-3.5 w-3.5" />
-        New coupons appear on the booking form and the home page deals instantly —
-        for every visitor.
+        New coupons appear instantly at the secure checkout — for every visitor.
       </p>
     </ManagerCard>
   );

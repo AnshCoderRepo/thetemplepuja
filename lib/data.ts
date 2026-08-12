@@ -14,7 +14,7 @@ export const navLinks = [
   { label: "Home", href: "#home" },
   { label: "Events", href: "#events" },
   { label: "Why Us", href: "#why-us" },
-  { label: "Deals", href: "#deals" },
+  { label: "Experience", href: "#experience" },
   { label: "Reviews", href: "#testimonials" },
   { label: "FAQ", href: "#faq" },
   { label: "Contact", href: "#contact" },
@@ -404,18 +404,6 @@ export const contactInfo = [
     label: "Phone",
     value: "+91 87653 01563",
     href: "tel:+918765301563",
-  },
-  {
-    icon: "✉️",
-    label: "Email",
-    value: "supportsatyakarm@gmail.com",
-    href: "mailto:supportsatyakarm@gmail.com",
-  },
-  {
-    icon: "📍",
-    label: "Address",
-    value: "JMD, Pacific Square, Gurgaon Sector 15, India 122001",
-    href: undefined,
   },
 ];
 

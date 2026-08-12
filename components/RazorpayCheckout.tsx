@@ -14,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { createRazorpayOrderRemote } from "@/lib/api";
+import { couponDiscount, couponProblem } from "@/lib/coupons";
+import type { Coupon } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 
 type Tab = "upi" | "card" | "netbanking" | "wallet";
@@ -24,20 +26,45 @@ export interface PaymentProof {
   razorpaySignature: string;
 }
 
+export interface AppliedCoupon {
+  code: string;
+  label: string;
+  description: string;
+  kind: Coupon["kind"];
+  value?: number;
+}
+
+/** Final checkout numbers, reported back so the booking record and the
+ * confirmation screen reflect exactly what was paid. */
+export interface CheckoutSummary {
+  amount: number;
+  discount: number;
+  coupon: AppliedCoupon | null;
+}
+
 interface Props {
   open: boolean;
-  amount: number;
+  /** Pooja base price (before any coupon). The final payable is computed
+   * here — coupons are applied on the payment page only. */
+  poojaPrice: number;
   poojaTitle: string;
   /** Used to create the real Razorpay order server-side (price is derived
    * from the catalog on the server, never from the client). */
   poojaSlug?: string;
-  couponCode?: string | null;
+  /** Admin-managed coupon map used for eligibility and discounts. */
+  couponMap: Record<string, Coupon>;
   devoteeName?: string;
   phone?: string;
   onClose: () => void;
   /** `payment` is present when the payment went through real Razorpay; the
-   * booking route verifies its signature before confirming. */
-  onSuccess: (bookingId: string, payment?: PaymentProof) => void;
+   * booking route verifies its signature before confirming. `summary`
+   * carries the final paid amount + coupon so the booking is recorded
+   * exactly as charged. */
+  onSuccess: (
+    bookingId: string,
+    payment?: PaymentProof,
+    summary?: CheckoutSummary
+  ) => void;
 }
 
 const tabs: { id: Tab; label: string; icon: typeof Smartphone }[] = [
@@ -126,10 +153,10 @@ function newBookingId(): string {
 
 export default function RazorpayCheckout({
   open,
-  amount,
+  poojaPrice,
   poojaTitle,
   poojaSlug,
-  couponCode,
+  couponMap,
   devoteeName,
   phone,
   onClose,
@@ -146,9 +173,69 @@ export default function RazorpayCheckout({
   const [copied, setCopied] = useState(false);
   const [realMode, setRealMode] = useState<RealMode>({ kind: "none" });
   const [paymentNote, setPaymentNote] = useState("");
+  // Coupons are applied here — on the payment page — nowhere else.
+  const [coupon, setCoupon] = useState("");
+  const [applied, setApplied] = useState<AppliedCoupon | null>(null);
+  const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // On open, ask the server for a real order. In demo mode (no keys) this
-  // resolves to `none` and the simulated flow below runs as before.
+  const discount = applied
+    ? couponDiscount(applied.code, poojaPrice, couponMap)
+    : 0;
+  const total = Math.max(poojaPrice - discount, 0);
+
+  const couponEligibility = (code: string): string | null =>
+    couponProblem(
+      code,
+      { phone: phone ?? "", price: poojaPrice, poojaTitle },
+      couponMap
+    );
+
+  const applyCoupon = () => {
+    const code = coupon.trim().toUpperCase();
+    if (!code) return;
+    const problem = couponEligibility(code);
+    if (problem) {
+      setApplied(null);
+      setCouponMsg({ ok: false, text: problem });
+      return;
+    }
+    const c = couponMap[code];
+    setApplied({
+      code,
+      label: c.label,
+      description: c.description,
+      kind: c.kind,
+      value: c.value,
+    });
+    setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
+  };
+
+  const quickApply = (code: string) => {
+    setCoupon(code);
+    const problem = couponEligibility(code);
+    if (problem) {
+      setApplied(null);
+      setCouponMsg({ ok: false, text: problem });
+      return;
+    }
+    const c = couponMap[code];
+    setApplied({
+      code,
+      label: c.label,
+      description: c.description,
+      kind: c.kind,
+      value: c.value,
+    });
+    setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
+  };
+
+  const removeCoupon = () => {
+    setApplied(null);
+    setCouponMsg(null);
+  };
+
+  // Reset everything each time the checkout opens (including any coupon the
+  // user applied in a previous attempt).
   useEffect(() => {
     if (!open) return;
     setPhase("form");
@@ -157,16 +244,23 @@ export default function RazorpayCheckout({
     setCopied(false);
     setPaymentNote("");
     setRealMode({ kind: "none" });
-    let stale = false;
+    setCoupon("");
+    setApplied(null);
+    setCouponMsg(null);
+  }, [open]);
 
-    if (!poojaSlug) {
-      setRealMode({ kind: "none" });
-      return;
-    }
+  // Ask the server for a real Razorpay order. Re-runs when a coupon is
+  // applied/removed so the order is always priced with the final amount.
+  // In demo mode (no keys) this resolves to `none` and the simulated flow
+  // below runs as before.
+  useEffect(() => {
+    if (!open || !poojaSlug) return;
+    let stale = false;
+    setRealMode({ kind: "none" });
     void (async () => {
       const start = await createRazorpayOrderRemote({
         poojaSlug,
-        couponCode: couponCode ?? null,
+        couponCode: applied?.code ?? null,
         phone: phone ?? "",
       });
       if (stale) return;
@@ -175,7 +269,7 @@ export default function RazorpayCheckout({
           kind: "ready",
           keyId: start.keyId,
           orderId: start.orderId,
-          amount: start.amount ?? Math.round(amount * 100),
+          amount: start.amount ?? Math.round(total * 100),
           currency: start.currency ?? "INR",
         });
       } else if (start.configured && start.error) {
@@ -187,14 +281,14 @@ export default function RazorpayCheckout({
     return () => {
       stale = true;
     };
-  }, [open, poojaSlug, couponCode, phone, amount]);
+  }, [open, poojaSlug, applied?.code, phone, total]);
 
   if (!open) return null;
 
   // The authoritative payable amount: whatever the server priced the order at
   // (paise), falling back to the client-computed total in demo mode.
   const displayAmount =
-    realMode.kind === "ready" ? realMode.amount / 100 : amount;
+    realMode.kind === "ready" ? realMode.amount / 100 : total;
   const realReady = realMode.kind === "ready";
   const realBlocked = realMode.kind === "error";
 
@@ -204,7 +298,7 @@ export default function RazorpayCheckout({
       const id = newBookingId();
       setBookingId(id);
       setPhase("success");
-      onSuccess(id);
+      onSuccess(id, undefined, { amount: total, discount, coupon: applied });
     }, 2000);
   };
 
@@ -250,11 +344,15 @@ export default function RazorpayCheckout({
           const id = newBookingId();
           setBookingId(id);
           setPhase("success");
-          onSuccess(id, {
-            razorpayOrderId: orderId,
-            razorpayPaymentId: paymentId,
-            razorpaySignature: signature,
-          });
+          onSuccess(
+            id,
+            {
+              razorpayOrderId: orderId,
+              razorpayPaymentId: paymentId,
+              razorpaySignature: signature,
+            },
+            { amount: total, discount, coupon: applied }
+          );
         }, 1200);
       },
       modal: {
@@ -396,6 +494,80 @@ export default function RazorpayCheckout({
 
             {/* Body */}
             <div className="space-y-4 bg-[#f3f7fa] px-6 py-5">
+              {/* Coupon — applied here at payment, nowhere else */}
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                {applied ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 rounded-md bg-emerald-600 px-2 py-1 font-mono text-[11px] font-bold tracking-widest text-white">
+                        {applied.code}
+                      </span>
+                      <span className="truncate text-xs font-semibold text-emerald-700">
+                        {applied.label}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2.5">
+                      {discount > 0 && (
+                        <span className="text-xs font-bold text-emerald-600">
+                          −{formatINR(discount)}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        className="text-[11px] font-bold text-gray-400 transition-colors hover:text-red-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <input
+                        value={coupon}
+                        onChange={(e) =>
+                          setCoupon(e.target.value.toUpperCase())
+                        }
+                        placeholder="Have a coupon code? (optional)"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 font-mono text-xs font-bold tracking-widest text-gray-900 outline-none transition-all placeholder:font-sans placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-400 focus:border-[#3395ff] focus:ring-2 focus:ring-[#3395ff]/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={applyCoupon}
+                        className="shrink-0 rounded-lg bg-[#0b245b] px-4 text-xs font-bold text-white transition-colors hover:bg-[#12336e]"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {couponMsg && (
+                      <p
+                        className={`mt-2 text-[11px] font-semibold ${
+                          couponMsg.ok ? "text-emerald-600" : "text-red-500"
+                        }`}
+                      >
+                        {couponMsg.text}
+                      </p>
+                    )}
+                    {Object.keys(couponMap).length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        {Object.entries(couponMap).map(([code, c]) => (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => quickApply(code)}
+                            title={c.description}
+                            className="rounded-full border border-gray-200 bg-[#f3f7fa] px-2.5 py-1 text-[10px] font-bold text-gray-600 transition-colors hover:border-[#3395ff]/40 hover:text-[#0b245b]"
+                          >
+                            {code}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
               {realReady && (
                 <p className="flex items-center gap-2 rounded-lg bg-[#0b245b]/5 px-3 py-2.5 text-[11px] font-semibold text-[#0b245b]">
                   <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />

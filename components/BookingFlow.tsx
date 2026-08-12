@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BadgeCheck,
@@ -8,43 +8,33 @@ import {
   Check,
   Copy,
   FileText,
-  Gift,
   Lock,
   MessageCircle,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { submitBooking, syncUserFromServer } from "@/lib/api";
-import {
-  activePoojas,
-  coupons,
-  poojas,
-  type Coupon,
-  type Pooja,
-} from "@/lib/data";
-import { couponDiscount, couponProblem } from "@/lib/coupons";
+import { activePoojas, poojas, type Pooja } from "@/lib/data";
 import { isValidIndianPhone, validateBookingInput } from "@/lib/validation";
 import { formatINR } from "@/lib/format";
 import { useCatalog } from "./useCatalog";
-import RazorpayCheckout, { type PaymentProof } from "./RazorpayCheckout";
+import RazorpayCheckout, {
+  type AppliedCoupon,
+  type CheckoutSummary,
+  type PaymentProof,
+} from "./RazorpayCheckout";
 
 interface ConfirmedBooking {
   id: string;
   total: number;
+  discount: number;
+  coupon: AppliedCoupon | null;
   date: string; // display, e.g. "Wed, 12 Aug"
   time: string; // display, e.g. "7:00 PM IST" or "—"
   panditName: string | null;
   name: string;
   poojaTitle: string;
   reason: string;
-}
-
-interface AppliedCoupon {
-  code: string;
-  label: string;
-  description: string;
-  kind: Coupon["kind"];
-  value?: number;
 }
 
 const inputCls =
@@ -83,9 +73,6 @@ export default function BookingFlow({
   // The date is only ever provided by a fixed event slot — never chosen in
   // the form itself, so it doesn't need to be state.
   const date = initialDate ?? "";
-  const [coupon, setCoupon] = useState("");
-  const [applied, setApplied] = useState<AppliedCoupon | null>(null);
-  const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [bookingData, setBookingData] = useState<ConfirmedBooking | null>(null);
   const [paymentProof, setPaymentProof] = useState<PaymentProof | undefined>(undefined);
@@ -101,77 +88,18 @@ export default function BookingFlow({
   const selectedPooja = catalogPoojas.find((p) => p.slug === prayerSlug);
   const basePrice = selectedPooja?.price ?? 0;
 
-  /**
-   * Check whether a coupon qualifies right now. Returns an error string, or
-   * null when it is valid.
-   */
-  const couponEligibility = (code: string): string | null =>
-    couponProblem(
-      code,
-      {
-        phone: form.phone,
-        price: basePrice,
-        poojaTitle: selectedPooja?.title ?? "this pooja",
-      },
-      catalogCoupons
-    );
-
-  const applyCoupon = () => {
-    const code = coupon.trim().toUpperCase();
-    if (!code) return;
-    const problem = couponEligibility(code);
-    if (problem) {
-      setApplied(null);
-      setCouponMsg({ ok: false, text: problem });
-      return;
-    }
-    const c = catalogCoupons[code];
-    setApplied({ code, label: c.label, description: c.description, kind: c.kind, value: c.value });
-    setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
-  };
-
-  const quickApply = (code: string) => {
-    setCoupon(code);
-    const problem = couponEligibility(code);
-    if (problem) {
-      setApplied(null);
-      setCouponMsg({ ok: false, text: problem });
-      return;
-    }
-    const c = catalogCoupons[code];
-    setApplied({ code, label: c.label, description: c.description, kind: c.kind, value: c.value });
-    setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
-  };
-
-  const removeCoupon = () => {
-    setApplied(null);
-    setCouponMsg(null);
-  };
-
-  // Re-validate the applied coupon if the prayer changes (a minAmount coupon
-  // may stop qualifying), and clear it if it no longer applies.
-  useEffect(() => {
-    if (applied && couponEligibility(applied.code) !== null) {
-      setApplied(null);
-      setCouponMsg({ ok: false, text: `${applied.code} no longer applies to the selected pooja — please re-apply or choose another coupon.` });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prayerSlug]);
-
   // First-booking coupon rules should see the devotee's real history, not just
   // this browser's cache — pull the profile from the server when a phone is
-  // entered so eligibility is judged against cross-device truth.
+  // entered so eligibility at checkout is judged against cross-device truth.
   useEffect(() => {
     if (isValidIndianPhone(form.phone)) {
       void syncUserFromServer(form.phone);
     }
   }, [form.phone]);
 
-  const discount = useMemo(
-    () => (applied ? couponDiscount(applied.code, basePrice, catalogCoupons) : 0),
-    [applied, basePrice, catalogCoupons]
-  );
-  const total = Math.max(basePrice - discount, 0);
+  // The total shown on the form is the base price — coupons are applied at the
+  // secure payment checkout, which reports the final amount back.
+  const total = basePrice;
 
   const fromEvent = Boolean(initialDate);
   const phoneValid = isValidIndianPhone(form.phone);
@@ -187,11 +115,17 @@ export default function BookingFlow({
 
   // Modal's onSuccess stores the booking; the confirmation screen only appears
   // after the modal's "Done" closes it, so the modal success phase stays visible.
-  const handleSuccess = (id: string, payment?: PaymentProof) => {
+  const handleSuccess = (
+    id: string,
+    payment?: PaymentProof,
+    summary?: CheckoutSummary
+  ) => {
     setPaymentProof(payment);
     setBookingData({
       id,
-      total,
+      total: summary?.amount ?? total,
+      discount: summary?.discount ?? 0,
+      coupon: summary?.coupon ?? null,
       date: date ? formatDate(date) : "To be confirmed",
       time: initialTime ?? "—",
       panditName: null,
@@ -224,8 +158,8 @@ export default function BookingFlow({
           panditName: bookingData.panditName ?? "Assigned by The Temple Puja",
           reason: bookingData.reason,
           amount: bookingData.total,
-          discount,
-          couponCode: applied?.code ?? null,
+          discount: bookingData.discount,
+          couponCode: bookingData.coupon?.code ?? null,
           addonCount: 0,
           createdAt: new Date().toISOString(),
           status: "confirmed",
@@ -262,17 +196,6 @@ export default function BookingFlow({
       );
       return;
     }
-    // Final guard: the applied coupon must still be valid at payment time
-    if (applied) {
-      const problem = couponEligibility(applied.code);
-      if (problem) {
-        setApplied(null);
-        setFormError(
-          `${problem} Please re-apply a valid coupon or continue without one.`
-        );
-        return;
-      }
-    }
     setCheckoutOpen(true);
   };
 
@@ -295,7 +218,9 @@ export default function BookingFlow({
           `Time: ${confirmed.time}\n` +
           `Pandit: ${confirmed.panditName ?? "Assigned by The Temple Puja"}\n` +
           `Reason: ${confirmed.reason}\n` +
-          (applied ? `Coupon: ${applied.code} (${applied.label})\n` : "") +
+          (confirmed.coupon
+            ? `Coupon: ${confirmed.coupon.code} (${confirmed.coupon.label})\n`
+            : "") +
           `Amount: ${formatINR(confirmed.total)}\n\n` +
           `Please confirm my booking. Om Shanti!`
       )
@@ -400,18 +325,19 @@ export default function BookingFlow({
                   <dt>Pooja Price</dt>
                   <dd>{formatINR(basePrice)}</dd>
                 </div>
-                {discount > 0 && applied && (
+                {confirmed.discount > 0 && confirmed.coupon && (
                   <div className="flex justify-between font-semibold text-emerald-600">
                     <dt>
-                      Coupon ({applied.code}) — {applied.label}
+                      Coupon ({confirmed.coupon.code}) —{" "}
+                      {confirmed.coupon.label}
                     </dt>
-                    <dd>−{formatINR(discount)}</dd>
+                    <dd>−{formatINR(confirmed.discount)}</dd>
                   </div>
                 )}
-                {applied?.kind === "benefit" && (
+                {confirmed.coupon?.kind === "benefit" && (
                   <div className="flex justify-between font-semibold text-saffron-600">
-                    <dt>Benefit ({applied.code})</dt>
-                    <dd>{applied.label}</dd>
+                    <dt>Benefit ({confirmed.coupon.code})</dt>
+                    <dd>{confirmed.coupon.label}</dd>
                   </div>
                 )}
                 <div className="flex items-center justify-between border-t border-saffron-200 pt-2.5">
@@ -421,9 +347,10 @@ export default function BookingFlow({
                   </dd>
                 </div>
               </dl>
-              {discount > 0 && (
+              {confirmed.discount > 0 && (
                 <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3.5 py-1.5 text-xs font-bold text-emerald-700">
-                  🎉 You saved {formatINR(discount)} with {applied?.code}
+                  🎉 You saved {formatINR(confirmed.discount)} with{" "}
+                  {confirmed.coupon?.code}
                 </p>
               )}
             </div>
@@ -627,86 +554,6 @@ export default function BookingFlow({
                   </p>
                 </div>
 
-                {/* Coupon */}
-                <div className="sm:col-span-2">
-                  <label htmlFor="bk-coupon" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
-                    Coupon Code (optional)
-                  </label>
-                  {applied ? (
-                    <div className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 px-4 py-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span className="rounded-lg bg-emerald-600 px-2.5 py-1 font-mono text-xs font-bold tracking-widest text-white">
-                            {applied.code}
-                          </span>
-                          <span className="text-xs font-semibold text-emerald-700">
-                            {applied.label}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={removeCoupon}
-                          className="text-xs font-bold text-maroon-600 transition-colors hover:text-maroon-700"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                      <p className="mt-2 text-[11px] leading-relaxed text-emerald-800/80">
-                        {applied.kind === "percent" && discount > 0
-                          ? `${applied.description} You save ${formatINR(discount)} on this pooja.`
-                          : applied.description}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex gap-2">
-                        <input
-                          id="bk-coupon"
-                          value={coupon}
-                          onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                          placeholder="e.g. TEMPLE30"
-                          className={`${inputCls} font-mono tracking-widest`}
-                        />
-                        <button
-                          type="button"
-                          onClick={applyCoupon}
-                          className="btn-primary shrink-0 !px-6 !py-3"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                      {couponMsg && (
-                        <p
-                          className={`mt-2 text-xs font-semibold ${
-                            couponMsg.ok ? "text-emerald-600" : "text-red-500"
-                          }`}
-                        >
-                          {couponMsg.text}
-                        </p>
-                      )}
-                      {/* Quick-apply chips */}
-                      <div className="mt-3">
-                        <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ink-soft/70">
-                          <Gift className="h-3.5 w-3.5 text-saffron-500" />
-                          Tap a coupon to apply:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(catalogCoupons).map(([code, c]) => (
-                            <button
-                              key={code}
-                              type="button"
-                              onClick={() => quickApply(code)}
-                              className="rounded-full border border-saffron-200 bg-saffron-50 px-3 py-1.5 text-[11px] font-bold text-saffron-700 transition-all hover:border-saffron-400 hover:bg-saffron-100"
-                              title={c.description}
-                            >
-                              {code}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
               </div>
 
               {formError && (
@@ -777,23 +624,15 @@ export default function BookingFlow({
                         <span>Pooja Price</span>
                         <span>{formatINR(selectedPooja.price)}</span>
                       </div>
-                      {discount > 0 && (
-                        <div className="flex justify-between font-semibold text-emerald-600">
-                          <span>Coupon ({applied?.code})</span>
-                          <span>−{formatINR(discount)}</span>
-                        </div>
-                      )}
                       <div className="flex items-end justify-between border-t border-saffron-200 pt-3">
                         <span className="font-bold text-ink">Total</span>
                         <span className="font-display text-2xl font-bold text-saffron-600">
                           {formatINR(total)}
                         </span>
                       </div>
-                      {discount > 0 && (
-                        <p className="rounded-lg bg-emerald-50 px-3 py-1.5 text-center text-[11px] font-bold text-emerald-600">
-                          🎉 You save {formatINR(discount)} ({applied?.code})
-                        </p>
-                      )}
+                      <p className="rounded-lg bg-saffron-50 px-3 py-1.5 text-center text-[11px] font-semibold text-saffron-700">
+                        🎟️ Apply your coupon at the secure checkout
+                      </p>
                     </div>
 
                     <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-[11px] font-semibold text-emerald-700">
@@ -826,10 +665,10 @@ export default function BookingFlow({
 
       <RazorpayCheckout
         open={checkoutOpen}
-        amount={total}
+        poojaPrice={basePrice}
         poojaTitle={selectedPooja?.title ?? "Pooja"}
         poojaSlug={selectedPooja?.slug}
-        couponCode={applied?.code ?? null}
+        couponMap={catalogCoupons}
         devoteeName={form.name.trim()}
         phone={form.phone.trim()}
         onClose={handleCheckoutClose}

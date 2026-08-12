@@ -97,7 +97,7 @@ const TAB_META: Record<
       </>
     ),
     subtitle:
-      "Create and edit discount codes and free benefits — they appear on the booking form and the deals section.",
+      "Create and edit discount codes and free benefits — devotees apply them at the secure payment checkout.",
     facts: [{ icon: "🎟️", label: "Manage coupons" }],
   },
   account: {
@@ -332,7 +332,6 @@ function DevoteesPanel({
                       {[
                         { label: "Gotra", value: u.gotra || "—" },
                         { label: "City", value: u.city || "—" },
-                        { label: "Email", value: u.email || "—" },
                         {
                           label: "Mobile",
                           value: (

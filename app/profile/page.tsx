@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
+import PoojaExperience from "@/components/PoojaExperience";
 import { cancelBookingRemote, fetchUserByPhone, rescheduleBookingRemote } from "@/lib/api";
 import type { BookingRecord, UserProfile } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
@@ -174,6 +175,40 @@ export default function ProfilePage() {
             <div className="h-64 animate-pulse rounded-3xl bg-saffron-100/60" />
           ) : profile ? (
             <>
+              {/* Pooja experience — a live demo of the ritual so devotees can
+                  feel the real experience from inside their account */}
+              <PoojaExperience
+                title="Your Pooja Experience"
+                date={
+                  profile.bookings[profile.bookings.length - 1]?.poojaTitle ??
+                  "Live Aarti at the Mandir"
+                }
+                scrollHint="Scroll to reveal your pooja experience"
+              >
+                <div className="mx-auto max-w-3xl text-center">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-amber-200 backdrop-blur">
+                    🙏 Your Ritual, Live
+                  </span>
+                  <h3 className="mt-6 font-display text-3xl font-bold text-white md:text-4xl">
+                    This is what your pooja looks like
+                  </h3>
+                  <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-cream/70 md:text-base">
+                    Certified pandits perform every ritual with the same Vedic
+                    chants, sacred lamps and devotion you see here. After your
+                    pooja is performed, your HD video recording is shared with
+                    you on WhatsApp — so you can relive the blessings anytime.
+                  </p>
+                  <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                    <Link href="/book/form" className="btn-primary">
+                      🪔 Book Another Pooja
+                    </Link>
+                    <Link href="/book" className="btn-outline">
+                      Browse All Poojas
+                    </Link>
+                  </div>
+                </div>
+              </PoojaExperience>
+
               {/* Profile card */}
               <div className="overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-card">
                 <div className="relative h-24 bg-gradient-to-r from-saffron-500 via-saffron-600 to-maroon-700">
@@ -238,11 +273,6 @@ export default function ProfilePage() {
                             +91 {profile.phone}
                           </a>
                         ),
-                      },
-                      {
-                        icon: "✉️",
-                        label: "Email",
-                        value: profile.email || "—",
                       },
                     ].map((row) => (
                       <div

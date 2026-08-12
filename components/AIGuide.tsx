@@ -17,7 +17,7 @@ const replies: { match: RegExp; answer: string }[] = [
   {
     match: /(kundli|rashi|nakshatra|astrolog)/i,
     answer:
-      "🔮 Book any pooja above ₹1,500 and get a FREE kundli reading! Use code TEMPLEKUNDLI at checkout. Our AI guide can also recommend poojas based on your rashi & nakshatra.",
+      "🔮 Book any pooja above ₹1,500 and get a FREE kundli reading with your booking! Our AI guide can also recommend poojas based on your rashi & nakshatra.",
   },
   {
     match: /(record|video|watch)/i,
@@ -32,12 +32,12 @@ const replies: { match: RegExp; answer: string }[] = [
   {
     match: /(price|cost|fee|charge|₹)/i,
     answer:
-      "💰 Prices start at ₹501. Use code TEMPLE30 for 30% off your first pooja, or BUNDLE20 for 20% off when you book 3+ poojas together!",
+      "💰 Prices start at ₹501. Keep an eye out for special offers — apply your coupon at the secure checkout for extra savings!",
   },
   {
     match: /(contact|phone|email|whatsapp|help|support)/i,
     answer:
-      "📞 Reach us anytime! WhatsApp +91 87653 01563, Phone +91 87653 01563, or email supportsatyakarm@gmail.com. Our team is available 24/7.",
+      "📞 Reach us anytime on WhatsApp +91 87653 01563. Our team is available 24/7.",
   },
 ];
 
