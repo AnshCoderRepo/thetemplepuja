@@ -2,7 +2,7 @@
 
 **Prepared for:** Client  
 **Product:** The Temple Puja — India's digital spiritual platform for booking certified pandits and sacred poojas online  
-**Contact:** WhatsApp / Phone **+91 87653 01563** · Email **supportsatyakarm@gmail.com**
+**Contact:**
 
 ---
 
