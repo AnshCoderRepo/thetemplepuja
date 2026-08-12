@@ -2,7 +2,7 @@
 
 **Prepared for:** Client  
 **Product:** The Temple Puja — India's digital spiritual platform for booking certified pandits and sacred poojas online  
-**Contact:**
+**Contact:** WhatsApp / Phone **+91 87653 01563**
 
 ---
 
@@ -18,13 +18,13 @@ The site is fully live end-to-end: **home page → booking → payment → confi
 
 | Page | What it does |
 |---|---|
-| **Home (`/`)** | Hero with trust stats, **Live & Upcoming events** (a draggable cover-flow carousel with LIVE badges, muhurat date/time and live seat counts), Why Choose Us, Exclusive Offers (coupons), Devotee Reviews, FAQ, Contact, and a floating **AI Spiritual Guide** chatbot. |
+| **Home (`/`)** | Hero with trust stats, **Live & Upcoming events** (a draggable cover-flow carousel with LIVE badges, muhurat date/time and live seat counts), Why Choose Us, **Experience a Sacred Pooja** (a scroll-to-expand live aarti video — scroll down and the video grows full-screen, then reveals booking CTAs), Devotee Reviews, **FAQ** (an interactive image accordion — hover/click a question tile and the answer appears), Contact, and a floating **AI Spiritual Guide** chatbot. |
 | **Book Pooja (`/book`)** | Full pooja catalogue — 12 sacred rituals with prices, duration, benefits and descriptions. |
-| **Booking Form (`/book/form`)** | The complete booking flow: choose prayer → enter **name, gotra, city, mobile number, and the reason you want the pooja** → optional coupon → secure payment → instant confirmation. |
+| **Booking Form (`/book/form`)** | The complete booking flow: choose prayer → enter **name, gotra, city, mobile number, and the reason you want the pooja** → secure payment (with the coupon field at checkout) → instant confirmation. |
 | **Pooja Detail (`/book/[pooja]`)** | Each pooja has its own booking page with a fixed muhurat when booked from a live-event slot. |
 | **Login (`/login`)** | One sign-in for everyone: devotees log in with their **10-digit mobile number** (no password needed — the number is their ID), admins with **email + password**. |
 | **Signup (`/signup`)** | Pre-fill your details (name, gotra, city, mobile) before your first booking. |
-| **My Profile (`/profile`)** | View your details and full pooja history from any device — with **Cancel Booking** and **Reschedule to a new muhurat** actions. |
+| **My Profile (`/profile`)** | View your details and full pooja history from any device — with **Cancel Booking** and **Reschedule to a new muhurat** actions, plus a **Your Pooja Experience** scroll-to-expand video of a live ritual so devotees feel the real experience from inside their account. |
 | **Booking Receipt (`/booking/[bookingId]`)** | A private receipt for any booking — the booking id (e.g. `SKX7Q2LM`) **plus the mobile number used at booking** unlocks the pooja, muhurat, holder, payment summary and status; any mismatch shows a generic "not found" so ids can't be probed. Links from the confirmation screen and profile bookings carry the phone automatically. A **Print / Save as PDF** button (with dedicated print styling) turns it into a clean, client-ready receipt document. |
 | **Admin Dashboard (`/admin`)** | The owner's control room (details in section 4). |
 
@@ -34,10 +34,12 @@ The site is fully live end-to-end: **home page → booking → payment → confi
 
 1. **Choose a pooja** — from the catalogue or a live-event slot (event slots carry a fixed date & time and hold a seat against the event's capacity).
 2. **Fill the booking form** — full name, gotra, city, 10-digit mobile, and a short note on **why you want this pooja** (the pandit keeps this sankalp in mind during the ritual).
-3. **Apply a coupon** (optional) — discounts validate instantly (see section 5).
+3. **Apply a coupon at checkout** (optional) — the coupon field lives only on the payment page; discounts validate instantly and the total updates (see section 5).
 4. **Pay securely** — a Razorpay-style checkout with **UPI, Card, Netbanking and Wallet** tabs, backed by Razorpay's real Orders API when payment keys are configured (see section 8 for the current mode).
 5. **Get your booking ID** — an instant confirmation screen (e.g. `SKX7Q2LM`) with a full payment summary, a "Confirm on WhatsApp" button, a **View Receipt** link, and a link straight to your profile.
 6. **Your profile is created automatically** — the first payment creates a devotee profile that appears in the admin dashboard instantly, on every device.
+
+*Note: the booking form no longer collects an email or address, and coupon codes are never advertised elsewhere on the site — they only appear (and can only be applied) at the secure payment checkout.*
 
 ---
 
@@ -47,7 +49,7 @@ Sign in at **/admin** with the admin email + password (credentials in section 9)
 
 ### Devotees tab
 - Live stats: **total devotees, active bookings, revenue from active bookings, cancelled/refunded count**.
-- Every devotee's profile (gotra, city, mobile, email) and complete booking history with status pills (**Confirmed / Rescheduled / Cancelled / Refunded**).
+- Every devotee's profile (gotra, city, mobile) and complete booking history with status pills (**Confirmed / Rescheduled / Cancelled / Refunded**).
 - Actions: **Mark a booking as Refunded**, **Delete a devotee profile**, and **Export all data as JSON**.
 
 ### Poojas tab
@@ -58,7 +60,7 @@ Sign in at **/admin** with the admin email + password (credentials in section 9)
 - Manage the **live-event schedule** shown on the home page. Past events disappear automatically; every event card shows **live remaining-seat counts** that update as bookings and cancellations happen.
 
 ### Coupons tab
-- **Create and edit coupon codes** (percentage discounts or free benefits, first-booking rules, minimum booking counts, minimum pooja price). Coupons appear on the booking form and the Deals section instantly.
+- **Create and edit coupon codes** (percentage discounts or free benefits, first-booking rules, minimum booking counts, minimum pooja price). Coupons are applied at the secure payment checkout only — codes are not advertised anywhere else on the site.
 
 ### Account tab
 - **Change the admin email and password** — credentials are stored hashed on the server, never hardcoded. Reset to the demo credentials anytime.
@@ -142,11 +144,11 @@ The site runs with any subset of these: everything degrades gracefully (demo che
 ## 12. Technology Stack
 
 - **Framework:** Next.js 15 (App Router) + React 19 + TypeScript
-- **Styling:** Tailwind CSS, custom fonts (Playfair Display, Poppins, Noto Sans Devanagari)
+- **Styling:** Tailwind CSS, custom fonts (Playfair Display, Poppins, Noto Sans Devanagari), **Framer Motion** animations (scroll-expansion hero)
 - **Database:** MongoDB Atlas (cloud), with automatic local fallbacks
 - **Payments:** Razorpay Orders API (built in)
 - **Messaging:** Twilio WhatsApp API (built in)
-- **Testing:** 156 automated tests (payment signature vectors, coupon rules, booking/cancel/reschedule flows, concurrency, admin auth, DNS fallback) — `npm test`; typecheck and production build pass.
+- **Testing:** 182 automated tests (payment signature vectors, coupon rules, booking/cancel/reschedule flows, concurrency, admin auth, DNS fallback, WhatsApp + reminders) — `npm test`; typecheck and production build pass.
 
 ---
 
@@ -159,7 +161,7 @@ npm run dev        # start the dev server at http://localhost:3000
 
 ```bash
 npm run typecheck  # TypeScript check
-npm test           # full test suite (156 tests)
+npm test           # full test suite (182 tests)
 npm run build      # production build
 ```
 
@@ -173,4 +175,4 @@ npm run build      # production build
 1. **Razorpay keys** → switches the checkout from demo mode to real money.
 2. **Twilio WhatsApp** → switches messaging from "ready but silent" to real WhatsApp messages: an alert to the admin **and a confirmation to the devotee** (with a tappable receipt link) on every booking.
 
-**Ideas queued for future phases** (not yet built): real-time video streaming of live poojas, email confirmations to devotees, Hindi/English language toggle, and analytics charts in the admin dashboard.
+**Ideas queued for future phases** (not yet built): real-time video streaming of live poojas, Hindi/English language toggle, and analytics charts in the admin dashboard.

@@ -14,14 +14,12 @@ export default function Contact() {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const name = String(data.get("name") ?? "").trim();
-    const email = String(data.get("email") ?? "").trim();
     const message = String(data.get("message") ?? "").trim();
     // Deliver the enquiry straight to the team's WhatsApp (the channel the
     // whole site already uses) — no silent dead-end form.
     const text = encodeURIComponent(
       `🙏 New enquiry — The Temple Puja\n\n` +
         `Name: ${name || "—"}\n` +
-        (email ? `Email: ${email}\n` : "") +
         `Message: ${message}`
     );
     window.open(
@@ -47,7 +45,7 @@ export default function Contact() {
         </Reveal>
 
         {/* Contact cards */}
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto mt-12 grid max-w-3xl gap-4 sm:grid-cols-2">
           {contactInfo.map((c, i) => (
             <Reveal key={c.label} delay={i * 70}>
               {c.href ? (
@@ -134,7 +132,7 @@ export default function Contact() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div>
                     <div>
                       <label
                         htmlFor="name"
@@ -146,20 +144,6 @@ export default function Contact() {
                         id="name"
                         required
                         placeholder="e.g. Aarav Sharma"
-                        className="w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft"
-                      >
-                        Email
-                      </label>
-                      <input
-                        id="email"
-                        type="email"
-                        placeholder="you@example.com"
                         className="w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200"
                       />
                     </div>
