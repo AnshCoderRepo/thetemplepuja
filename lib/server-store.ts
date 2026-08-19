@@ -6,10 +6,12 @@ import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import {
   coupons as staticCoupons,
+  defaultPoojaDates,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEvents,
   type Coupon,
   type Pooja,
+  type PoojaDate,
   type UpcomingEventSpec,
 } from "./data";
 import { createMemoryStore, type PersistenceStore } from "./persistence";
@@ -109,19 +111,21 @@ async function withFallback<T>(
 
 // ===================== CATALOG =====================
 
-export type CatalogOverrideSection = "poojas" | "events" | "coupons";
+export type CatalogOverrideSection = "poojas" | "events" | "coupons" | "poojaDates";
 
 /** Overrides merged over the static defaults — what consumers should render. */
 export async function getResolvedCatalog(): Promise<{
   poojas: Pooja[];
   events: UpcomingEventSpec[];
   coupons: Record<string, Coupon>;
+  poojaDates: PoojaDate[];
 }> {
   const o = await withFallback((s) => s.getCatalogOverrides());
   return {
     poojas: o.poojas ?? staticPoojas,
     events: o.events ?? staticEvents,
     coupons: o.coupons ?? staticCoupons,
+    poojaDates: o.poojaDates ?? defaultPoojaDates,
   };
 }
 
@@ -129,6 +133,7 @@ export async function saveCatalogOverrides(overrides: {
   poojas?: Pooja[];
   events?: UpcomingEventSpec[];
   coupons?: Record<string, Coupon>;
+  poojaDates?: PoojaDate[];
 }): Promise<void> {
   await withFallback((s) => s.saveCatalogOverrides(overrides));
 }

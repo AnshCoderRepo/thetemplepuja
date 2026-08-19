@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CalendarCheck,
-  CalendarRange,
+  CalendarDays,
   ChevronDown,
   Download,
   Gift,
@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
 import PoojasManager from "@/components/admin/PoojasManager";
-import EventsManager from "@/components/admin/EventsManager";
+
+import DatesManager from "@/components/admin/DatesManager";
 import CouponsManager from "@/components/admin/CouponsManager";
 import AccountManager from "@/components/admin/AccountManager";
 import {
@@ -46,12 +47,12 @@ import { formatINR } from "@/lib/format";
 const inputCls =
   "w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200";
 
-type Tab = "devotees" | "poojas" | "events" | "coupons" | "account";
+type Tab = "devotees" | "poojas" | "dates" | "coupons" | "account";
 
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: "devotees", label: "Devotees", icon: Users },
   { id: "poojas", label: "Poojas", icon: LayoutGrid },
-  { id: "events", label: "Events", icon: CalendarRange },
+  { id: "dates", label: "Dates", icon: CalendarDays },
   { id: "coupons", label: "Coupons", icon: Gift },
   { id: "account", label: "Account", icon: KeyRound },
 ];
@@ -77,18 +78,18 @@ const TAB_META: Record<
       </>
     ),
     subtitle:
-      "Add, edit or remove the poojas offered on the site — the booking form, catalogue and detail pages update instantly.",
-    facts: [{ icon: "🪔", label: "Manage poojas" }],
+      "Add, edit or remove poojas — the booking form, catalogue, detail pages and home-page carousel all update instantly.",
+    facts: [{ icon: "🪔", label: "Manage poojas" }, { icon: "📅", label: "Schedule events" }],
   },
-  events: {
+  dates: {
     title: (
       <>
-        Live Events <span className="text-amber-200">Schedule</span>
+        Pooja <span className="text-amber-200">Dates</span>
       </>
     ),
     subtitle:
-      "Control the pooja events shown in the home-page coverflow. Past events disappear automatically.",
-    facts: [{ icon: "🗓️", label: "Manage events" }],
+      "Set recurring dates each month when pujas are conducted — devotees pick from these when booking.",
+    facts: [{ icon: "📅", label: "Manage dates" }],
   },
   coupons: {
     title: (
@@ -728,8 +729,8 @@ export default function AdminPage() {
             {tab === "poojas" && (
               <PoojasManager token={token ?? ""} onAuthError={handleAuthError} />
             )}
-            {tab === "events" && (
-              <EventsManager token={token ?? ""} onAuthError={handleAuthError} />
+            {tab === "dates" && (
+              <DatesManager token={token ?? ""} onAuthError={handleAuthError} />
             )}
             {tab === "coupons" && (
               <CouponsManager token={token ?? ""} onAuthError={handleAuthError} />

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { fetchCatalog, resetCatalogSection, saveCatalogSection } from "@/lib/api";
-import { seatsLabel, type UpcomingEventSpec } from "@/lib/data";
+import { isEventActive, seatsLabel, type UpcomingEventSpec } from "@/lib/data";
 import {
   Field,
   GradientPicker,
@@ -124,6 +124,23 @@ export default function EventsManager({
     setAdding(false);
     setEditing(null);
     setDraft(emptyDraft);
+  };
+
+  const toggleActive = async (e: UpcomingEventSpec) => {
+    const next = list.map((x) =>
+      x.slug === e.slug ? { ...x, active: !isEventActive(x) } : x
+    );
+    const res = await saveCatalogSection("events", next, token);
+    if (!res.ok) {
+      if (res.status === 401) {
+        onAuthError();
+        return;
+      }
+      setError(res.error ?? "Could not update the event.");
+      return;
+    }
+    setError("");
+    setList(next);
   };
 
   const remove = async (slug: string) => {
@@ -337,7 +354,38 @@ export default function EventsManager({
               <span className="font-display text-sm font-bold text-saffron-600">
                 {e.price}
               </span>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                  isEventActive(e)
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-200 text-slate-600"
+                }`}
+              >
+                {isEventActive(e) ? "Active" : "Inactive"}
+              </span>
               <div className="flex gap-1.5">
+                <button
+                  onClick={() => toggleActive(e)}
+                  aria-label={`${isEventActive(e) ? "Deactivate" : "Activate"} ${e.title}`}
+                  title={isEventActive(e) ? "Hide from the site" : "Show on the site"}
+                  className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold transition-colors ${
+                    isEventActive(e)
+                      ? "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                      : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                  }`}
+                >
+                  {isEventActive(e) ? (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5" />
+                      Hide
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3.5 w-3.5" />
+                      Show
+                    </>
+                  )}
+                </button>
                 <button
                   onClick={() => startEdit(e)}
                   aria-label={`Edit ${e.title}`}

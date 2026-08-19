@@ -5,9 +5,10 @@
 import {
   getCatalogCoupons,
   getCatalogEventSpecs,
+  getCatalogPoojaDates,
   getCatalogPoojas,
 } from "./catalog";
-import { withEventBookedSeats, type Coupon, type Pooja, type UpcomingEventSpec } from "./data";
+import { withEventBookedSeats, type Coupon, type Pooja, type PoojaDate, type UpcomingEventSpec } from "./data";
 import {
   cancelBooking,
   deleteUser,
@@ -29,14 +30,43 @@ export interface ResolvedCatalog {
   poojas: Pooja[];
   events: UpcomingEventSpec[];
   coupons: Record<string, Coupon>;
+  poojaDates: PoojaDate[];
 }
 
 const DEFAULT_CONFIG = { email: "admin@thetemplepuja.com", isDefault: true };
 
 let catalogCache: Promise<ResolvedCatalog> | null = null;
+let catalogVersion = 0;
+
+const CATALOG_VERSION_KEY = "ttp_catalog_version_v1";
+
+/** Monotonically increasing counter — bumped every time the catalog is
+ * refreshed so useCatalog consumers can re-fetch without polling. */
+export function getCatalogVersion(): number {
+  return catalogVersion;
+}
+
+/** Notify all tabs/pages that the catalog has changed. Writes to localStorage
+ * so other tabs pick it up via the "storage" event, and dispatches a custom
+ * event so same-tab consumers update instantly — zero polling. */
+export function bumpCatalogVersion(): void {
+  catalogVersion++;
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(CATALOG_VERSION_KEY, String(catalogVersion));
+    } catch {
+      // storage unavailable — ignore
+    }
+    // Same-tab notification (storage event only fires cross-tab)
+    if (typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("catalog-updated"));
+    }
+  }
+}
 
 export function resetCatalogCache(): void {
   catalogCache = null;
+  bumpCatalogVersion();
 }
 
 /** Fetches the resolved catalog once and shares the result across consumers. */
@@ -67,6 +97,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
             getUsers().flatMap((u) => u.bookings)
           ),
           coupons: getCatalogCoupons(),
+          poojaDates: getCatalogPoojaDates(),
         };
       }
     })();
@@ -79,6 +110,8 @@ export async function refreshCatalog(): Promise<ResolvedCatalog> {
   resetCatalogCache();
   return fetchCatalog();
 }
+
+
 
 async function post(path: string, body: unknown, token?: string | null) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -94,7 +127,7 @@ async function post(path: string, body: unknown, token?: string | null) {
 
 // ===================== CATALOG (admin) =====================
 
-export type CatalogSection = "poojas" | "events" | "coupons";
+export type CatalogSection = "poojas" | "events" | "coupons" | "poojaDates";
 
 export async function saveCatalogSection(
   section: CatalogSection,

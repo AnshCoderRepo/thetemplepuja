@@ -6,7 +6,7 @@ import type {
   CatalogOverrides,
   PersistenceStore,
 } from "./persistence";
-import type { Coupon, Pooja, UpcomingEventSpec } from "./data";
+import type { Coupon, Pooja, PoojaDate, UpcomingEventSpec } from "./data";
 import type { BookingRecord, UserProfile } from "./storage";
 import { ensureDnsPatch } from "./dns-fix";
 
@@ -37,6 +37,7 @@ interface CatalogDoc extends Document {
   poojas?: Pooja[];
   events?: UpcomingEventSpec[];
   coupons?: Record<string, Coupon>;
+  poojaDates?: PoojaDate[];
 }
 
 interface AdminDoc extends Document {
@@ -132,6 +133,7 @@ export const mongoStore: PersistenceStore = {
     if (doc.poojas) out.poojas = doc.poojas;
     if (doc.events) out.events = doc.events;
     if (doc.coupons) out.coupons = doc.coupons;
+    if (doc.poojaDates) out.poojaDates = doc.poojaDates;
     return out;
   },
 

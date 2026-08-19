@@ -50,18 +50,13 @@ export default function Header() {
 
       {/* Main nav */}
       <nav className="container-px flex items-center justify-between py-4">
-        <a href="#home" className="group flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-saffron-400 via-saffron-500 to-maroon-600 text-xl shadow-glow transition-transform duration-300 group-hover:rotate-12">
-            🕉️
-          </span>
-          <span className="leading-tight">
-            <span className="block font-display text-xl font-bold tracking-wide text-ink">
-              The Temple <span className="text-saffron-600">Puja</span>
-            </span>
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-soft/70">
-              Digital Spiritual Platform
-            </span>
-          </span>
+        <a href="#home" className="group flex items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.jpeg"
+            alt="templepujasewa — The Temple Puja"
+            className="h-12 w-auto rounded-lg bg-white object-contain p-1 shadow-soft transition-transform duration-300 group-hover:scale-105"
+          />
         </a>
 
         <div className="hidden items-center gap-1 lg:flex">
@@ -82,12 +77,6 @@ export default function Header() {
             className="btn-outline hidden !px-4 !py-2.5 text-xs sm:inline-flex"
           >
             Login
-          </Link>
-          <Link
-            href="/signup"
-            className="btn-primary hidden !px-4 !py-2.5 text-xs sm:inline-flex"
-          >
-            Signup
           </Link>
           <Link
             href="/book/form"
@@ -130,13 +119,7 @@ export default function Header() {
             >
               Login
             </Link>
-            <Link
-              href="/signup"
-              onClick={() => setOpen(false)}
-              className="btn-primary !w-full"
-            >
-              Signup
-            </Link>
+
           </div>
           <Link
             href="/book/form"

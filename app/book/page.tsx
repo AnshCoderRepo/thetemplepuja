@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import BookPageHeader from "@/components/BookPageHeader";
+import JsonLd from "@/components/JsonLd";
 import PoojaCatalog from "@/components/PoojaCatalog";
+import { activePoojas, poojas } from "@/lib/data";
+import { itemListLd } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Book Pooja Online | The Temple Puja",
@@ -11,6 +14,7 @@ export const metadata: Metadata = {
 export default function BookPage() {
   return (
     <>
+      <JsonLd data={itemListLd(activePoojas(poojas))} />
       <BookPageHeader
         eyebrow="🪔 Pooja Booking"
         title={

@@ -9,7 +9,7 @@ import {
   type CatalogOverrideSection,
 } from "@/lib/server-store";
 
-const SECTIONS: CatalogOverrideSection[] = ["poojas", "events", "coupons"];
+const SECTIONS: CatalogOverrideSection[] = ["poojas", "events", "coupons", "poojaDates"];
 
 function bearerToken(req: NextRequest): string | null {
   const header = req.headers.get("authorization");

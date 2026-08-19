@@ -29,6 +29,19 @@ export default function BookPageHeader({ eyebrow, title, subtitle, facts = [], c
       </div>
 
       <div className="container-px relative">
+        <Link
+          href="/"
+          aria-label="templepujasewa — The Temple Puja, back to home"
+          className="mb-5 inline-block transition-transform duration-300 hover:scale-105"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.jpeg"
+            alt="templepujasewa — The Temple Puja"
+            className="h-12 w-auto rounded-xl bg-white object-contain p-1.5 shadow-soft"
+          />
+        </Link>
+
         <nav
           aria-label="Breadcrumb"
           className="flex items-center gap-1.5 text-xs font-medium text-amber-100/70"

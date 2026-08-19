@@ -14,7 +14,6 @@ export const navLinks = [
   { label: "Home", href: "#home" },
   { label: "Events", href: "#events" },
   { label: "Why Us", href: "#why-us" },
-  { label: "Experience", href: "#experience" },
   { label: "Reviews", href: "#testimonials" },
   { label: "FAQ", href: "#faq" },
   { label: "Contact", href: "#contact" },
@@ -69,6 +68,10 @@ export interface UpcomingEventSpec {
   price: string;
   emoji: string;
   gradient: string;
+  /** Admin toggle — when false the event is hidden from the site (home page,
+   * catalogue) until it is turned back on. Absent on older stored data,
+   * which is treated as active. */
+  active?: boolean;
   /** Total seats for the live event. When set, availability is computed from
    * confirmed bookings (auto seat release on cancel); when absent the curated
    * `seats` label is shown as-is. */
@@ -76,6 +79,47 @@ export interface UpcomingEventSpec {
   /** Confirmed seats already taken for this occurrence — attached by the
    * catalog API (server) or the local cache (offline fallback). */
   bookedSeats?: number;
+}
+
+/** True unless the admin explicitly deactivated the event. */
+export function isEventActive(e: UpcomingEventSpec): boolean {
+  return e.active !== false;
+}
+
+/** The events visitors should see — inactive ones are filtered out. */
+export function activeEvents(list: UpcomingEventSpec[]): UpcomingEventSpec[] {
+  return list.filter(isEventActive);
+}
+
+/** True when a pooja has event scheduling fields (shows on the carousel). */
+export function isPoojaEvent(p: Pooja): boolean {
+  return p.daysFromToday !== undefined && isPoojaActive(p);
+}
+
+/** Convert poojas with event scheduling into UpcomingEventSpec[] for the
+ *  home page carousel — merges the two systems so admin only manages poojas. */
+export function poojasAsEvents(
+  poojas: Pooja[],
+  bookings: SeatCountingBooking[] = []
+): UpcomingEventSpec[] {
+  return poojas
+    .filter(isPoojaEvent)
+    .map((p) => ({
+      title: p.title,
+      slug: p.slug,
+      daysFromToday: p.daysFromToday!,
+      time: p.eventTime ?? "",
+      seats: p.seats ?? "Open",
+      live: p.live ?? false,
+      price: `\u20B9${p.price.toLocaleString("en-IN")}`,
+      emoji: p.emoji,
+      gradient: p.gradient,
+      capacity: p.capacity,
+      bookedSeats: eventBookedSeats(
+        { slug: p.slug, daysFromToday: p.daysFromToday },
+        bookings
+      ),
+    }));
 }
 
 export const upcomingEventSpecs: UpcomingEventSpec[] = [
@@ -424,6 +468,23 @@ export interface Pooja {
    * form, catalogue and detail pages) until it is turned back on. Absent on
    * older stored data, which is treated as active. */
   active?: boolean;
+
+  // ── Event scheduling (optional) ──
+  // When daysFromToday is set, this pooja appears on the home page carousel
+  // as a bookable event. All fields below are optional — poojas without
+  // daysFromToday are catalogue-only (no carousel card).
+  /** Days from today for the event occurrence (0 = today). */
+  daysFromToday?: number;
+  /** Display time, e.g. "7:00 PM IST". */
+  eventTime?: string;
+  /** Seats label fallback when no capacity is set. */
+  seats?: string;
+  /** Total seats — availability is computed from confirmed bookings. */
+  capacity?: number;
+  /** Show the 🔴 Live badge on the carousel card. */
+  live?: boolean;
+  /** Confirmed seats taken — attached by the catalog API for display. */
+  bookedSeats?: number;
 }
 
 /** True unless the admin explicitly deactivated the pooja. */
@@ -615,6 +676,68 @@ export interface Coupon {
   minBookings?: number;
   /** Minimum pooja price required to use the coupon */
   minAmount?: number;
+}
+
+// ===================== POOJA DATES =====================
+// Admin-managed recurring dates when pujas are conducted.
+// Each entry specifies a day-of-month and time — the booking flow
+// computes actual dates for the next few months from these.
+
+export interface PoojaDate {
+  id: string;          // unique key, e.g. "8th-7pm"
+  dayOfMonth: number;  // 1-31
+  time: string;        // display, e.g. "7:00 PM IST"
+  active: boolean;     // admin toggle
+}
+
+export const defaultPoojaDates: PoojaDate[] = [];
+
+/** Compute upcoming actual dates from a list of PoojaDate rules.
+ *  Returns dates for the current and next 2 months, sorted ascending,
+ *  filtering out past dates and past day-of-month in the current month. */
+export function computeUpcomingDates(
+  rules: PoojaDate[],
+  today: Date = new Date()
+): { id: string; dateISO: string; dateDisplay: string; time: string }[] {
+  const active = rules.filter((r) => r.active);
+  if (active.length === 0) return [];
+
+  const result: { id: string; dateISO: string; dateDisplay: string; time: string }[] = [];
+  const todayISO = today.toISOString().slice(0, 10);
+
+  // Check 3 months: current + next 2
+  for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
+    const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+    const year = base.getFullYear();
+    const month = base.getMonth();
+
+    for (const rule of active) {
+      // Clamp day to month length (e.g. Feb 30 → Feb 28)
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const day = Math.min(rule.dayOfMonth, daysInMonth);
+      const d = new Date(year, month, day);
+      const iso = d.toISOString().slice(0, 10);
+
+      // Skip past dates
+      if (iso < todayISO) continue;
+
+      const display = d.toLocaleDateString("en-IN", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+
+      result.push({
+        id: `${rule.id}-${iso}`,
+        dateISO: iso,
+        dateDisplay: display,
+        time: rule.time,
+      });
+    }
+  }
+
+  return result.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
 }
 
 export const coupons: Record<string, Coupon> = {
