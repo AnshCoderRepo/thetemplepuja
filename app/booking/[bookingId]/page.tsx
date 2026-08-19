@@ -8,7 +8,6 @@ import {
   CalendarClock,
   Check,
   Copy,
-  FileText,
   Printer,
   SearchX,
   ShieldCheck,
@@ -61,15 +60,20 @@ function Receipt({
   };
 
   return (
-    <div
-      id="receipt-card"
-      className="mx-auto max-w-2xl overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-card"
+      <div
+        id="receipt-card"
+        className="mx-auto max-w-2xl overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-card"
     >
       {/* Receipt header */}
       <div className="relative bg-gradient-to-br from-saffron-500 to-maroon-600 px-8 py-8 text-center text-white">
         <div className="absolute inset-0 opacity-15 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px]" />
-        <span className="relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur">
-          <FileText className="h-7 w-7" />
+        <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-xl bg-white p-1 shadow-soft">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.jpeg"
+            alt="templepujasewa — The Temple Puja"
+            className="h-full w-full object-contain"
+          />
         </span>
         <h2 className="relative mt-4 font-display text-2xl font-bold">
           Pooja Booking Receipt
@@ -222,12 +226,7 @@ function Receipt({
             </Link>
           </div>
         </div>
-        <Link
-          href="/"
-          className="no-print mt-4 block text-center text-xs font-semibold text-ink-soft/60 transition-colors hover:text-saffron-600"
-        >
-          ← Back to Home
-        </Link>
+
       </div>
     </div>
   );
@@ -320,10 +319,21 @@ function BookingReceiptPage() {
     router.push(`/booking/${encodeURIComponent(id)}?phone=${encodeURIComponent(p)}`);
   };
 
+  const BackButton = () => (
+    <Link
+      href="/"
+      className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-ink-soft transition-colors hover:text-saffron-600"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+      Back to Home
+    </Link>
+  );
+
   if (state.kind === "gate") {
     return (
       <section id="receipt-page" className="section-pad bg-cream">
         <div className="container-px">
+          <BackButton />
           <div className="mx-auto max-w-md rounded-3xl border border-saffron-100 bg-white p-8 text-center shadow-card">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-saffron-50">
               <ShieldCheck className="h-8 w-8 text-saffron-500" />
@@ -382,6 +392,7 @@ function BookingReceiptPage() {
     return (
       <section id="receipt-page" className="section-pad bg-cream">
         <div className="container-px">
+          <BackButton />
           <Receipt booking={state.booking} holder={state.holder} />
         </div>
       </section>
@@ -391,6 +402,7 @@ function BookingReceiptPage() {
   return (
     <section id="receipt-page" className="section-pad bg-cream">
       <div className="container-px">
+        <BackButton />
         <div className="mx-auto max-w-md rounded-3xl border border-saffron-100 bg-white p-8 text-center shadow-card">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
             <SearchX className="h-8 w-8 text-red-400" />

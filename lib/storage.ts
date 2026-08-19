@@ -57,8 +57,10 @@ export interface UserProfile {
   bookings: BookingRecord[];
 }
 
-const USERS_KEY = "ttp_profiles_v1";
-const ADMIN_TOKEN_KEY = "ttp_admin_token_v1";
+import { STORAGE_KEYS } from "./constants";
+
+const USERS_KEY = STORAGE_KEYS.USERS;
+const ADMIN_TOKEN_KEY = STORAGE_KEYS.ADMIN_TOKEN;
 export function getUsers(): UserProfile[] {
   if (typeof window === "undefined") return [];
   try {

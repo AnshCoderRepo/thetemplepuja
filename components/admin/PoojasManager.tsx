@@ -26,6 +26,12 @@ interface Draft {
   bestMuhurat: string;
   description: string;
   benefits: string;
+  // Event scheduling (optional — when set, the pooja appears on the home carousel)
+  daysFromToday: string;
+  eventTime: string;
+  seats: string;
+  capacity: string;
+  live: boolean;
 }
 
 const emptyDraft: Draft = {
@@ -39,6 +45,11 @@ const emptyDraft: Draft = {
   bestMuhurat: "",
   description: "",
   benefits: "",
+  daysFromToday: "",
+  eventTime: "7:00 PM IST",
+  seats: "20 spots open",
+  capacity: "",
+  live: false,
 };
 
 export default function PoojasManager({
@@ -81,21 +92,36 @@ export default function PoojasManager({
     return null;
   };
 
-  const toPooja = (): Pooja => ({
-    slug: draft.slug.trim(),
-    title: draft.title.trim(),
-    hindiTitle: draft.hindiTitle.trim(),
-    emoji: draft.emoji.trim() || "🪔",
-    gradient: draft.gradient,
-    price: Number(draft.price),
-    duration: draft.duration.trim() || "1 hour",
-    bestMuhurat: draft.bestMuhurat.trim(),
-    description: draft.description.trim(),
-    benefits: draft.benefits
-      .split(",")
-      .map((b) => b.trim())
-      .filter(Boolean),
-  });
+  const toPooja = (): Pooja => {
+    const p: Pooja = {
+      slug: draft.slug.trim(),
+      title: draft.title.trim(),
+      hindiTitle: draft.hindiTitle.trim(),
+      emoji: draft.emoji.trim() || "🪔",
+      gradient: draft.gradient,
+      price: Number(draft.price),
+      duration: draft.duration.trim() || "1 hour",
+      bestMuhurat: draft.bestMuhurat.trim(),
+      description: draft.description.trim(),
+      benefits: draft.benefits
+        .split(",")
+        .map((b) => b.trim())
+        .filter(Boolean),
+    };
+    // Event scheduling — only set when the admin filled in daysFromToday
+    const days = Number(draft.daysFromToday);
+    if (draft.daysFromToday.trim() && !Number.isNaN(days) && days >= 0) {
+      p.daysFromToday = days;
+      p.eventTime = draft.eventTime.trim() || undefined;
+      p.seats = draft.seats.trim() || undefined;
+      const cap = Number(draft.capacity);
+      if (draft.capacity.trim() && !Number.isNaN(cap) && cap > 0) {
+        p.capacity = cap;
+      }
+      p.live = draft.live;
+    }
+    return p;
+  };
 
   const save = async () => {
     const problem = validate();
@@ -200,6 +226,11 @@ export default function PoojasManager({
       bestMuhurat: p.bestMuhurat,
       description: p.description,
       benefits: p.benefits.join(", "),
+      daysFromToday: p.daysFromToday != null ? String(p.daysFromToday) : "",
+      eventTime: p.eventTime ?? "7:00 PM IST",
+      seats: p.seats ?? "20 spots open",
+      capacity: p.capacity != null ? String(p.capacity) : "",
+      live: p.live ?? false,
     });
   };
 
@@ -318,6 +349,61 @@ export default function PoojasManager({
                 />
               </Field>
             </div>
+
+            {/* ── Event Scheduling Section ── */}
+            <div className="sm:col-span-2 lg:col-span-3">
+              <div className="rounded-xl border border-dashed border-saffron-300 bg-saffron-50/40 p-4">
+                <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-saffron-700">
+                  📅 Event Scheduling (optional)
+                </h4>
+                <p className="mb-4 text-[11px] text-ink-soft/70">
+                  Fill these fields to make this pooja appear as a live event on the home page carousel. Leave empty to keep it as a catalogue-only pooja.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field label="Days from today" hint="0 = today; leave empty to hide from carousel">
+                    <NumberInput
+                      value={draft.daysFromToday}
+                      onChange={(e) => setDraft((d) => ({ ...d, daysFromToday: e.target.value }))}
+                      placeholder="e.g. 8"
+                      min={0}
+                    />
+                  </Field>
+                  <Field label="Event Time">
+                    <TextInput
+                      value={draft.eventTime}
+                      onChange={(e) => setDraft((d) => ({ ...d, eventTime: e.target.value }))}
+                      placeholder="7:00 PM IST"
+                    />
+                  </Field>
+                  <Field label="Capacity" hint="Total seats; availability computed from bookings">
+                    <NumberInput
+                      value={draft.capacity}
+                      onChange={(e) => setDraft((d) => ({ ...d, capacity: e.target.value }))}
+                      placeholder="e.g. 20"
+                      min={1}
+                    />
+                  </Field>
+                  <Field label="Seats label" hint="Fallback when no capacity set">
+                    <TextInput
+                      value={draft.seats}
+                      onChange={(e) => setDraft((d) => ({ ...d, seats: e.target.value }))}
+                      placeholder="Only 12 seats left"
+                    />
+                  </Field>
+                  <div className="flex items-end pb-1">
+                    <label className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={draft.live}
+                        onChange={(e) => setDraft((d) => ({ ...d, live: e.target.checked }))}
+                        className="h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-500"
+                      />
+                      <span className="text-sm font-semibold text-ink">🔴 Show Live badge</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {error && (
@@ -356,10 +442,21 @@ export default function PoojasManager({
                       {p.hindiTitle}
                     </span>
                   )}
+                  {p.daysFromToday != null && p.live && (
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-600">
+                      🔴 Live
+                    </span>
+                  )}
+                  {p.daysFromToday != null && !p.live && (
+                    <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-600">
+                      📅 Event
+                    </span>
+                  )}
                 </p>
                 <p className="truncate font-mono text-[11px] text-ink-soft">
                   {p.slug} · {p.duration}
                   {p.bestMuhurat ? ` · ${p.bestMuhurat}` : ""}
+                  {p.daysFromToday != null ? ` · in ${p.daysFromToday}d${p.eventTime ? ` · ${p.eventTime}` : ""}` : ""}
                 </p>
               </div>
               <span className="font-display text-sm font-bold text-saffron-600">

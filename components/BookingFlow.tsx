@@ -14,7 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { submitBooking, syncUserFromServer } from "@/lib/api";
-import { activePoojas, poojas, type Pooja } from "@/lib/data";
+import { activePoojas, computeUpcomingDates, poojas, type Pooja } from "@/lib/data";
 import { isValidIndianPhone, validateBookingInput } from "@/lib/validation";
 import { formatINR } from "@/lib/format";
 import { useCatalog } from "./useCatalog";
@@ -35,6 +35,7 @@ interface ConfirmedBooking {
   name: string;
   poojaTitle: string;
   reason: string;
+  credentials: { username: string; password: string; email: string };
 }
 
 const inputCls =
@@ -67,12 +68,13 @@ export default function BookingFlow({
     gotra: "",
     city: "",
     phone: "",
+    email: "",
     reason: "",
   });
   const [prayerSlug, setPrayerSlug] = useState(pooja?.slug ?? "");
-  // The date is only ever provided by a fixed event slot — never chosen in
-  // the form itself, so it doesn't need to be state.
-  const date = initialDate ?? "";
+  const [selectedDateISO, setSelectedDateISO] = useState<string | null>(initialDate ?? null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(initialTime ?? null);
+  const date = selectedDateISO ?? "";
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [bookingData, setBookingData] = useState<ConfirmedBooking | null>(null);
   const [paymentProof, setPaymentProof] = useState<PaymentProof | undefined>(undefined);
@@ -83,7 +85,7 @@ export default function BookingFlow({
   // Admin-managed catalog (poojas + coupons) from the backend. Initial render
   // uses the static defaults so SSR matches; once fetched we swap in the
   // server catalog.
-  const { poojas: catalogPoojas, coupons: catalogCoupons } = useCatalog();
+  const { poojas: catalogPoojas, coupons: catalogCoupons, poojaDates } = useCatalog();
 
   const selectedPooja = catalogPoojas.find((p) => p.slug === prayerSlug);
   const basePrice = selectedPooja?.price ?? 0;
@@ -115,6 +117,16 @@ export default function BookingFlow({
 
   // Modal's onSuccess stores the booking; the confirmation screen only appears
   // after the modal's "Done" closes it, so the modal success phase stays visible.
+  // Generate a strong random password for devotee login
+  const generatePassword = (): string => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    let pass = "";
+    for (let i = 0; i < 10; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+  };
+
   const handleSuccess = (
     id: string,
     payment?: PaymentProof,
@@ -127,11 +139,16 @@ export default function BookingFlow({
       discount: summary?.discount ?? 0,
       coupon: summary?.coupon ?? null,
       date: date ? formatDate(date) : "To be confirmed",
-      time: initialTime ?? "—",
+      time: selectedTime ?? "—",
       panditName: null,
       name: form.name.trim() || "Devotee",
       poojaTitle: selectedPooja?.title ?? "Pooja",
       reason: form.reason.trim(),
+      credentials: {
+        username: form.phone.trim(),
+        password: generatePassword(),
+        email: form.email.trim(),
+      },
     });
   };
 
@@ -148,7 +165,7 @@ export default function BookingFlow({
         name: form.name.trim(),
         gotra: form.gotra.trim(),
         city: form.city.trim(),
-        email: "",
+        email: form.email.trim(),
         booking: {
           bookingId: bookingData.id,
           poojaSlug: selectedPooja.slug,
@@ -222,6 +239,9 @@ export default function BookingFlow({
             ? `Coupon: ${confirmed.coupon.code} (${confirmed.coupon.label})\n`
             : "") +
           `Amount: ${formatINR(confirmed.total)}\n\n` +
+          `Login Credentials:\n` +
+          `Username: ${confirmed.credentials.username}\n` +
+          `Password: ${confirmed.credentials.password}\n\n` +
           `Please confirm my booking. Om Shanti!`
       )
     : "";
@@ -315,6 +335,39 @@ export default function BookingFlow({
               )}
             </dl>
 
+            {/* Login credentials */}
+            <div className="mt-6 rounded-2xl border border-saffron-200 bg-saffron-50 p-5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+                🔐 Your Login Credentials
+              </p>
+              <p className="mt-1 text-xs text-ink-soft/70">
+                Use these to track your bookings on The Temple Puja.
+              </p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink-soft">Username</span>
+                  <span className="font-mono text-sm font-bold text-ink">{confirmed.credentials.username}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink-soft">Password</span>
+                  <span className="font-mono text-sm font-bold text-ink">{confirmed.credentials.password}</span>
+                </div>
+              </div>
+              {confirmed.credentials.email && (
+                <a
+                  href={`mailto:${encodeURIComponent(confirmed.credentials.email)}?subject=${encodeURIComponent("Your Temple Puja Login Credentials")}&body=${encodeURIComponent(
+                    `Username: ${confirmed.credentials.username}\nPassword: ${confirmed.credentials.password}\nBooking ID: ${confirmed.id}\nPooja: ${confirmed.poojaTitle}\nDate: ${confirmed.date}`
+                  )}`}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-saffron-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-saffron-600"
+                >
+                  📧 Send Credentials to Email
+                </a>
+              )}
+              <p className="mt-2 text-[10px] text-ink-soft/50">
+                ⚠️ Save these credentials — they were also sent to your WhatsApp.
+              </p>
+            </div>
+
             {/* Payment summary with coupon savings */}
             <div className="mt-6 rounded-2xl border border-saffron-100 bg-cream/70 p-5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
@@ -388,6 +441,65 @@ export default function BookingFlow({
             >
               ← Back to Home
             </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ============ DATE SELECTION ============
+  const upcomingDates = computeUpcomingDates(poojaDates);
+  const needsDateSelection = prayerSlug && !selectedDateISO && !fromEvent && upcomingDates.length > 0;
+
+  if (needsDateSelection) {
+    return (
+      <section className="section-pad bg-cream">
+        <div className="mx-auto max-w-2xl">
+          <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft sm:p-8">
+            <div className="text-center">
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-saffron-100 text-2xl">
+                📅
+              </span>
+              <h2 className="mt-4 font-display text-xl font-bold text-ink sm:text-2xl">
+                Choose a Date for Your Pooja
+              </h2>
+              <p className="mt-2 text-sm text-ink-soft">
+                Select from our upcoming pooja dates. Each date is an auspicious muhurat chosen by our pandits.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {upcomingDates.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => {
+                    setSelectedDateISO(d.dateISO);
+                    setSelectedTime(d.time);
+                  }}
+                  className="group flex items-center gap-4 rounded-2xl border-2 border-saffron-100 bg-cream/40 p-4 text-left transition-all hover:border-saffron-400 hover:bg-saffron-50 hover:shadow-soft"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-saffron-500 to-maroon-600 font-display text-lg font-bold text-white shadow-soft">
+                    {new Date(d.dateISO + "T00:00:00").getDate()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-sm font-bold text-ink group-hover:text-saffron-700">
+                      {d.dateDisplay}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-soft">
+                      🕐 {d.time}
+                    </p>
+                  </div>
+                  <span className="text-xs text-saffron-500 opacity-0 transition-opacity group-hover:opacity-100">
+                    Select →
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setSelectedDateISO("none")}
+              className="mt-6 block w-full text-center text-xs font-semibold text-ink-soft/60 transition-colors hover:text-saffron-600"
+            />
           </div>
         </div>
       </section>
@@ -533,6 +645,21 @@ export default function BookingFlow({
                       Enter a valid 10-digit Indian mobile number.
                     </p>
                   )}
+                </div>
+
+                {/* Email (optional) */}
+                <div>
+                  <label htmlFor="bk-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    Email (optional)
+                  </label>
+                  <input
+                    id="bk-email"
+                    type="email"
+                    value={form.email ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="you@example.com"
+                    className={inputCls}
+                  />
                 </div>
 
                 {/* Reason */}

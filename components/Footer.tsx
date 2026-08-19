@@ -17,18 +17,13 @@ export default function Footer() {
         <div className="grid gap-10 pb-12 md:grid-cols-4">
           {/* Brand */}
           <div className="md:col-span-2">
-            <a href="#home" className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-saffron-400 via-saffron-500 to-maroon-600 text-xl shadow-glow">
-                🕉️
-              </span>
-              <span className="leading-tight">
-                <span className="block font-display text-2xl font-bold tracking-wide">
-                  The Temple <span className="text-saffron-400">Puja</span>
-                </span>
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-cream/50">
-                  Digital Spiritual Platform
-                </span>
-              </span>
+            <a href="#home" className="flex items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.jpeg"
+                alt="templepujasewa — The Temple Puja"
+                className="h-20 w-auto rounded-xl bg-white object-contain p-2 shadow-soft"
+              />
             </a>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-cream/60">
               India&apos;s trusted digital spiritual platform. Certified

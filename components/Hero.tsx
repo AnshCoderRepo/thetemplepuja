@@ -8,11 +8,24 @@ export default function Hero() {
       id="home"
       className="relative overflow-hidden bg-cream pt-32 md:pt-44"
     >
-      {/* Decorative background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-saffron-100/70 blur-3xl" />
-        <div className="absolute right-[-120px] top-32 h-72 w-72 rounded-full bg-rose-100/60 blur-3xl" />
-        <div className="absolute left-[-100px] top-64 h-64 w-64 rounded-full bg-amber-100/60 blur-3xl" />
+      {/* Background video */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          className="absolute inset-0 h-full w-full object-cover"
+          poster="https://images.unsplash.com/photo-1604948501466-4e9c339b9c24?q=80&w=1920&auto=format&fit=crop"
+        >
+          <source
+            src="https://videos.pexels.com/video-files/28884117/12503838_1920_1080_50fps.mp4"
+            type="video/mp4"
+          />
+        </video>
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-cream/80 via-cream/60 to-cream/90" />
         {/* Floating ornaments */}
         <span className="absolute left-[8%] top-40 animate-float text-4xl opacity-25">🪔</span>
         <span className="absolute right-[10%] top-56 animate-float text-5xl opacity-20 [animation-delay:1.5s]">🕉️</span>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarX2, Clock, Video } from "lucide-react";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
-import { getUpcomingEvents, isEventFull, seatsLabel } from "@/lib/data";
+import { getUpcomingEvents, isEventFull, poojasAsEvents, seatsLabel } from "@/lib/data";
 import { useCatalog } from "./useCatalog";
 import {
   CoverflowCarousel,
@@ -16,14 +16,15 @@ import {
 export default function UpcomingEvents() {
   const [today, setToday] = useState<Date | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const { events: catalogEvents, loaded } = useCatalog();
+  const { poojas: catalogPoojas, loaded } = useCatalog();
 
   // Compute "today" only after mount so server and client renders match.
   useEffect(() => {
     setToday(new Date());
   }, []);
 
-  const specs = loaded ? catalogEvents : null;
+  // Derive events from poojas that have scheduling fields set.
+  const specs = loaded ? poojasAsEvents(catalogPoojas) : null;
   const events = today && specs ? getUpcomingEvents(today, specs) : [];
 
   const slides: CoverflowSlide[] = events.map((event) => ({

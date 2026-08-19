@@ -7,16 +7,20 @@
 // browser, e.g. during SSR and unit tests).
 import {
   coupons as staticCoupons,
+  defaultPoojaDates,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEventSpecs,
   type Coupon,
   type Pooja,
+  type PoojaDate,
   type UpcomingEventSpec,
 } from "./data";
+import { STORAGE_KEYS } from "./constants";
 
-const POOJAS_KEY = "ttp_catalog_poojas_v1";
-const EVENTS_KEY = "ttp_catalog_events_v1";
-const COUPONS_KEY = "ttp_catalog_coupons_v1";
+const POOJAS_KEY = STORAGE_KEYS.CATALOG_POOJAS;
+const EVENTS_KEY = STORAGE_KEYS.CATALOG_EVENTS;
+const COUPONS_KEY = STORAGE_KEYS.CATALOG_COUPONS;
+const POOJA_DATES_KEY = STORAGE_KEYS.CATALOG_POOJA_DATES;
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -90,4 +94,18 @@ export function saveCatalogCoupons(coupons: Record<string, Coupon>): void {
 
 export function resetCatalogCoupons(): void {
   clear(COUPONS_KEY);
+}
+
+// ===================== POOJA DATES =====================
+
+export function getCatalogPoojaDates(): PoojaDate[] {
+  return read<PoojaDate[]>(POOJA_DATES_KEY) ?? defaultPoojaDates;
+}
+
+export function saveCatalogPoojaDates(dates: PoojaDate[]): void {
+  write(POOJA_DATES_KEY, dates);
+}
+
+export function resetCatalogPoojaDates(): void {
+  clear(POOJA_DATES_KEY);
 }
