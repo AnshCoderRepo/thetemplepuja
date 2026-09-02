@@ -640,19 +640,11 @@ export default function AdminPage() {
                 {loginBusy ? "Signing in…" : "Login to Dashboard"}
               </button>
             </form>
-            {config === null ? null : config.isDefault ? (
+            {config === null ? null : (
               <p className="mt-5 rounded-xl bg-saffron-50 px-4 py-3 text-center text-xs font-medium text-ink-soft">
-                🧪 Demo account:{" "}
-                <code className="font-mono font-bold text-saffron-700">
-                  {config.email}
-                </code>{" "}
-                /{" "}
-                <code className="font-mono font-bold text-saffron-700">admin123</code>
-              </p>
-            ) : (
-              <p className="mt-5 rounded-xl bg-saffron-50 px-4 py-3 text-center text-xs font-medium text-ink-soft">
-                🔑 Sign in with your custom admin email and password (set from the
-                Account tab).
+                {config.isDefault
+                  ? "🔑 Sign in with the admin credentials. Change them from the Account tab after login."
+                  : `🔑 Sign in with your admin email and password.`}
               </p>
             )}
           </div>

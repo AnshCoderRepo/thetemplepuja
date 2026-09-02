@@ -84,7 +84,7 @@ export default function AccountManager({
   const reset = async () => {
     if (
       !window.confirm(
-        "Reset the admin account to the default demo credentials (admin@thetemplepuja.com / admin123)?"
+        "Reset the admin account to the default demo credentials?"
       )
     ) {
       return;
@@ -100,7 +100,7 @@ export default function AccountManager({
     }
     setMsg({
       ok: true,
-      text: "Credentials reset to defaults (admin@thetemplepuja.com / admin123).",
+      text: "Credentials have been reset to defaults. You will need to sign in with the default credentials.",
     });
     setCurrentEmail("");
     setCurrentPassword("");
