@@ -15,18 +15,39 @@ export interface RateLimiter {
 export interface RateLimiterOptions {
   limit?: number;
   windowMs?: number;
+  maxEntries?: number;
   now?: () => number;
 }
 
 export function createRateLimiter({
   limit = 5,
   windowMs = 15 * 60 * 1000, // 15 minutes
+  maxEntries = 10_000, // Cap total tracked IPs to prevent memory exhaustion under DDoS
   now = Date.now,
 }: RateLimiterOptions = {}): RateLimiter {
   const buckets = new Map<string, { count: number; windowStart: number }>();
 
+  function sweepExpired(t: number) {
+    for (const [k, val] of buckets.entries()) {
+      if (t - val.windowStart >= windowMs) {
+        buckets.delete(k);
+      }
+    }
+  }
+
   function prune(key: string): { count: number; windowStart: number } {
     const t = now();
+
+    // Occasional hygiene sweep if map grows large
+    if (buckets.size > maxEntries) {
+      sweepExpired(t);
+      // If still beyond max capacity after sweep, drop the oldest key
+      if (buckets.size >= maxEntries) {
+        const oldestKey = buckets.keys().next().value;
+        if (oldestKey) buckets.delete(oldestKey);
+      }
+    }
+
     const entry = buckets.get(key);
     if (!entry || t - entry.windowStart >= windowMs) {
       const fresh = { count: 0, windowStart: t };
