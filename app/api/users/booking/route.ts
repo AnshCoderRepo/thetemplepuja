@@ -7,6 +7,7 @@ import {
   razorpayConfigured,
   verifyPaymentSignature,
 } from "@/lib/razorpay";
+import { isValidIndianPhone, normalizePhone } from "@/lib/validation";
 
 interface PaymentProof {
   razorpayOrderId?: unknown;
@@ -20,9 +21,11 @@ export async function POST(req: NextRequest) {
   };
   const booking = body.booking as BookingInput["booking"] | undefined;
 
+  const rawPhone = typeof body.phone === "string" ? body.phone : "";
+  const normalizedPhone = normalizePhone(rawPhone);
+
   if (
-    typeof body.phone !== "string" ||
-    !body.phone.trim() ||
+    !isValidIndianPhone(normalizedPhone) ||
     typeof body.name !== "string" ||
     !body.name.trim() ||
     !booking ||
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
     !booking.bookingId
   ) {
     return NextResponse.json(
-      { error: "Missing required booking details." },
+      { error: "Missing or invalid required booking details." },
       { status: 400 }
     );
   }
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
   }
 
   const user = await upsertUserBooking({
-    phone: body.phone.trim(),
+    phone: normalizedPhone,
     name: body.name.trim(),
     gotra: typeof body.gotra === "string" ? body.gotra : "",
     city: typeof body.city === "string" ? body.city : "",
@@ -103,7 +106,7 @@ export async function POST(req: NextRequest) {
     bookingId: booking.bookingId,
     poojaTitle: booking.poojaTitle,
     name: body.name.trim(),
-    phone: body.phone.trim(),
+    phone: normalizedPhone,
     date: booking.date,
     time: booking.time,
     amount: booking.amount,
@@ -113,7 +116,7 @@ export async function POST(req: NextRequest) {
     receiptUrl: receiptUrlFor(
       req.headers.get("host"),
       booking.bookingId,
-      body.phone.trim()
+      normalizedPhone
     ),
   });
 

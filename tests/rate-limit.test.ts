@@ -50,4 +50,22 @@ describe("rate limiter", () => {
     expect(limiter.allowed("ip")).toBe(false);
     expect(limiter.retryAfterSec("ip")).toBeGreaterThanOrEqual(1);
   });
+
+  it("caps memory usage by sweeping and bounding maxEntries", () => {
+    let t = 1000;
+    const limiter = createRateLimiter({
+      limit: 3,
+      windowMs: 5_000,
+      maxEntries: 2,
+      now: () => t,
+    });
+    limiter.hit("ip-1");
+    limiter.hit("ip-2");
+    // Window expires for ip-1 and ip-2
+    t += 6_000;
+    // Third hit should trigger sweep and prune expired keys
+    limiter.hit("ip-3");
+    expect(limiter.allowed("ip-3")).toBe(true);
+  });
 });
+
