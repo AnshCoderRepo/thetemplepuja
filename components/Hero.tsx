@@ -1,8 +1,23 @@
+"use client";
+
 import { Star } from "lucide-react";
 import Reveal from "./Reveal";
-import { stats, heroCtas } from "@/lib/data";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function Hero() {
+  const { t } = useI18n();
+
+  const stats = [
+    { value: "10,847+", label: t("hero.stat.bookings"), icon: "🪔" },
+    { value: "50+", label: t("hero.stat.poojas"), icon: "🕉️" },
+    { value: "200+", label: t("hero.stat.pandits"), icon: "🙏" },
+    { value: "24/7", label: t("hero.stat.support"), icon: "✨" },
+  ];
+
+  const heroCtas = [
+    { label: t("hero.cta.book"), href: "/book/form", primary: true },
+    { label: t("hero.cta.explore"), href: "#events" },
+  ];
   return (
     <section
       id="home"
@@ -35,25 +50,23 @@ export default function Hero() {
 
       <div className="container-px relative pb-20 md:pb-28">
         <div className="mx-auto max-w-4xl text-center">
-          <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-saffron-200 bg-white/80 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-saffron-700 shadow-soft backdrop-blur">
+          <Reveal>              <span className="inline-flex items-center gap-2 rounded-full border border-saffron-200 bg-white/80 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-saffron-700 shadow-soft backdrop-blur">
               <span className="text-base">🙏</span>
-              विश्वास, पवित्रता और भक्ति का संगम
+              {t("hero.badge")}
             </span>
           </Reveal>
 
           <Reveal delay={100}>
             <h1 className="mt-6 font-display text-4xl font-bold leading-[1.12] tracking-tight text-ink sm:text-6xl md:text-7xl">
-              Book Trusted Pooja
+              {t("hero.title1")}
               <br />
-              <span className="shimmer-text">& Sacred Rituals</span>
+              <span className="shimmer-text">{t("hero.title2")}</span>
             </h1>
           </Reveal>
 
           <Reveal delay={200}>
             <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-ink-soft sm:text-lg">
-              Experience the divine from anywhere in the world. Certified
-              pandits. Authentic Vedic rituals. Pure devotion.
+              {t("hero.subtitle")}
             </p>
           </Reveal>
 
@@ -63,7 +76,7 @@ export default function Hero() {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700">
                 <span className="text-sm">🙏</span>
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                Rating 4.9 / 5.0
+                {t("hero.rating")}
               </span>
             </div>
           </Reveal>
@@ -109,12 +122,11 @@ export default function Hero() {
           </Reveal>
         </div>
 
-        {/* Scroll hint */}
-        <a
+        {/* Scroll hint */}          <a
           href="#events"
           className="absolute bottom-0 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1 text-xs font-medium text-ink-soft/60 transition-colors hover:text-saffron-600 md:flex"
         >
-          Scroll
+          {t("hero.scroll")}
           <span className="flex h-8 w-5 items-start justify-center rounded-full border border-ink-soft/30 p-1">
             <span className="h-2 w-1 animate-bounce rounded-full bg-saffron-500" />
           </span>

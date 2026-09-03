@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarX2, Clock, Video } from "lucide-react";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
+import { useI18n } from "@/components/I18nProvider";
 import { getUpcomingEvents, isEventFull, poojasAsEvents, seatsLabel } from "@/lib/data";
 import { useCatalog } from "./useCatalog";
 import {
@@ -17,6 +18,7 @@ export default function UpcomingEvents() {
   const [today, setToday] = useState<Date | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const { poojas: catalogPoojas, loaded } = useCatalog();
+  const { t } = useI18n();
 
   // Compute "today" only after mount so server and client renders match.
   useEffect(() => {
@@ -50,9 +52,9 @@ export default function UpcomingEvents() {
       <div className="absolute inset-0 bg-mandala-fade" />
       <div className="container-px relative">
         <SectionHeading
-          eyebrow="Live & Upcoming"
-          title="Sacred Events & Live Poojas"
-          subtitle="Swipe through our scheduled live group rituals and book your spot before they fill up!"
+          eyebrow="LIVE & UPCOMING"
+          title={`${t("events.title")} ${t("events.titleHighlight")}`}
+          subtitle={t("events.subtitle")}
         />
 
         {today === null || specs === null ? (
@@ -78,7 +80,7 @@ export default function UpcomingEvents() {
                 catalogue and book at your own muhurat.
               </p>
               <Link href="/book" className="btn-primary mt-6">
-                Browse All Poojas
+                {t("events.viewAll")}
               </Link>
             </div>
           </Reveal>
@@ -127,7 +129,7 @@ export default function UpcomingEvents() {
           <Reveal className="mt-10 text-center">
             <Link href="/book" className="btn-outline">
               <Video className="h-4 w-4" />
-              View All Live Events
+              {t("events.viewAll")}
             </Link>
           </Reveal>
         )}

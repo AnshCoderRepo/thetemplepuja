@@ -1,16 +1,27 @@
+"use client";
+
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
-import { whyUs } from "@/lib/data";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function WhyChooseUs() {
+  const { t } = useI18n();
+
+  const whyUs = [
+    { icon: "🕉️", title: t("whyUs.1.title"), description: t("whyUs.1.desc") },
+    { icon: "💳", title: t("whyUs.2.title"), description: t("whyUs.2.desc") },
+    { icon: "📱", title: t("whyUs.3.title"), description: t("whyUs.3.desc") },
+    { icon: "📹", title: t("whyUs.4.title"), description: t("whyUs.4.desc") },
+  ];
+
   return (
     <section id="why-us" className="section-pad relative overflow-hidden bg-white">
       <div className="absolute inset-0 bg-radial-glow" />
       <div className="container-px relative">
         <SectionHeading
-          eyebrow="Why Choose Us"
-          title="Why Choose The Temple Puja"
-          subtitle="India's most trusted digital spiritual platform"
+          eyebrow={t("whyUs.title")}
+          title={`${t("whyUs.title")} ${t("whyUs.titleHighlight")}`}
+          subtitle={t("whyUs.subtitle")}
         />
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  BarChart3,
   CalendarCheck,
   CalendarDays,
   ChevronDown,
@@ -13,15 +14,19 @@ import {
   Lock,
   LogOut,
   Mail,
+  Search,
   ShieldCheck,
   Trash2,
   Undo2,
   Users,
   Wallet,
+  X,
   XCircle,
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
 import PoojasManager from "@/components/admin/PoojasManager";
+import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
+import { computeAnalytics } from "@/lib/analytics";
 
 import DatesManager from "@/components/admin/DatesManager";
 import CouponsManager from "@/components/admin/CouponsManager";
@@ -41,17 +46,19 @@ import {
   deleteUserRemote,
   fetchAllUsers,
   refundBookingRemote,
+  resetDevoteePassword,
 } from "@/lib/api";
 import { formatINR } from "@/lib/format";
 
 const inputCls =
   "w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200";
 
-type Tab = "devotees" | "poojas" | "dates" | "coupons" | "account";
+type Tab = "devotees" | "poojas" | "dates" | "coupons" | "analytics" | "account";
 
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: "devotees", label: "Devotees", icon: Users },
   { id: "poojas", label: "Poojas", icon: LayoutGrid },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "dates", label: "Dates", icon: CalendarDays },
   { id: "coupons", label: "Coupons", icon: Gift },
   { id: "account", label: "Account", icon: KeyRound },
@@ -80,6 +87,16 @@ const TAB_META: Record<
     subtitle:
       "Add, edit or remove poojas — the booking form, catalogue, detail pages and home-page carousel all update instantly.",
     facts: [{ icon: "🪔", label: "Manage poojas" }, { icon: "📅", label: "Schedule events" }],
+  },
+  analytics: {
+    title: (
+      <>
+        <span className="text-amber-200">Analytics</span> & Insights
+      </>
+    ),
+    subtitle:
+      "Track bookings, revenue trends, and popular poojas to understand your devotee community.",
+    facts: [{ icon: "📊", label: "Bookings trend" }, { icon: "💰", label: "Revenue" }, { icon: "🪔", label: "Popular poojas" }],
   },
   dates: {
     title: (
@@ -170,6 +187,45 @@ function DevoteesPanel({
   token: string;
   onAuthError: () => void;
 }) {
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Filter users by search query and date range
+  const filteredUsers = useMemo(() => {
+    let result = users;
+
+    // Search filter: match name, phone, or city
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.phone.includes(q) ||
+          (u.city && u.city.toLowerCase().includes(q))
+      );
+    }
+
+    // Date range filter: match user creation date
+    if (dateFrom || dateTo) {
+      result = result.filter((u) => {
+        const created = new Date(u.createdAt);
+        if (dateFrom) {
+          const from = new Date(dateFrom);
+          if (created < from) return false;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo);
+          to.setHours(23, 59, 59, 999); // include the whole day
+          if (created > to) return false;
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }, [users, search, dateFrom, dateTo]);
+
   const handleDeleteUser = async (id: string, name: string) => {
     if (
       !window.confirm(
@@ -185,6 +241,24 @@ function DevoteesPanel({
     }
     setExpanded(null);
     onUsersChange();
+  };
+
+  const handleResetPassword = async (phone: string, name: string) => {
+    const newPw = window.prompt(`Set a new password for ${name} (${phone}):`);
+    if (!newPw || newPw.length < 6) {
+      if (newPw !== null) window.alert("Password must be at least 6 characters.");
+      return;
+    }
+    const res = await resetDevoteePassword(phone, newPw, token);
+    if (res.status === 401) {
+      onAuthError();
+      return;
+    }
+    if (res.ok) {
+      window.alert(`Password updated for ${name}.`);
+    } else {
+      window.alert(res.error ?? "Failed to reset password.");
+    }
   };
 
   const handleRefund = async (userId: string, bookingId: string, poojaTitle: string) => {
@@ -238,11 +312,16 @@ function DevoteesPanel({
         <h2 className="flex items-center gap-2 font-display text-xl font-bold text-ink">
           <Users className="h-5 w-5 text-saffron-600" />
           All Devotee Profiles
+          {filteredUsers.length !== users.length && (
+            <span className="rounded-full bg-saffron-100 px-2.5 py-0.5 text-xs font-semibold text-saffron-700">
+              {filteredUsers.length} of {users.length}
+            </span>
+          )}
         </h2>
         <div className="flex gap-2.5">
           <button
-            onClick={() => exportJSON(users)}
-            disabled={users.length === 0}
+            onClick={() => exportJSON(filteredUsers)}
+            disabled={filteredUsers.length === 0}
             className="btn-outline !px-4 !py-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Download className="h-3.5 w-3.5" />
@@ -250,6 +329,84 @@ function DevoteesPanel({
           </button>
         </div>
       </div>
+
+      {/* Search & Filters */}
+      {users.length > 0 && (
+        <div className="mt-4 rounded-3xl border border-saffron-100 bg-white p-4 shadow-soft">
+          <div className="flex flex-wrap items-end gap-3">
+            {/* Search by name, phone, or city */}
+            <div className="min-w-[200px] flex-1">
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+                Search
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft/40" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Name, phone, or city…"
+                  className="w-full rounded-xl border border-saffron-100 bg-cream py-2.5 pl-9 pr-8 text-sm text-ink outline-none placeholder:text-ink-soft/40 focus:border-saffron-400 focus:ring-2 focus:ring-saffron-200"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink-soft"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Date from */}
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+                Joined After
+              </label>
+              <div className="relative">
+                <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft/40" />
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-[150px] rounded-xl border border-saffron-100 bg-cream py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-saffron-400 focus:ring-2 focus:ring-saffron-200"
+                />
+              </div>
+            </div>
+
+            {/* Date to */}
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+                Joined Before
+              </label>
+              <div className="relative">
+                <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft/40" />
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-[150px] rounded-xl border border-saffron-100 bg-cream py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-saffron-400 focus:ring-2 focus:ring-saffron-200"
+                />
+              </div>
+            </div>
+
+            {/* Clear filters */}
+            {(search || dateFrom || dateTo) && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+                className="rounded-xl border border-saffron-200 bg-saffron-50 px-3.5 py-2.5 text-xs font-semibold text-saffron-700 transition-colors hover:bg-saffron-100"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Users */}
       {users.length === 0 ? (
@@ -267,9 +424,29 @@ function DevoteesPanel({
             Open Booking Form
           </Link>
         </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="mt-4 rounded-3xl border border-saffron-100 bg-white p-12 text-center shadow-soft">
+          <p className="text-4xl">🔍</p>
+          <h3 className="mt-4 font-display text-xl font-bold text-ink">
+            No Matching Devotees
+          </h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
+            No devotees match your search criteria. Try adjusting your filters.
+          </p>
+          <button
+            onClick={() => {
+              setSearch("");
+              setDateFrom("");
+              setDateTo("");
+            }}
+            className="btn-primary mt-6"
+          >
+            Clear Filters
+          </button>
+        </div>
       ) : (
         <div className="mt-4 space-y-3">
-          {users.map((u) => {
+          {filteredUsers.map((u) => {
             const open = expanded === u.id;
             return (
               <div
@@ -320,7 +497,14 @@ function DevoteesPanel({
 
                 {open && (
                   <div className="border-t border-saffron-100 bg-cream/40 px-6 py-5">
-                    <div className="mb-4 flex items-center justify-end">
+                    <div className="mb-4 flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleResetPassword(u.phone, u.name)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-saffron-200 bg-saffron-50 px-3.5 py-1.5 text-[11px] font-semibold text-saffron-700 transition-colors hover:bg-saffron-100"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                        Reset Password
+                      </button>
                       <button
                         onClick={() => handleDeleteUser(u.id, u.name)}
                         className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3.5 py-1.5 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-100"
@@ -717,6 +901,9 @@ export default function AdminPage() {
                 token={token ?? ""}
                 onAuthError={handleAuthError}
               />
+            )}
+            {tab === "analytics" && (
+              <AnalyticsCharts analytics={computeAnalytics(users)} />
             )}
             {tab === "poojas" && (
               <PoojasManager token={token ?? ""} onAuthError={handleAuthError} />

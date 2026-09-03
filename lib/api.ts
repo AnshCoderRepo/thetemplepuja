@@ -150,6 +150,26 @@ export async function resetCatalogSection(
   return { ok: true };
 }
 
+// ===================== DEVOTEE AUTH =====================
+
+export async function devoteeLogin(
+  phone: string,
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/users/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, password }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) return { ok: false, error: body.error ?? "Login failed." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Network error." };
+  }
+}
+
 // ===================== ADMIN AUTH =====================
 
 export async function adminLogin(
@@ -456,6 +476,19 @@ export async function deleteUserRemote(
   } catch {
     return { ok: local.ok }; // offline — removed locally
   }
+}
+
+/** Reset a devotee's password (admin action). */
+export async function resetDevoteePassword(
+  phone: string,
+  newPassword: string,
+  token: string
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  return post(
+    "/api/admin/users/reset-password",
+    { phone, newPassword },
+    token
+  );
 }
 
 /** Mark a booking refunded (admin). The server is authoritative when

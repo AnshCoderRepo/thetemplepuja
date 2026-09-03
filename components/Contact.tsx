@@ -4,11 +4,13 @@ import { useState, type FormEvent } from "react";
 import { Send, MessageCircle } from "lucide-react";
 import Reveal from "./Reveal";
 import { contactInfo } from "@/lib/data";
+import { useI18n } from "@/components/I18nProvider";
 
 const WHATSAPP_NUMBER = "918765301563";
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
+  const { t } = useI18n();
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,11 +38,10 @@ export default function Contact() {
         <Reveal className="mx-auto max-w-3xl text-center">
           <span className="eyebrow">
             <span className="text-saffron-500">🙏</span>
-            Get in Touch
+            {t("contact.title")} {t("contact.titleHighlight")}
           </span>
           <h2 className="font-display text-3xl font-bold leading-tight text-ink sm:text-4xl md:text-5xl">
-            We&apos;re here to guide you on your{" "}
-            <span className="shimmer-text">spiritual journey</span>.
+            {t("contact.subtitle")}
           </h2>
         </Reveal>
 

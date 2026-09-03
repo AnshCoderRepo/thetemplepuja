@@ -1,6 +1,18 @@
-import { navLinks } from "@/lib/data";
+"use client";
+
+import { useI18n } from "@/components/I18nProvider";
 
 export default function Footer() {
+  const { t } = useI18n();
+
+  const navLinks = [
+    { label: t("nav.home"), href: "#home" },
+    { label: t("nav.events"), href: "#events" },
+    { label: t("nav.whyUs"), href: "#why-us" },
+    { label: t("nav.reviews"), href: "#testimonials" },
+    { label: t("nav.faq"), href: "#faq" },
+    { label: t("nav.contact"), href: "#contact" },
+  ];
   return (
     <footer className="relative overflow-hidden bg-ink pt-16 text-cream">
       <div
@@ -26,9 +38,7 @@ export default function Footer() {
               />
             </a>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-cream/60">
-              India&apos;s trusted digital spiritual platform. Certified
-              pandits, authentic Vedic rituals, HD video recordings and
-              blessed samagri — bringing the divine to your doorstep.
+              {t("footer.description")}
             </p>
             <p className="mt-4 font-devanagari text-sm text-saffron-300/80">
               🙏 विश्वास, पवित्रता और भक्ति का संगम
@@ -38,7 +48,7 @@ export default function Footer() {
           {/* Quick links */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-saffron-400">
-              Quick Links
+              {t("footer.quickLinks")}
             </h4>
             <ul className="mt-4 grid grid-cols-2 gap-2">
               {navLinks.map((link) => (
@@ -93,10 +103,9 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-3 border-t border-white/10 py-6 text-xs text-cream/40 sm:flex-row">
-          <p>© {new Date().getFullYear()} The Temple Puja. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} The Temple Puja. {t("footer.rights")}</p>
           <p>
-            Made with <span className="text-saffron-400">🙏 devotion</span> in
-            India
+            {t("footer.madeWith")}
           </p>
         </div>
       </div>

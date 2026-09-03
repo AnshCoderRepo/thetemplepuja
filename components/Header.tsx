@@ -3,11 +3,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X, Phone } from "lucide-react";
-import { navLinks } from "@/lib/data";
+import { useI18n } from "@/components/I18nProvider";
+import LanguageToggle from "@/components/LanguageToggle";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
+
+  const navLinks = [
+    { label: t("nav.home"), href: "#home" },
+    { label: t("nav.events"), href: "#events" },
+    { label: t("nav.whyUs"), href: "#why-us" },
+    { label: t("nav.reviews"), href: "#testimonials" },
+    { label: t("nav.faq"), href: "#faq" },
+    { label: t("nav.contact"), href: "#contact" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -72,17 +83,18 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <LanguageToggle className="hidden sm:flex" />
           <Link
             href="/login"
             className="btn-outline hidden !px-4 !py-2.5 text-xs sm:inline-flex"
           >
-            Login
+            {t("nav.login")}
           </Link>
           <Link
             href="/book/form"
             className="btn-primary hidden !px-5 !py-2.5 text-xs sm:inline-flex"
           >
-            Book Pooja
+            {t("nav.bookPooja")}
           </Link>
           <button
             onClick={() => setOpen(!open)}
@@ -117,17 +129,20 @@ export default function Header() {
               onClick={() => setOpen(false)}
               className="btn-outline !w-full"
             >
-              Login
+              {t("nav.login")}
             </Link>
 
           </div>
-          <Link
-            href="/book/form"
-            onClick={() => setOpen(false)}
-            className="btn-primary mt-2 !w-full"
-          >
-            Book Pooja
-          </Link>
+          <div className="mt-2 flex gap-2">
+            <LanguageToggle className="flex-1" />
+            <Link
+              href="/book/form"
+              onClick={() => setOpen(false)}
+              className="btn-primary flex-1"
+            >
+              {t("nav.bookPooja")}
+            </Link>
+          </div>
         </div>
       </div>
     </header>

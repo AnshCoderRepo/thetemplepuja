@@ -8,6 +8,7 @@ import {
   verifyPaymentSignature,
 } from "@/lib/razorpay";
 import { isValidIndianPhone, normalizePhone } from "@/lib/validation";
+import { bookingRateLimiter } from "@/lib/rate-limit";
 
 interface PaymentProof {
   razorpayOrderId?: unknown;
@@ -35,6 +36,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Missing or invalid required booking details." },
       { status: 400 }
+    );
+  }
+
+  // Rate-limit bookings per phone number (default: 5 per hour).
+  const rateLimit = bookingRateLimiter.consume(normalizedPhone);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too many booking attempts. Please try again later.",
+        retryAfterSec: rateLimit.retryAfterSec,
+      },
+      { status: 429 }
     );
   }
 
