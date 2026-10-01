@@ -23,6 +23,7 @@ const devanagari = Noto_Sans_Devanagari({
 
 import { SITE_URL } from "@/lib/seo";
 import ScrollToTop from "@/components/ScrollToTop";
+import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Providers from "@/components/Providers";
 
@@ -56,7 +57,13 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${devanagari.variable}`}>
-      <body className="font-sans"><Providers><ErrorBoundary>{children}</ErrorBoundary><ScrollToTop /></Providers></body>
+      <body className="font-sans">
+        <Providers>
+          <ErrorBoundary>{children}</ErrorBoundary>
+          <FloatingWhatsApp />
+          <ScrollToTop />
+        </Providers>
+      </body>
     </html>
   );
 }

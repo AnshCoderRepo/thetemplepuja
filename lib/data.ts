@@ -441,7 +441,7 @@ export const contactInfo = [
     icon: "📱",
     label: "WhatsApp",
     value: "+91 87653 01563",
-    href: "https://wa.me/918765301563",
+    href: "https://wa.me/918765301563?text=Namaste%2C%20I%20would%20like%20to%20know%20more%20about%20your%20Puja%20services.",
   },
   {
     icon: "📞",
