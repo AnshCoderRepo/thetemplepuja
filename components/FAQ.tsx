@@ -7,6 +7,7 @@ import InteractiveImageAccordion, {
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 import { faqs } from "@/lib/data";
+import { useI18n } from "@/components/I18nProvider";
 
 // Atmospheric imagery for the FAQ tiles (verified Unsplash photos).
 const faqImages = [
@@ -19,6 +20,8 @@ const faqImages = [
 ];
 
 export default function FAQ() {
+  const { t } = useI18n();
+
   const items: ImageAccordionItem[] = faqs.map((faq, i) => ({
     id: i + 1,
     title: faq.q,
@@ -30,9 +33,9 @@ export default function FAQ() {
     <section id="faq" className="section-pad relative bg-saffron-50">
       <div className="container-px">
         <SectionHeading
-          eyebrow="Got Questions?"
-          title="Frequently Asked Questions"
-          subtitle="Everything you need to know about The Temple Puja"
+          eyebrow="GOT QUESTIONS?"
+          title={`${t("faq.title")} ${t("faq.titleHighlight")}`}
+          subtitle={t("faq.subtitle")}
         />
 
         <div className="mt-12 grid items-start gap-10 lg:grid-cols-[1fr_1.3fr]">

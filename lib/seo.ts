@@ -4,11 +4,11 @@ import type { Pooja } from "./data";
 
 /** Public origin. Set SITE_URL in production; falls back to the known domain
  * so sitemap.xml / robots.txt / canonical URLs are correct out of the box. */
-export const SITE_URL = process.env.SITE_URL ?? "https://thetemplepuja.com";
+export const SITE_URL = process.env.SITE_URL ?? "https://templepujasewa.com";
 
 const ORG = {
   "@type": "Organization",
-  name: "The Temple Puja",
+  name: "templepujasewa",
   url: SITE_URL,
   logo: `${SITE_URL}/logo.jpeg`,
   description:
@@ -30,7 +30,7 @@ export function websiteLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "The Temple Puja",
+    name: "templepujasewa",
     url: SITE_URL,
     description: ORG.description,
     inLanguage: "en",
@@ -55,7 +55,7 @@ export function itemListLd(poojas: Pooja[]) {
   return {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "Poojas & Rituals at The Temple Puja",
+    name: "Poojas & Rituals at templepujasewa",
     numberOfItems: poojas.length,
     itemListElement: poojas.map((p, i) => ({
       "@type": "ListItem",
@@ -78,7 +78,7 @@ export function serviceLd(pooja: Pooja) {
     category: "Religious Services",
     provider: {
       "@type": "Organization",
-      name: "The Temple Puja",
+      name: "templepujasewa",
       url: SITE_URL,
       logo: `${SITE_URL}/logo.jpeg`,
     },

@@ -130,6 +130,26 @@ describe("admin credentials", () => {
       true
     );
   });
+
+  it("respects ADMIN_EMAIL and ADMIN_PASSWORD environment variables", async () => {
+    process.env.ADMIN_EMAIL = "customadmin@templepuja.com";
+    process.env.ADMIN_PASSWORD = "CustomSecurePassword999!";
+    
+    expect(store.getDefaultAdminEmail()).toBe("customadmin@templepuja.com");
+    expect(store.getDefaultAdminPassword()).toBe("CustomSecurePassword999!");
+
+    const creds = await store.getAdminCreds();
+    expect(creds.email).toBe("customadmin@templepuja.com");
+    expect(
+      await store.verifyAdminLogin(
+        "customadmin@templepuja.com",
+        "CustomSecurePassword999!"
+      )
+    ).toBe(true);
+
+    delete process.env.ADMIN_EMAIL;
+    delete process.env.ADMIN_PASSWORD;
+  });
 });
 
 describe("session tokens", () => {

@@ -1,8 +1,12 @@
+"use client";
+
 import SectionHeading from "./SectionHeading";
 import { StaggerTestimonials } from "@/components/ui/stagger-testimonials";
 import { testimonials } from "@/lib/data";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function Testimonials() {
+  const { t } = useI18n();
   // Pad to an odd count so the fanned deck is symmetric (a lone repeat of the
   // first review sits at the far edge, mostly clipped and rotated).
   const deck = testimonials.length % 2 === 0
@@ -34,9 +38,9 @@ export default function Testimonials() {
       <div className="container-px relative">
         <SectionHeading
           dark
-          eyebrow="Testimonials"
-          title="Devotee Reviews"
-          subtitle="Hear from thousands of satisfied devotees across India — drag through the reviews"
+          eyebrow="TESTIMONIALS"
+          title={`${t("testimonials.title")} ${t("testimonials.titleHighlight")}`}
+          subtitle={t("testimonials.subtitle")}
         />
 
         <StaggerTestimonials items={items} />

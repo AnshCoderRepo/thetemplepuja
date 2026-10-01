@@ -6,7 +6,7 @@ import type {
   CatalogOverrides,
   PersistenceStore,
 } from "./persistence";
-import type { Coupon, Pooja, PoojaDate, UpcomingEventSpec } from "./data";
+import type { Coupon, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
 import type { BookingRecord, UserProfile } from "./storage";
 import { ensureDnsPatch } from "./dns-fix";
 
@@ -38,6 +38,7 @@ interface CatalogDoc extends Document {
   events?: UpcomingEventSpec[];
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
+  temples?: Temple[];
 }
 
 interface AdminDoc extends Document {

@@ -81,3 +81,72 @@ export function createRateLimiter({
 
 // Shared limiter used by the login route (5 failed attempts / 15 min per IP).
 export const loginRateLimiter = createRateLimiter();
+
+// ── Sliding-window request limiter ─────────────────────────────────────
+// Counts *every* request (not just failures) per key. Used to cap booking
+// attempts per phone number.
+export interface RequestLimiter {
+  /** Consume one slot. Returns { allowed, remaining, retryAfterSec }. */
+  consume(key: string): {
+    allowed: boolean;
+    remaining: number;
+    retryAfterSec: number;
+  };
+}
+
+export function createRequestLimiter({
+  limit = 3,
+  windowMs = 60 * 60 * 1000, // 1 hour
+  maxEntries = 10_000,
+  now = Date.now,
+}: RateLimiterOptions = {}): RequestLimiter {
+  const buckets = new Map<string, { count: number; windowStart: number }>();
+
+  function sweepExpired(t: number) {
+    for (const [k, val] of buckets.entries()) {
+      if (t - val.windowStart >= windowMs) buckets.delete(k);
+    }
+  }
+
+  function prune(key: string): { count: number; windowStart: number } {
+    const t = now();
+    if (buckets.size > maxEntries) {
+      sweepExpired(t);
+      if (buckets.size >= maxEntries) {
+        const oldestKey = buckets.keys().next().value;
+        if (oldestKey) buckets.delete(oldestKey);
+      }
+    }
+    const entry = buckets.get(key);
+    if (!entry || t - entry.windowStart >= windowMs) {
+      const fresh = { count: 0, windowStart: t };
+      buckets.set(key, fresh);
+      return fresh;
+    }
+    return entry;
+  }
+
+  return {
+    consume(key) {
+      const entry = prune(key);
+      const t = now();
+      if (entry.count >= limit) {
+        const remaining = windowMs - (t - entry.windowStart);
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfterSec: Math.max(1, Math.ceil(remaining / 1000)),
+        };
+      }
+      entry.count += 1;
+      return {
+        allowed: true,
+        remaining: Math.max(0, limit - entry.count),
+        retryAfterSec: 0,
+      };
+    },
+  };
+}
+
+// 5 bookings per phone per hour by default.
+export const bookingRateLimiter = createRequestLimiter();

@@ -411,7 +411,7 @@ export const testimonials = [
 
 export const faqs = [
   {
-    q: "How do I book a pooja on The Temple Puja?",
+    q: "How do I book a pooja on templepujasewa?",
     a: "Simply select your pooja, choose a date, fill in your details (name, gotra, city, mobile number), and complete secure payment via UPI, card or net banking. Your booking is confirmed instantly and admin is notified on WhatsApp.",
   },
   {
@@ -453,6 +453,84 @@ export const contactInfo = [
 
 // ===================== POOJA CATALOG =====================
 
+export interface PoojaPackage {
+  name: string;
+  price: number;
+  description?: string;
+}
+
+export interface ChadhavaOffering {
+  id: string;
+  name: string;
+  hindiName?: string;
+  description: string;
+  price: number;
+  emoji: string;
+  category?: string;
+  image?: string;
+}
+
+export const defaultChadhavaOfferings: ChadhavaOffering[] = [
+  {
+    id: "flower-chadhava",
+    name: "Pushpa Mala & Flower Chadhava",
+    hindiName: "पुष्प माला एवं पुष्प अर्पण",
+    description: "Sacred fresh garland and fragrant flower basket offered at deity feet during sankalp.",
+    price: 151,
+    emoji: "🌸",
+    category: "Pushpa Seva",
+  },
+  {
+    id: "special-prasad",
+    name: "Special Temple Prasadam",
+    hindiName: "विशेष महाप्रसाद",
+    description: "Sanctified dry fruit & sweet prasad energised with mantras and sent with divine blessings.",
+    price: 101,
+    emoji: "🍯",
+    category: "Prasad Seva",
+  },
+  {
+    id: "rudraksha-offering",
+    name: "Blessed Rudraksha Mala Arpan",
+    hindiName: "अभिमंत्रित रुद्राक्ष अर्पण",
+    description: "5-Mukhi certified Rudraksha touch-energised on the Shiva lingam during abhishek.",
+    price: 251,
+    emoji: "📿",
+    category: "Sacred Relic",
+  },
+  {
+    id: "panchamrit-abhishek",
+    name: "Panchamrit Abhishek Offering",
+    hindiName: "पंचामृत अभिषेक अर्पण",
+    description: "Pure cow milk, honey, ghee, curd and sugar offering for divine abhishek bath.",
+    price: 351,
+    emoji: "🥛",
+    category: "Abhishek Seva",
+  },
+  {
+    id: "bhojan-brahmins",
+    name: "Bhojan Seva for Brahmins",
+    hindiName: "ब्राह्मण भोजन सेवा",
+    description: "Sattvic feast offering served to Vedic brahmins and temple devotees in your gotra's name.",
+    price: 501,
+    emoji: "🍲",
+    category: "Anna Daan",
+  },
+  {
+    id: "sindoor-chola",
+    name: "Sindoor & Hanuman Chola Seva",
+    hindiName: "सिंदूर एवं चोला सेवा",
+    description: "Sacred orange sindoor paste, silver leaf and red chola offered to Bajrangbali for protection.",
+    price: 201,
+    emoji: "🚩",
+    category: "Chola Seva",
+  },
+];
+
+export function getChadhavaOffering(id: string): ChadhavaOffering | undefined {
+  return defaultChadhavaOfferings.find((c) => c.id === id);
+}
+
 export interface Pooja {
   slug: string;
   title: string;
@@ -468,6 +546,25 @@ export interface Pooja {
    * form, catalogue and detail pages) until it is turned back on. Absent on
    * older stored data, which is treated as active. */
   active?: boolean;
+
+  /** Category classification (e.g. Rashifal Pooja, Dosha Nivaran, Festival Special) */
+  category?: string;
+  /** Ritual type: 'temple' (performed at temple) or 'home' (performed at home) */
+  type?: "temple" | "home";
+  /** Format: true if livestreamed/online participation is available */
+  online?: boolean;
+  /** Primary scheduled date / start date (e.g. "Oct 4, 2026") */
+  startDate?: string;
+  /** Image URL / Banner */
+  imageUrl?: string;
+  /** Related Deities (e.g. ["Lord Shiva", "Lord Ganesha"]) */
+  deities?: string[];
+  /** Associated Temple IDs/Slugs (e.g. ["navagrah-temple", "kashi-vishwanath"]) */
+  templeSlugs?: string[];
+  /** Chadhava offering tags */
+  chadhavaOptions?: string[];
+  /** Multi-tier packages */
+  packages?: PoojaPackage[];
 
   // ── Event scheduling (optional) ──
   // When daysFromToday is set, this pooja appears on the home page carousel
@@ -507,6 +604,10 @@ export const poojas: Pooja[] = [
     price: 1101,
     duration: "2–3 hours",
     bestMuhurat: "Purnima & Sankranti",
+    category: "Family & Home",
+    type: "temple",
+    online: true,
+    deities: ["Lord Vishnu", "Lord Satyanarayan"],
     description:
       "The beloved vow-fulfillment ritual of Lord Vishnu's Satyanarayan form, bringing peace, prosperity and harmony to the whole family.",
     benefits: ["Prosperity & abundance", "Family peace & harmony", "Vow fulfillment", "Blessed prasadam"],
@@ -520,6 +621,10 @@ export const poojas: Pooja[] = [
     price: 2501,
     duration: "1.5–2 hours",
     bestMuhurat: "Monday & Pradosh",
+    category: "Dosha Nivaran",
+    type: "temple",
+    online: true,
+    deities: ["Lord Shiva"],
     description:
       "Sacred abhishek of the Shiva Linga with panchamrit, bilva leaves and Vedic chants — a powerful ritual for protection and inner strength.",
     benefits: ["Divine protection", "Removal of obstacles", "Health & longevity", "Inner strength"],
@@ -533,6 +638,10 @@ export const poojas: Pooja[] = [
     price: 3501,
     duration: "2–3 hours",
     bestMuhurat: "Vastu muhurat",
+    category: "Family & Home",
+    type: "home",
+    online: false,
+    deities: ["Lord Ganesha", "Goddess Lakshmi"],
     description:
       "Vedic house-warming ceremony that purifies and energises your new home, invoking Goddess Lakshmi and Vastu Devta for lasting positivity.",
     benefits: ["Positive energies", "Vastu harmony", "A peaceful home", "Blessings of Lakshmi"],
@@ -546,6 +655,10 @@ export const poojas: Pooja[] = [
     price: 1001,
     duration: "1.5 hours",
     bestMuhurat: "Saturday",
+    category: "Dosha Nivaran",
+    type: "temple",
+    online: true,
+    deities: ["Lord Shani"],
     description:
       "Special worship of Lord Shani with tail oil, black til and Shani mantra japa to pacify Saturn and bring stability during sade sati.",
     benefits: ["Sade sati relief", "Career stability", "Protection from malefic", "Patience & discipline"],
@@ -559,6 +672,10 @@ export const poojas: Pooja[] = [
     price: 5001,
     duration: "3–4 hours",
     bestMuhurat: "Graha shanti muhurat",
+    category: "Rashifal Pooja",
+    type: "temple",
+    online: true,
+    deities: ["Navgraha Devtas"],
     description:
       "A comprehensive ritual pacifying all nine planets with individual homas, dosha remedies and kumbha abhishek for overall well-being.",
     benefits: ["Balances all 9 planets", "Removes doshas", "Overall well-being", "Auspicious beginnings"],
@@ -572,6 +689,10 @@ export const poojas: Pooja[] = [
     price: 501,
     duration: "1 hour",
     bestMuhurat: "Tuesday & Saturday",
+    category: "Health & Healing",
+    type: "temple",
+    online: true,
+    deities: ["Lord Hanuman"],
     description:
       "Worship of Bajrang Bali with sindoor, chola and Hanuman Chalisa path to fill your life with courage, strength and fearlessness.",
     benefits: ["Courage & strength", "Removal of fear", "Enemy troubles removed", "Speedy justice"],
@@ -585,6 +706,10 @@ export const poojas: Pooja[] = [
     price: 1101,
     duration: "1.5 hours",
     bestMuhurat: "Friday & Diwali",
+    category: "Wealth & Prosperity",
+    type: "temple",
+    online: true,
+    deities: ["Goddess Lakshmi"],
     description:
       "Invoke Mahalakshmi with lotus offerings, shri yantra pujan and 108 names path to attract wealth, prosperity and financial stability.",
     benefits: ["Wealth & prosperity", "Business growth", "Financial stability", "Blessings of Mahalakshmi"],
@@ -598,6 +723,10 @@ export const poojas: Pooja[] = [
     price: 2101,
     duration: "2 hours",
     bestMuhurat: "Mahashivratri",
+    category: "Health & Healing",
+    type: "temple",
+    online: true,
+    deities: ["Lord Shiva"],
     description:
       "11,000 recitations of the Maha Mrityunjaya mantra with havan — a profound ritual for healing, protection and victory over fear.",
     benefits: ["Health & healing", "Protection from accidents", "Longevity", "Peace of mind"],
@@ -611,6 +740,10 @@ export const poojas: Pooja[] = [
     price: 1501,
     duration: "1.5 hours",
     bestMuhurat: "Vasant Panchami",
+    category: "Festival Special",
+    type: "temple",
+    online: true,
+    deities: ["Goddess Saraswati"],
     description:
       "Seek the blessings of Goddess Saraswati for students and artists — with aksharabhyas, pustak pujan and Vedic chants for wisdom.",
     benefits: ["Wisdom & knowledge", "Academic success", "Creative inspiration", "Speech clarity"],
@@ -624,6 +757,10 @@ export const poojas: Pooja[] = [
     price: 2501,
     duration: "7 days (1 hour/day)",
     bestMuhurat: "Navratri",
+    category: "Festival Special",
+    type: "temple",
+    online: true,
+    deities: ["Maa Durga"],
     description:
       "Complete recitation of the 700 verses of Devi Mahatmya over seven days — the ultimate shield against negativity and fear.",
     benefits: ["Removal of negativity", "Divine protection", "Courage in adversity", "Shakti & confidence"],
@@ -637,6 +774,10 @@ export const poojas: Pooja[] = [
     price: 1001,
     duration: "1 hour",
     bestMuhurat: "Vishwakarma Day",
+    category: "Wealth & Prosperity",
+    type: "temple",
+    online: true,
+    deities: ["Lord Vishwakarma"],
     description:
       "Worship of the divine architect Vishwakarma for workshops, factories and vehicles — ensuring safety, skill and business growth.",
     benefits: ["Business prosperity", "Machine & vehicle safety", "Success in work", "Skill enhancement"],
@@ -650,6 +791,10 @@ export const poojas: Pooja[] = [
     price: 1101,
     duration: "1.5 hours",
     bestMuhurat: "Dhanteras",
+    category: "Wealth & Prosperity",
+    type: "temple",
+    online: true,
+    deities: ["Lord Kuber"],
     description:
       "Worship of Lord Kuber with the Kuber Yantra to attract wealth, clear debts and open new doors of financial opportunity.",
     benefits: ["Attract wealth", "Business growth", "Debt relief", "Financial wisdom"],
@@ -767,3 +912,132 @@ export const coupons: Record<string, Coupon> = {
     minAmount: 1500,
   },
 };
+
+// ===================== TEMPLE MANAGEMENT =====================
+
+export interface Temple {
+  slug: string;
+  name: string;
+  hindiName?: string;
+  deity: string;
+  city: string;
+  state: string;
+  address?: string;
+  pincode?: string;
+  description: string;
+  image?: string;
+  timings?: string;
+  active: boolean;
+  poojaSlugs?: string[];
+}
+
+export function isTempleActive(t: Temple): boolean {
+  return t.active !== false;
+}
+
+export function activeTemples(list: Temple[]): Temple[] {
+  return list.filter(isTempleActive);
+}
+
+export const defaultTemples: Temple[] = [
+  {
+    slug: "navagrah-temple",
+    name: "Navagrah Temple",
+    hindiName: "नवग्रह मंदिर",
+    deity: "Navagraha Devatas",
+    city: "Ujjain",
+    state: "Madhya Pradesh",
+    address: "Triveni Ghat, Ujjain",
+    pincode: "456006",
+    description:
+      "Ancient temple dedicated to the nine planetary deities situated on the banks of Triveni. Famous for Rahu-Ketu and Shani Shanti rituals.",
+    image: "https://images.unsplash.com/photo-1609766857041-ed402ea8069a?auto=format&fit=crop&w=800&q=80",
+    timings: "5:30 AM – 9:00 PM",
+    active: true,
+    poojaSlugs: ["navgraha-shanti", "shani-dev-pooja"],
+  },
+  {
+    slug: "kashi-vishwanath",
+    name: "Kashi Vishwanath Temple",
+    hindiName: "काशी विश्वनाथ मंदिर",
+    deity: "Lord Shiva",
+    city: "Varanasi",
+    state: "Uttar Pradesh",
+    address: "Lahori Tola, Varanasi",
+    pincode: "221001",
+    description:
+      "One of the most sacred twelve Jyotirlingas, located on the western bank of the holy river Ganga in Kashi.",
+    image: "https://images.unsplash.com/photo-1561361058-c24cecae35ca?auto=format&fit=crop&w=800&q=80",
+    timings: "3:00 AM – 11:00 PM",
+    active: true,
+    poojaSlugs: ["rudrabhishek", "maha-mrityunjaya-jap"],
+  },
+  {
+    slug: "mahakaleshwar",
+    name: "Mahakaleshwar Jyotirlinga",
+    hindiName: "महाकालेश्वर ज्योतिर्लिंग",
+    deity: "Lord Shiva (Mahakal)",
+    city: "Ujjain",
+    state: "Madhya Pradesh",
+    address: "Jaisinghpura, Ujjain",
+    pincode: "456001",
+    description:
+      "Dakshinmukhi Jyotirlinga renowned for its sacred Bhasma Aarti and time-transcending blessings of Mahakal.",
+    image: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=800&q=80",
+    timings: "4:00 AM – 11:00 PM",
+    active: true,
+    poojaSlugs: ["rudrabhishek", "maha-mrityunjaya-jap"],
+  },
+  {
+    slug: "trimbakeshwar",
+    name: "Trimbakeshwar Shiva Temple",
+    hindiName: "त्र्यंबकेश्वर ज्योतिर्लिंग",
+    deity: "Lord Shiva",
+    city: "Nashik",
+    state: "Maharashtra",
+    address: "Trimbak, Nashik",
+    pincode: "422212",
+    description:
+      "Sacred Jyotirlinga featuring the three-faced lingam embodying Brahma, Vishnu, and Maheshwar near the origin of river Godavari.",
+    image: "https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=800&q=80",
+    timings: "5:30 AM – 9:00 PM",
+    active: true,
+    poojaSlugs: ["rudrabhishek", "navgraha-shanti"],
+  },
+  {
+    slug: "siddhivinayak",
+    name: "Shree Siddhivinayak Temple",
+    hindiName: "श्री सिद्धिविनायक मंदिर",
+    deity: "Lord Ganesha",
+    city: "Mumbai",
+    state: "Maharashtra",
+    address: "Prabhadevi, Mumbai",
+    pincode: "400028",
+    description:
+      "World-renowned shrine of Lord Ganesha fulfilling sincere wishes and granting success in new ventures.",
+    image: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80",
+    timings: "5:30 AM – 10:00 PM",
+    active: true,
+    poojaSlugs: ["satyanarayan-katha", "griha-pravesh"],
+  },
+  {
+    slug: "salasar-balaji",
+    name: "Salasar Balaji Temple",
+    hindiName: "सालासर बालाजी मंदिर",
+    deity: "Lord Hanuman",
+    city: "Salasar",
+    state: "Rajasthan",
+    address: "Salasar, Churu District",
+    pincode: "331506",
+    description:
+      "Miraculous swayambhu idol of Lord Hanuman with beard and mustache, attracting millions of devotees for courage and protection.",
+    image: "https://images.unsplash.com/photo-1598890777032-bde835ba27c2?auto=format&fit=crop&w=800&q=80",
+    timings: "5:00 AM – 10:00 PM",
+    active: true,
+    poojaSlugs: ["hanuman-pooja"],
+  },
+];
+
+export function getTemple(slug: string, list: Temple[] = defaultTemples): Temple | undefined {
+  return list.find((t) => t.slug === slug);
+}

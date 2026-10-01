@@ -3,11 +3,13 @@ import { upsertUserBooking } from "@/lib/server-store";
 import type { BookingInput } from "@/lib/storage";
 import { notifyBookingConfirmed, receiptUrlFor } from "@/lib/whatsapp";
 import {
+  generateReceiptNumber,
   getRazorpayOrder,
   razorpayConfigured,
   verifyPaymentSignature,
 } from "@/lib/razorpay";
 import { isValidIndianPhone, normalizePhone } from "@/lib/validation";
+import { bookingRateLimiter } from "@/lib/rate-limit";
 
 interface PaymentProof {
   razorpayOrderId?: unknown;
@@ -36,6 +38,28 @@ export async function POST(req: NextRequest) {
       { error: "Missing or invalid required booking details." },
       { status: 400 }
     );
+  }
+
+  // Rate-limit bookings per phone number (default: 5 per hour).
+  const rateLimit = bookingRateLimiter.consume(normalizedPhone);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too many booking attempts. Please try again later.",
+        retryAfterSec: rateLimit.retryAfterSec,
+      },
+      { status: 429 }
+    );
+  }
+
+  // Generate unique official receipt number for this transaction
+  if (!booking.receiptNumber) {
+    booking.receiptNumber = generateReceiptNumber(booking.bookingId);
+  }
+
+  // Count addons if array provided
+  if (Array.isArray(booking.addons) && booking.addons.length > 0) {
+    booking.addonCount = booking.addons.reduce((sum, item) => sum + (item.quantity || 1), 0);
   }
 
   // Real-payment flow: when Razorpay is configured, a booking is only accepted
@@ -120,5 +144,5 @@ export async function POST(req: NextRequest) {
     ),
   });
 
-  return NextResponse.json({ ok: true, user });
+  return NextResponse.json({ ok: true, user, booking });
 }

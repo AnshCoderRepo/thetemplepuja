@@ -15,7 +15,7 @@ export default function ExperienceSection() {
             This is what a live pooja looks like
           </h3>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-cream/70 md:text-base">
-            Every ritual on The Temple Puja is performed by certified pandits
+            Every ritual on templepujasewa is performed by certified pandits
             exactly like this — with Vedic chants, sacred lamps and authentic
             samagri. Scroll up to replay the experience, then book your own
             pooja and receive the HD video recording right after the ritual.

@@ -1,7 +1,7 @@
 // The persistence contract used by lib/server-store.ts. Real deployments use
 // the MongoDB store (lib/mongo-store.ts); tests and offline fallbacks use the
 // in-memory store below.
-import type { Coupon, Pooja, PoojaDate, UpcomingEventSpec } from "./data";
+import type { Coupon, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
 import type { UserProfile } from "./storage";
 
 export interface CatalogOverrides {
@@ -9,6 +9,7 @@ export interface CatalogOverrides {
   events?: UpcomingEventSpec[];
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
+  temples?: Temple[];
 }
 
 export interface AdminCreds {
@@ -20,7 +21,7 @@ export interface PersistenceStore {
   getCatalogOverrides(): Promise<CatalogOverrides>;
   saveCatalogOverrides(overrides: CatalogOverrides): Promise<void>;
   clearCatalogOverrides(
-    sections: ("poojas" | "events" | "coupons" | "poojaDates")[]
+    sections: ("poojas" | "events" | "coupons" | "poojaDates" | "temples")[]
   ): Promise<void>;
   getAdminCreds(): Promise<AdminCreds>;
   saveAdminCreds(email: string, passwordHash: string): Promise<void>;

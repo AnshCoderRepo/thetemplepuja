@@ -4,10 +4,31 @@
 
 export type BookingStatus = "confirmed" | "cancelled" | "rescheduled" | "refunded";
 
+export interface BookingAddonItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  emoji?: string;
+}
+
+export interface CustomerMediaRecord {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+  poojaTitle?: string;
+  bookingId?: string;
+  uploadedAt: string; // ISO
+}
+
 export interface BookingRecord {
   bookingId: string;
+  receiptNumber?: string; // e.g. "RCPT-20261001-000123"
   poojaSlug: string;
   poojaTitle: string;
+  templeSlug?: string;
+  templeName?: string;
   date: string; // e.g. "Wed, 12 Aug"
   time: string; // e.g. "7:00 PM IST"
   panditName: string;
@@ -16,6 +37,8 @@ export interface BookingRecord {
   discount: number; // coupon savings (0 when none)
   couponCode: string | null;
   addonCount: number;
+  addons?: BookingAddonItem[];
+  videos?: CustomerMediaRecord[];
   createdAt: string; // ISO
   status: BookingStatus;
   cancelledAt?: string; // ISO — set when the devotee cancels
@@ -55,6 +78,7 @@ export interface UserProfile {
   email: string;
   createdAt: string; // ISO
   bookings: BookingRecord[];
+  videos?: CustomerMediaRecord[];
 }
 
 import { STORAGE_KEYS } from "./constants";

@@ -24,10 +24,11 @@ const devanagari = Noto_Sans_Devanagari({
 import { SITE_URL } from "@/lib/seo";
 import ScrollToTop from "@/components/ScrollToTop";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "The Temple Puja | Online Pooja Booking & Sacred Rituals",
+  title: "templepujasewa | Online Pooja Booking & Sacred Rituals",
   description:
     "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals and HD video recordings of every pooja.",
   icons: {
@@ -35,15 +36,15 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "The Temple Puja",
-    title: "The Temple Puja | Online Pooja Booking & Sacred Rituals",
+    siteName: "templepujasewa",
+    title: "templepujasewa | Online Pooja Booking & Sacred Rituals",
     description:
       "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals and HD video recordings of every pooja.",
-    images: [{ url: "/logo.jpeg", alt: "The Temple Puja" }],
+    images: [{ url: "/logo.jpeg", alt: "templepujasewa" }],
   },
   twitter: {
     card: "summary",
-    title: "The Temple Puja | Online Pooja Booking & Sacred Rituals",
+    title: "templepujasewa | Online Pooja Booking & Sacred Rituals",
     description:
       "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals and HD video recordings of every pooja.",
     images: ["/logo.jpeg"],
@@ -55,7 +56,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${devanagari.variable}`}>
-      <body className="font-sans"><ErrorBoundary>{children}</ErrorBoundary><ScrollToTop /></body>
+      <body className="font-sans"><Providers><ErrorBoundary>{children}</ErrorBoundary><ScrollToTop /></Providers></body>
     </html>
   );
 }
