@@ -65,7 +65,7 @@ export default function Header() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.jpeg"
-            alt="templepujasewa — The Temple Puja"
+            alt="templepujasewa"
             className="h-12 w-auto rounded-lg bg-white object-contain p-1 shadow-soft transition-transform duration-300 group-hover:scale-105"
           />
         </a>

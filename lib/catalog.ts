@@ -8,11 +8,13 @@
 import {
   coupons as staticCoupons,
   defaultPoojaDates,
+  defaultTemples as staticTemples,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEventSpecs,
   type Coupon,
   type Pooja,
   type PoojaDate,
+  type Temple,
   type UpcomingEventSpec,
 } from "./data";
 import { STORAGE_KEYS } from "./constants";
@@ -21,6 +23,7 @@ const POOJAS_KEY = STORAGE_KEYS.CATALOG_POOJAS;
 const EVENTS_KEY = STORAGE_KEYS.CATALOG_EVENTS;
 const COUPONS_KEY = STORAGE_KEYS.CATALOG_COUPONS;
 const POOJA_DATES_KEY = STORAGE_KEYS.CATALOG_POOJA_DATES;
+const TEMPLES_KEY = STORAGE_KEYS.CATALOG_TEMPLES;
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -108,4 +111,22 @@ export function saveCatalogPoojaDates(dates: PoojaDate[]): void {
 
 export function resetCatalogPoojaDates(): void {
   clear(POOJA_DATES_KEY);
+}
+
+// ===================== TEMPLES =====================
+
+export function getCatalogTemples(): Temple[] {
+  return read<Temple[]>(TEMPLES_KEY) ?? staticTemples;
+}
+
+export function getCatalogTemple(slug: string): Temple | undefined {
+  return getCatalogTemples().find((t) => t.slug === slug);
+}
+
+export function saveCatalogTemples(temples: Temple[]): void {
+  write(TEMPLES_KEY, temples);
+}
+
+export function resetCatalogTemples(): void {
+  clear(TEMPLES_KEY);
 }

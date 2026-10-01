@@ -3,6 +3,7 @@ import { upsertUserBooking } from "@/lib/server-store";
 import type { BookingInput } from "@/lib/storage";
 import { notifyBookingConfirmed, receiptUrlFor } from "@/lib/whatsapp";
 import {
+  generateReceiptNumber,
   getRazorpayOrder,
   razorpayConfigured,
   verifyPaymentSignature,
@@ -49,6 +50,16 @@ export async function POST(req: NextRequest) {
       },
       { status: 429 }
     );
+  }
+
+  // Generate unique official receipt number for this transaction
+  if (!booking.receiptNumber) {
+    booking.receiptNumber = generateReceiptNumber(booking.bookingId);
+  }
+
+  // Count addons if array provided
+  if (Array.isArray(booking.addons) && booking.addons.length > 0) {
+    booking.addonCount = booking.addons.reduce((sum, item) => sum + (item.quantity || 1), 0);
   }
 
   // Real-payment flow: when Razorpay is configured, a booking is only accepted
@@ -133,5 +144,5 @@ export async function POST(req: NextRequest) {
     ),
   });
 
-  return NextResponse.json({ ok: true, user });
+  return NextResponse.json({ ok: true, user, booking });
 }

@@ -33,7 +33,7 @@ export const translations = {
 
     // ─── Why Us ───
     "whyUs.title": "Why Choose",
-    "whyUs.titleHighlight": "The Temple Puja",
+    "whyUs.titleHighlight": "templepujasewa",
     "whyUs.subtitle": "We combine ancient Vedic traditions with modern convenience, ensuring every ritual is performed with utmost devotion and authenticity.",
     "whyUs.1.title": "Certified Pandits",
     "whyUs.1.desc": "Every pandit is verified and trained in authentic Vedic rituals.",
@@ -161,7 +161,7 @@ export const translations = {
 
     "faq.title": "Frequently Asked",
     "faq.titleHighlight": "Questions",
-    "faq.subtitle": "Everything you need to know about booking a pooja with The Temple Puja.",
+    "faq.subtitle": "Everything you need to know about booking a pooja with templepujasewa.",
 
     "contact.title": "Get In",
     "contact.titleHighlight": "Touch",
@@ -207,7 +207,7 @@ export const translations = {
 
     // ─── Why Us ───
     "whyUs.title": "क्यों चुनें",
-    "whyUs.titleHighlight": "द टेम्पल पूजा",
+    "whyUs.titleHighlight": "टेम्पल पूजा सेवा",
     "whyUs.subtitle": "हम प्राचीन वैदिक परंपराओं को आधुनिक सुविधा के साथ जोड़ते हैं, यह सुनिश्चित करते हुए कि प्रत्येक अनुष्ठान सर्वोच्च भक्ति और प्रामाणिकता के साथ किया जाए।",
     "whyUs.1.title": "प्रमाणित पंडित",
     "whyUs.1.desc": "हर पंडित को प्रामाणिक वैदिक अनुष्ठानों में सत्यापित और प्रशिक्षित किया गया है।",
@@ -337,7 +337,7 @@ export const translations = {
     // ─── FAQ ───
     "faq.title": "अक्सर पूछे जाने वाले",
     "faq.titleHighlight": "प्रश्न",
-    "faq.subtitle": "द टेम्पल पूजा के साथ पूजा बुक करने के बारे में आपको जो कुछ भी जानना है।",
+    "faq.subtitle": "टेम्पल पूजा सेवा के साथ पूजा बुक करने के बारे में आपको जो कुछ भी जानना है।",
 
     // ─── Contact ───
     "contact.title": "संपर्क",

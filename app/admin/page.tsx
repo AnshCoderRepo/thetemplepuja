@@ -4,20 +4,30 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   BarChart3,
+  Bell,
+  Building2,
   CalendarCheck,
   CalendarDays,
   ChevronDown,
-  Download,
+  ExternalLink,
+  Flame,
   Gift,
   KeyRound,
+  Layers,
+  LayoutDashboard,
   LayoutGrid,
   Lock,
   LogOut,
   Mail,
+  Menu,
+  MoreVertical,
   Search,
   ShieldCheck,
+  ShoppingBag,
+  Sparkles,
   Trash2,
   Undo2,
+  UserCheck,
   Users,
   Wallet,
   X,
@@ -25,12 +35,14 @@ import {
 } from "lucide-react";
 import BookPageHeader from "@/components/BookPageHeader";
 import PoojasManager from "@/components/admin/PoojasManager";
-import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
-import { computeAnalytics } from "@/lib/analytics";
-
+import TemplesManager from "@/components/admin/TemplesManager";
+import BookingsTable from "@/components/admin/BookingsTable";
+import OrdersManager from "@/components/admin/OrdersManager";
+import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import DatesManager from "@/components/admin/DatesManager";
 import CouponsManager from "@/components/admin/CouponsManager";
 import AccountManager from "@/components/admin/AccountManager";
+import CustomerProfileModal from "@/components/admin/CustomerProfileModal";
 import {
   clearAdminToken,
   getAdminToken,
@@ -45,90 +57,42 @@ import {
   adminLogout,
   deleteUserRemote,
   fetchAllUsers,
+  fetchCatalog,
   refundBookingRemote,
   resetDevoteePassword,
 } from "@/lib/api";
 import { formatINR } from "@/lib/format";
 
-const inputCls =
-  "w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200";
+type Tab =
+  | "analytics"
+  | "poojas"
+  | "temples"
+  | "bookings"
+  | "orders"
+  | "devotees"
+  | "dates"
+  | "coupons"
+  | "account";
 
-type Tab = "devotees" | "poojas" | "dates" | "coupons" | "analytics" | "account";
+interface NavItem {
+  id: Tab;
+  label: string;
+  icon: typeof Users;
+  badge?: string;
+  group?: string;
+}
 
-const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
-  { id: "devotees", label: "Devotees", icon: Users },
-  { id: "poojas", label: "Poojas", icon: LayoutGrid },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "dates", label: "Dates", icon: CalendarDays },
-  { id: "coupons", label: "Coupons", icon: Gift },
-  { id: "account", label: "Account", icon: KeyRound },
+const NAV_ITEMS: NavItem[] = [
+  { id: "analytics", label: "Analytics Dashboard", icon: BarChart3, group: "Overview" },
+  { id: "poojas", label: "Puja Catalog", icon: Flame, group: "Management" },
+  { id: "temples", label: "Temples", icon: Building2, group: "Management" },
+  { id: "bookings", label: "Successful Bookings", icon: ShieldCheck, group: "Orders & Sevas" },
+  { id: "orders", label: "All Orders & Payments", icon: ShoppingBag, group: "Orders & Sevas" },
+  { id: "devotees", label: "Devotee Profiles", icon: Users, group: "Community" },
+  { id: "dates", label: "Pooja Dates", icon: CalendarDays, group: "Settings" },
+  { id: "coupons", label: "Coupons", icon: Gift, group: "Settings" },
+  { id: "account", label: "Admin Account", icon: KeyRound, group: "Settings" },
 ];
-
-const TAB_META: Record<
-  Tab,
-  { title: React.ReactNode; subtitle: string; facts: { icon: string; label: string }[] }
-> = {
-  devotees: {
-    title: (
-      <>
-        Devotees & <span className="text-amber-200">Bookings</span>
-      </>
-    ),
-    subtitle:
-      "Every devotee who completes a payment creates a profile here, with their full details and pooja history.",
-    facts: [],
-  },
-  poojas: {
-    title: (
-      <>
-        Pooja <span className="text-amber-200">Catalog</span>
-      </>
-    ),
-    subtitle:
-      "Add, edit or remove poojas — the booking form, catalogue, detail pages and home-page carousel all update instantly.",
-    facts: [{ icon: "🪔", label: "Manage poojas" }, { icon: "📅", label: "Schedule events" }],
-  },
-  analytics: {
-    title: (
-      <>
-        <span className="text-amber-200">Analytics</span> & Insights
-      </>
-    ),
-    subtitle:
-      "Track bookings, revenue trends, and popular poojas to understand your devotee community.",
-    facts: [{ icon: "📊", label: "Bookings trend" }, { icon: "💰", label: "Revenue" }, { icon: "🪔", label: "Popular poojas" }],
-  },
-  dates: {
-    title: (
-      <>
-        Pooja <span className="text-amber-200">Dates</span>
-      </>
-    ),
-    subtitle:
-      "Set recurring dates each month when pujas are conducted — devotees pick from these when booking.",
-    facts: [{ icon: "📅", label: "Manage dates" }],
-  },
-  coupons: {
-    title: (
-      <>
-        Coupon <span className="text-amber-200">Codes</span>
-      </>
-    ),
-    subtitle:
-      "Create and edit discount codes and free benefits — devotees apply them at the secure payment checkout.",
-    facts: [{ icon: "🎟️", label: "Manage coupons" }],
-  },
-  account: {
-    title: (
-      <>
-        Admin <span className="text-amber-200">Account</span>
-      </>
-    ),
-    subtitle:
-      "Change the email and password used to sign in to this dashboard — no more hardcoded credentials.",
-    facts: [{ icon: "🔑", label: "Manage sign-in" }],
-  },
-};
 
 function initials(name: string) {
   return name
@@ -139,787 +103,669 @@ function initials(name: string) {
     .join("");
 }
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function exportJSON(users: UserProfile[]) {
-  const blob = new Blob([JSON.stringify(users, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `temple-puja-users-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function DevoteesPanel({
-  users,
-  expanded,
-  setExpanded,
-  stats,
-  onUsersChange,
-  token,
-  onAuthError,
-}: {
-  users: UserProfile[];
-  expanded: string | null;
-  setExpanded: (id: string | null) => void;
-  stats: {
-    devotees: number;
-    bookings: number;
-    active: number;
-    cancelled: number;
-    refunded: number;
-    revenue: number;
-  };
-  onUsersChange: () => void;
-  token: string;
-  onAuthError: () => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-
-  // Filter users by search query and date range
-  const filteredUsers = useMemo(() => {
-    let result = users;
-
-    // Search filter: match name, phone, or city
-    if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      result = result.filter(
-        (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.phone.includes(q) ||
-          (u.city && u.city.toLowerCase().includes(q))
-      );
-    }
-
-    // Date range filter: match user creation date
-    if (dateFrom || dateTo) {
-      result = result.filter((u) => {
-        const created = new Date(u.createdAt);
-        if (dateFrom) {
-          const from = new Date(dateFrom);
-          if (created < from) return false;
-        }
-        if (dateTo) {
-          const to = new Date(dateTo);
-          to.setHours(23, 59, 59, 999); // include the whole day
-          if (created > to) return false;
-        }
-        return true;
-      });
-    }
-
-    return result;
-  }, [users, search, dateFrom, dateTo]);
-
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        `Delete ${name}'s profile and ALL their bookings? This cannot be undone.`
-      )
-    ) {
-      return;
-    }
-    const res = await deleteUserRemote(id, token);
-    if (res.status === 401) {
-      onAuthError();
-      return;
-    }
-    setExpanded(null);
-    onUsersChange();
-  };
-
-  const handleResetPassword = async (phone: string, name: string) => {
-    const newPw = window.prompt(`Set a new password for ${name} (${phone}):`);
-    if (!newPw || newPw.length < 6) {
-      if (newPw !== null) window.alert("Password must be at least 6 characters.");
-      return;
-    }
-    const res = await resetDevoteePassword(phone, newPw, token);
-    if (res.status === 401) {
-      onAuthError();
-      return;
-    }
-    if (res.ok) {
-      window.alert(`Password updated for ${name}.`);
-    } else {
-      window.alert(res.error ?? "Failed to reset password.");
-    }
-  };
-
-  const handleRefund = async (userId: string, bookingId: string, poojaTitle: string) => {
-    if (
-      !window.confirm(
-        `Mark the ${poojaTitle} booking as refunded? It will no longer count as revenue.`
-      )
-    ) {
-      return;
-    }
-    const res = await refundBookingRemote(userId, bookingId, token);
-    if (res.status === 401) {
-      onAuthError();
-      return;
-    }
-    onUsersChange();
-  };
-
-  return (
-    <>
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { icon: Users, label: "Total Devotees", value: stats.devotees, cls: "from-saffron-500 to-saffron-600" },
-          { icon: CalendarCheck, label: "Active Bookings", value: stats.active, cls: "from-emerald-500 to-teal-600" },
-          { icon: Wallet, label: "Revenue (Active)", value: formatINR(stats.revenue), cls: "from-maroon-600 to-maroon-700" },
-          { icon: XCircle, label: "Cancelled / Refunded", value: stats.cancelled + stats.refunded, cls: "from-red-500 to-rose-600" },
-        ].map((s) => {
-          const Icon = s.icon;
-          return (
-            <div
-              key={s.label}
-              className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft"
-            >
-              <span
-                className={`flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${s.cls} text-white shadow-soft`}
-              >
-                <Icon className="h-5 w-5" />
-              </span>
-              <div className="mt-4 font-display text-3xl font-bold text-ink">
-                {s.value}
-              </div>
-              <div className="text-xs font-medium text-ink-soft">{s.label}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Actions */}
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-display text-xl font-bold text-ink">
-          <Users className="h-5 w-5 text-saffron-600" />
-          All Devotee Profiles
-          {filteredUsers.length !== users.length && (
-            <span className="rounded-full bg-saffron-100 px-2.5 py-0.5 text-xs font-semibold text-saffron-700">
-              {filteredUsers.length} of {users.length}
-            </span>
-          )}
-        </h2>
-        <div className="flex gap-2.5">
-          <button
-            onClick={() => exportJSON(filteredUsers)}
-            disabled={filteredUsers.length === 0}
-            className="btn-outline !px-4 !py-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export JSON
-          </button>
-        </div>
-      </div>
-
-      {/* Search & Filters */}
-      {users.length > 0 && (
-        <div className="mt-4 rounded-3xl border border-saffron-100 bg-white p-4 shadow-soft">
-          <div className="flex flex-wrap items-end gap-3">
-            {/* Search by name, phone, or city */}
-            <div className="min-w-[200px] flex-1">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                Search
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft/40" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Name, phone, or city…"
-                  className="w-full rounded-xl border border-saffron-100 bg-cream py-2.5 pl-9 pr-8 text-sm text-ink outline-none placeholder:text-ink-soft/40 focus:border-saffron-400 focus:ring-2 focus:ring-saffron-200"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink-soft"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Date from */}
-            <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                Joined After
-              </label>
-              <div className="relative">
-                <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft/40" />
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-[150px] rounded-xl border border-saffron-100 bg-cream py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-saffron-400 focus:ring-2 focus:ring-saffron-200"
-                />
-              </div>
-            </div>
-
-            {/* Date to */}
-            <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                Joined Before
-              </label>
-              <div className="relative">
-                <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft/40" />
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-[150px] rounded-xl border border-saffron-100 bg-cream py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-saffron-400 focus:ring-2 focus:ring-saffron-200"
-                />
-              </div>
-            </div>
-
-            {/* Clear filters */}
-            {(search || dateFrom || dateTo) && (
-              <button
-                onClick={() => {
-                  setSearch("");
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-                className="rounded-xl border border-saffron-200 bg-saffron-50 px-3.5 py-2.5 text-xs font-semibold text-saffron-700 transition-colors hover:bg-saffron-100"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Users */}
-      {users.length === 0 ? (
-        <div className="mt-4 rounded-3xl border border-saffron-100 bg-white p-12 text-center shadow-soft">
-          <p className="text-4xl">🪔</p>
-          <h3 className="mt-4 font-display text-xl font-bold text-ink">
-            No Devotees Yet
-          </h3>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-            Devotee profiles are created automatically the moment a payment
-            is completed on the booking page. They will appear here
-            instantly.
-          </p>
-          <Link href="/book/form" className="btn-primary mt-6">
-            Open Booking Form
-          </Link>
-        </div>
-      ) : filteredUsers.length === 0 ? (
-        <div className="mt-4 rounded-3xl border border-saffron-100 bg-white p-12 text-center shadow-soft">
-          <p className="text-4xl">🔍</p>
-          <h3 className="mt-4 font-display text-xl font-bold text-ink">
-            No Matching Devotees
-          </h3>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-            No devotees match your search criteria. Try adjusting your filters.
-          </p>
-          <button
-            onClick={() => {
-              setSearch("");
-              setDateFrom("");
-              setDateTo("");
-            }}
-            className="btn-primary mt-6"
-          >
-            Clear Filters
-          </button>
-        </div>
-      ) : (
-        <div className="mt-4 space-y-3">
-          {filteredUsers.map((u) => {
-            const open = expanded === u.id;
-            return (
-              <div
-                key={u.id}
-                className="overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-soft"
-              >
-                <button
-                  onClick={() => setExpanded(open ? null : u.id)}
-                  aria-expanded={open}
-                  className="flex w-full flex-wrap items-center gap-4 px-6 py-5 text-left transition-colors hover:bg-saffron-50/40"
-                >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-saffron-400 to-maroon-600 font-display text-base font-bold text-white shadow-soft">
-                    {initials(u.name)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-display text-base font-bold text-ink">
-                      {u.name}
-                      {u.bookings.length > 0 && (
-                        <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                          {u.bookings.length} booking{u.bookings.length > 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-0.5 block truncate text-xs text-ink-soft">
-                      +91 {u.phone} · {u.city || "—"} · since {formatDate(u.createdAt)}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block font-display text-base font-bold text-saffron-600">
-                      {formatINR(
-                        u.bookings
-                          .filter(
-                            (b) =>
-                              b.status !== "cancelled" &&
-                              b.status !== "refunded"
-                          )
-                          .reduce((s, b) => s + b.amount, 0)
-                      )}
-                    </span>
-                    <span className="text-[10px] font-medium text-ink-soft">net paid</span>
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-ink-soft transition-transform duration-300 ${
-                      open ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {open && (
-                  <div className="border-t border-saffron-100 bg-cream/40 px-6 py-5">
-                    <div className="mb-4 flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleResetPassword(u.phone, u.name)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-saffron-200 bg-saffron-50 px-3.5 py-1.5 text-[11px] font-semibold text-saffron-700 transition-colors hover:bg-saffron-100"
-                      >
-                        <KeyRound className="h-3.5 w-3.5" />
-                        Reset Password
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.name)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3.5 py-1.5 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-100"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete User
-                      </button>
-                    </div>
-                    <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      {[
-                        { label: "Gotra", value: u.gotra || "—" },
-                        { label: "City", value: u.city || "—" },
-                        {
-                          label: "Mobile",
-                          value: (
-                            <a
-                              href={`tel:+91${u.phone}`}
-                              className="font-semibold text-saffron-700 hover:underline"
-                            >
-                              +91 {u.phone}
-                            </a>
-                          ),
-                        },
-                      ].map((f) => (
-                        <div key={f.label}>
-                          <dt className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                            {f.label}
-                          </dt>
-                          <dd className="mt-0.5 truncate text-sm text-ink">{f.value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-
-                    <h4 className="mt-5 text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-                      Booking History
-                    </h4>
-                    <div className="mt-2 space-y-2">
-                      {u.bookings.length === 0 ? (
-                        <p className="text-xs text-ink-soft">No bookings yet.</p>
-                      ) : (
-                        [...u.bookings].reverse().map((b) => (
-                          <div
-                            key={b.bookingId}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-saffron-100 bg-white px-4 py-3"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-ink">
-                                  🪔 {b.poojaTitle}
-                                </span>
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                                    b.status === "refunded"
-                                      ? "bg-indigo-100 text-indigo-700"
-                                      : b.status === "cancelled"
-                                        ? "bg-red-100 text-red-600"
-                                        : b.status === "rescheduled"
-                                          ? "bg-amber-100 text-amber-700"
-                                          : "bg-emerald-100 text-emerald-700"
-                                  }`}
-                                >
-                                  {b.status}
-                                </span>
-                              </div>
-                              <p className="mt-0.5 text-xs text-ink-soft">
-                                <span className="font-mono font-semibold text-saffron-700">
-                                  {b.bookingId}
-                                </span>{" "}
-                                · {b.date} · {b.time} · 🙏 {b.panditName}
-                                {b.couponCode && (
-                                  <span className="ml-1.5 font-mono text-emerald-600">
-                                    🎟️ {b.couponCode}
-                                  </span>
-                                )}
-                                {b.discount > 0 && (
-                                  <span className="ml-1.5 font-semibold text-emerald-600">
-                                    🎉 saved {formatINR(b.discount)}
-                                  </span>
-                                )}
-                              </p>
-                              {b.reason && (
-                                <p className="mt-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
-                                  🪔 Reason: {b.reason}
-                                </p>
-                              )}
-                              {b.status === "cancelled" && b.cancelledAt && (
-                                <p className="mt-1.5 text-[11px] font-semibold text-red-500">
-                                  ↩️ Cancelled on {formatDate(b.cancelledAt)} — refund
-                                  initiated
-                                </p>
-                              )}
-                              {b.status === "refunded" && b.refundedAt && (
-                                <p className="mt-1.5 text-[11px] font-semibold text-indigo-600">
-                                  💸 Refunded on {formatDate(b.refundedAt)}
-                                </p>
-                              )}
-                              {b.status === "rescheduled" && b.rescheduledAt && (
-                                <p className="mt-1.5 text-[11px] font-semibold text-amber-600">
-                                  🔁 Rescheduled on {formatDate(b.rescheduledAt)}
-                                  {b.previousDate && !b.previousDate.startsWith("To be")
-                                    ? ` — was ${b.previousDate}${b.previousTime && b.previousTime !== "—" ? ` · ${b.previousTime}` : ""}`
-                                    : ""}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                              {(b.status === "confirmed" ||
-                                b.status === "rescheduled") && (
-                                <button
-                                  onClick={() =>
-                                    handleRefund(u.id, b.bookingId, b.poojaTitle)
-                                  }
-                                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[10px] font-bold text-indigo-700 transition-colors hover:bg-indigo-100"
-                                >
-                                  <Undo2 className="h-3 w-3" />
-                                  Refund
-                                </button>
-                              )}
-                              <span
-                                className={`font-display text-base font-bold ${
-                                  b.status === "cancelled" || b.status === "refunded"
-                                    ? "text-ink-soft/40 line-through"
-                                    : "text-saffron-600"
-                                }`}
-                              >
-                                {formatINR(b.amount)}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </>
-  );
-}
-
 export default function AdminPage() {
-  const [mounted, setMounted] = useState(false);
-  const [authed, setAuthed] = useState(false);
+  const [session, setSession] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [loginBusy, setLoginBusy] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [config, setConfig] = useState<{ email: string; isDefault: boolean } | null>(null);
-  const [tab, setTab] = useState<Tab>("devotees");
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState<Tab>("analytics");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [poojaCount, setPoojaCount] = useState(12);
+  const [templeCount, setTempleCount] = useState(6);
+  const [adminEmail, setAdminEmail] = useState("admin@templepujasewa.com");
+  const [isDefaultCreds, setIsDefaultCreds] = useState(false);
 
-  // Pull the devotee list from the server (the source of truth across devices),
-  // falling back to the local cache when offline. A 401 means a stale session.
-  const loadUsers = async (t: string | null) => {
-    const res = await fetchAllUsers(t);
-    if (res === null) {
+  // Devotee list filters
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [poojaFilter, setPoojaFilter] = useState("all");
+  const [resettingPhone, setResettingPhone] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetErr, setResetErr] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedDevotee, setSelectedDevotee] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    const isAuth = isAdminSession();
+    const storedToken = getAdminToken();
+    setSession(isAuth);
+    setToken(storedToken);
+
+    if (isAuth) {
+      loadData(storedToken);
+    }
+  }, []);
+
+  const loadData = async (tok: string | null) => {
+    const remoteUsers = await fetchAllUsers(tok);
+    if (remoteUsers) setUsers(remoteUsers);
+    else setUsers(getUsers());
+
+    const catalog = await fetchCatalog();
+    if (catalog) {
+      if (catalog.poojas) setPoojaCount(catalog.poojas.length);
+      if (catalog.temples) setTempleCount(catalog.temples.length);
+    }
+
+    const cfg = await adminConfig();
+    setAdminEmail(cfg.email);
+    setIsDefaultCreds(cfg.isDefault);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    const res = await adminLogin(email.trim(), password);
+    if (!res.ok || !res.token) {
+      setError(res.error || "Invalid email or password.");
+      return;
+    }
+    setAdminToken(res.token);
+    setSession(true);
+    setToken(res.token);
+    setEmail("");
+    setPassword("");
+    loadData(res.token);
+  };
+
+  const handleLogout = async () => {
+    if (token) await adminLogout(token);
+    clearAdminToken();
+    setSession(false);
+    setToken(null);
+  };
+
+  const handleAuthError = () => {
+    clearAdminToken();
+    setSession(false);
+    setToken(null);
+    setError("Session expired. Please log in again.");
+  };
+
+  const handleRefund = async (userId: string, bookingId: string) => {
+    if (!token) return;
+    const res = await refundBookingRemote(userId, bookingId, token);
+    if (res.status === 401) {
       handleAuthError();
       return;
     }
-    setUsers(res);
-    setExpanded(null);
+    await loadData(token);
   };
 
-  useEffect(() => {
-    setAuthed(isAdminSession());
-    setToken(getAdminToken());
-    setUsers(getUsers()); // instant paint from the local cache
-    setMounted(true);
-    adminConfig().then(setConfig);
-
-    // The server list wins once it arrives — this is what makes bookings made
-    // on any device appear here.
-    const token = getAdminToken();
-    if (token) void loadUsers(token);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // A 401 from an admin API (stale/expired token) — drop the session and show
-  // the login screen again.
-  const handleAuthError = () => {
-    clearAdminToken();
-    setToken(null);
-    setAuthed(false);
+  const handleResetPassword = async (phone: string) => {
+    if (!token) return;
+    setResetMsg("");
+    setResetErr("");
+    if (!newPassword || newPassword.length < 6) {
+      setResetErr("Password must be at least 6 characters.");
+      return;
+    }
+    const res = await resetDevoteePassword(phone, newPassword, token);
+    if (!res.ok) {
+      if (res.status === 401) {
+        handleAuthError();
+        return;
+      }
+      setResetErr(res.error || "Failed to reset password.");
+      return;
+    }
+    setResetMsg(`Password reset successfully for devotee.`);
+    setNewPassword("");
+    setTimeout(() => {
+      setResettingPhone(null);
+      setResetMsg("");
+    }, 2000);
   };
 
-  const stats = useMemo(() => {
-    const allBookings = users.flatMap((u) => u.bookings);
-    const active = allBookings.filter(
-      (b) => b.status !== "cancelled" && b.status !== "refunded"
-    );
-    const cancelled = allBookings.filter((b) => b.status === "cancelled");
-    const refunded = allBookings.filter((b) => b.status === "refunded");
-    const revenue = active.reduce((s, b) => s + b.amount, 0);
-    return {
-      devotees: users.length,
-      bookings: allBookings.length,
-      active: active.length,
-      cancelled: cancelled.length,
-      refunded: refunded.length,
-      revenue,
-    };
+  const handleDeleteUser = async (id: string) => {
+    if (!token) return;
+    if (!confirm("Are you sure you want to permanently delete this devotee account?")) return;
+    const res = await deleteUserRemote(id, token);
+    if (res.status === 401) {
+      handleAuthError();
+      return;
+    }
+    setDeletingId(null);
+    await loadData(token);
+  };
+
+  const availablePoojaSlugs = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const u of users) {
+      for (const b of u.bookings) {
+        if (b.poojaSlug && b.poojaTitle) {
+          map.set(b.poojaSlug, b.poojaTitle);
+        }
+      }
+    }
+    return Array.from(map.entries()).map(([slug, title]) => ({ slug, title }));
   }, [users]);
 
-  const meta = TAB_META[tab];
+  // Devotee filtered view
+  const filteredDevotees = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return users.filter((u) => {
+      const matchQuery =
+        !q ||
+        u.name.toLowerCase().includes(q) ||
+        u.phone.includes(q) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.gotra && u.gotra.toLowerCase().includes(q)) ||
+        (u.city && u.city.toLowerCase().includes(q)) ||
+        u.bookings.some((b) => b.bookingId.toLowerCase().includes(q) || b.poojaTitle.toLowerCase().includes(q));
 
-  if (!mounted) {
-    return (
-      <section className="section-pad bg-cream">
-        <div className="mx-auto h-64 max-w-md animate-pulse rounded-3xl bg-saffron-100/60" />
-      </section>
-    );
-  }
+      const matchPooja =
+        poojaFilter === "all" ||
+        u.bookings.some((b) => b.poojaSlug === poojaFilter);
 
-  if (!authed) {
+      const matchStatus =
+        statusFilter === "all" ||
+        (statusFilter === "none" && u.bookings.length === 0) ||
+        u.bookings.some((b) => b.status === statusFilter);
+
+      return matchQuery && matchPooja && matchStatus;
+    });
+  }, [users, search, poojaFilter, statusFilter]);
+
+  // ── Login Gate ──
+  if (!session) {
     return (
-      <>
+      <div className="min-h-screen bg-gradient-to-b from-cream via-white to-cream flex flex-col justify-between">
         <BookPageHeader
-          crumb="Admin"
-          eyebrow="🔐 Admin Access"
-          title={
-            <>
-              Admin <span className="text-amber-200">Dashboard</span>
-            </>
-          }
-          subtitle="Restricted area — sign in with the admin account to manage poojas, events, coupons and devotees."
+          eyebrow="Admin Portal"
+          title="Sign in to Admin Dashboard"
+          subtitle="Access analytics, booking fulfillment, puja catalog, and temple management."
         />
-        <section className="section-pad bg-cream">
-          <div className="mx-auto max-w-md rounded-3xl border border-saffron-100 bg-white p-8 shadow-card">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-maroon-50">
-              <Lock className="h-8 w-8 text-maroon-600" />
+
+        <div className="flex flex-1 items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-3xl border border-saffron-100 bg-white p-8 shadow-xl shadow-saffron-500/5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-saffron-600 text-white shadow-md shadow-saffron-500/20 mb-6">
+              <Lock className="h-6 w-6" />
             </div>
-            <h2 className="mt-5 text-center font-display text-2xl font-bold text-ink">
-              Admin Login
-            </h2>
-            <p className="mt-2 text-center text-sm text-ink-soft">
-              Sign in with the admin account to control the whole site.
+
+            <h2 className="text-xl font-bold text-ink">Admin Sign In</h2>
+            <p className="text-xs text-ink-soft mt-1 mb-6">
+              Enter your authorized admin credentials to proceed.
             </p>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setLoginBusy(true);
-                const res = await adminLogin(email, password);
-                setLoginBusy(false);
-                if (res.ok && res.token) {
-                  setAdminToken(res.token);
-                  setToken(res.token);
-                  setAuthed(true);
-                  setAuthError("");
-                } else {
-                  setAuthError(res.error ?? "Login failed. Try again.");
-                }
-              }}
-              className="mt-6 space-y-4"
-            >
+
+            {error && (
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label
-                  htmlFor="adm-email"
-                  className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft"
-                >
+                <label className="block text-xs font-bold text-ink mb-1.5">
                   Admin Email
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
-                    <Mail className="h-4 w-4 text-saffron-500" />
-                  </span>
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
                   <input
-                    id="adm-email"
                     type="email"
+                    required
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setAuthError("");
-                    }}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@thetemplepuja.com"
-                    autoComplete="username"
-                    autoFocus
-                    className={`${inputCls} pl-11`}
+                    className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-saffron-100 bg-cream/40 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
                   />
                 </div>
               </div>
+
               <div>
-                <label
-                  htmlFor="adm-password"
-                  className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft"
-                >
+                <label className="block text-xs font-bold text-ink mb-1.5">
                   Password
                 </label>
-                <input
-                  id="adm-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setAuthError("");
-                  }}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className={`${inputCls} font-mono tracking-[0.3em]`}
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-saffron-100 bg-cream/40 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
+                  />
+                </div>
               </div>
-              {authError && (
-                <p className="text-center text-xs font-semibold text-red-500">
-                  {authError}
-                </p>
-              )}
+
               <button
                 type="submit"
-                disabled={loginBusy}
-                className="btn-primary !w-full disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-xs font-bold text-white shadow-md shadow-saffron-500/20 hover:from-saffron-600 hover:to-saffron-700 transition-all"
               >
-                <ShieldCheck className="h-4 w-4" />
-                {loginBusy ? "Signing in…" : "Login to Dashboard"}
+                Sign In
               </button>
             </form>
-            {config === null ? null : (
-              <p className="mt-5 rounded-xl bg-saffron-50 px-4 py-3 text-center text-xs font-medium text-ink-soft">
-                {config.isDefault
-                  ? "🔑 Sign in with the admin credentials. Change them from the Account tab after login."
-                  : `🔑 Sign in with your admin email and password.`}
-              </p>
-            )}
           </div>
-        </section>
-      </>
+        </div>
+
+        <footer className="border-t border-saffron-100 py-4 text-center text-xs text-ink-soft">
+          © {new Date().getFullYear()} The Temple Puja — Admin Security Panel
+        </footer>
+      </div>
     );
   }
 
-  return (
-    <>
-      <BookPageHeader
-        crumb="Admin"
-        eyebrow="🔐 Admin Dashboard"
-        title={meta.title}
-        subtitle={meta.subtitle}
-        facts={[
-          { icon: "🙏", label: `${stats.devotees} Devotees` },
-          { icon: "🪔", label: `${stats.bookings} Total Bookings` },
-          ...meta.facts,
-        ]}
-      />
-
-      <section className="section-pad bg-cream">
-        <div className="container-px mx-auto max-w-4xl">
-          {/* Tabs + logout */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-saffron-100 bg-white p-2 shadow-soft">
-            <div className="flex flex-wrap gap-1.5">
-              {TABS.map((t) => {
-                const Icon = t.icon;
-                const active = tab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    aria-current={active}
-                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
-                      active
-                        ? "bg-gradient-to-r from-saffron-500 to-maroon-600 text-white shadow-soft"
-                        : "text-ink-soft hover:bg-saffron-50 hover:text-ink"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => {
-                if (token) adminLogout(token);
-                clearAdminToken();
-                setToken(null);
-                setAuthed(false);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Logout
-            </button>
-          </div>
-
-          <div className="mt-6">
-            {tab === "devotees" && (
-              <DevoteesPanel
-                users={users}
-                expanded={expanded}
-                setExpanded={setExpanded}
-                stats={stats}
-                onUsersChange={() => void loadUsers(token)}
-                token={token ?? ""}
-                onAuthError={handleAuthError}
-              />
-            )}
-            {tab === "analytics" && (
-              <AnalyticsCharts analytics={computeAnalytics(users)} />
-            )}
-            {tab === "poojas" && (
-              <PoojasManager token={token ?? ""} onAuthError={handleAuthError} />
-            )}
-            {tab === "dates" && (
-              <DatesManager token={token ?? ""} onAuthError={handleAuthError} />
-            )}
-            {tab === "coupons" && (
-              <CouponsManager token={token ?? ""} onAuthError={handleAuthError} />
-            )}
-            {tab === "account" && (
-              <AccountManager token={token ?? ""} onAuthError={handleAuthError} />
-            )}
+  // ── Sidebar Component Helper ──
+  const SidebarContent = () => (
+    <div className="flex h-full flex-col justify-between p-4">
+      <div className="space-y-6">
+        {/* Brand Logo */}
+        <div className="flex items-center gap-3 px-2 pt-1 pb-3 border-b border-saffron-100/80">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-saffron-600 text-xl font-bold text-white shadow-md shadow-saffron-500/20">
+            🪔
+          </span>
+          <div>
+            <span className="text-sm font-extrabold text-ink tracking-tight block">
+              The Temple Puja
+            </span>
+            <span className="text-[10px] font-bold text-saffron-600 tracking-wider uppercase">
+              Admin Portal
+            </span>
           </div>
         </div>
-      </section>
-    </>
+
+        {/* Navigation List */}
+        <nav className="space-y-1">
+          {NAV_ITEMS.map((item) => {
+            const isSelected = tab === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setTab(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-xs font-bold transition-all text-left ${
+                  isSelected
+                    ? "bg-gradient-to-r from-saffron-500 to-saffron-600 text-white shadow-md shadow-saffron-500/20"
+                    : "text-ink-soft hover:bg-cream/60 hover:text-ink"
+                }`}
+              >
+                <Icon className={`h-4 w-4 shrink-0 ${isSelected ? "text-white" : "text-saffron-600"}`} />
+                <span className="flex-1 truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Bottom Profile & Logout */}
+      <div className="space-y-2 pt-4 border-t border-saffron-100/80">
+        <Link
+          href="/"
+          target="_blank"
+          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-ink-soft hover:bg-cream/50 hover:text-ink"
+        >
+          <span>View Public Site</span>
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
+
+        <div className="flex items-center justify-between rounded-2xl bg-cream/40 p-2.5 border border-saffron-100">
+          <div className="flex items-center gap-2.5 truncate">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-saffron-200 text-xs font-bold text-saffron-800">
+              {initials(adminEmail || "Admin")}
+            </div>
+            <div className="truncate">
+              <div className="text-[11px] font-bold text-ink leading-tight">Admin User</div>
+              <div className="text-[10px] text-ink-soft/70 truncate max-w-[110px]">{adminEmail}</div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+            title="Sign Out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Authenticated Admin Portal with Sidebar Layout ──
+  return (
+    <div className="min-h-screen bg-slate-50/50 flex">
+      {/* Desktop Persistent Left Sidebar */}
+      <aside className="hidden lg:flex w-64 flex-col fixed inset-y-0 left-0 bg-white border-r border-saffron-100 z-30 shadow-sm">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Drawer Backdrop & Sidebar */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <aside className="relative flex w-72 max-w-[80vw] flex-col bg-white shadow-2xl z-10 animate-fadeIn">
+            <SidebarContent />
+          </aside>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col lg:pl-64 min-w-0">
+        {/* Top Header Bar */}
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-saffron-100 bg-white/95 px-4 sm:px-8 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-xl border border-saffron-200 bg-cream/40 text-ink-soft hover:bg-saffron-50"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-ink-soft hidden sm:inline">Admin Console</span>
+              <span className="text-ink-soft/40 hidden sm:inline">/</span>
+              <span className="font-bold text-ink">
+                {NAV_ITEMS.find((n) => n.id === tab)?.label || "Dashboard"}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-xl bg-cream/60 px-3 py-1.5 border border-saffron-100 text-xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-semibold text-ink text-[11px] hidden sm:inline">Database Live</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50/60 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-all"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Dynamic Main Body Content */}
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 max-w-6xl w-full mx-auto">
+          {/* ── TAB 1: Analytics Dashboard ── */}
+          {tab === "analytics" && (
+            <AnalyticsDashboard
+              users={users}
+              onRefresh={() => loadData(token)}
+              activePoojaCount={poojaCount}
+              activeTempleCount={templeCount}
+            />
+          )}
+
+          {/* ── TAB 2: Puja Catalog Management ── */}
+          {tab === "poojas" && (
+            <PoojasManager token={token || ""} onAuthError={handleAuthError} />
+          )}
+
+          {/* ── TAB 3: Temple Management ── */}
+          {tab === "temples" && (
+            <TemplesManager token={token || ""} onAuthError={handleAuthError} />
+          )}
+
+          {/* ── TAB 4: Successful Bookings ── */}
+          {tab === "bookings" && (
+            <BookingsTable users={users} onRefund={handleRefund} />
+          )}
+
+          {/* ── TAB 5: Orders & Transactions ── */}
+          {tab === "orders" && (
+            <OrdersManager users={users} onRefund={handleRefund} />
+          )}
+
+          {/* ── TAB 6: Devotee Profiles ── */}
+          {tab === "devotees" && (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-ink flex items-center gap-2">
+                    <Users className="h-6 w-6 text-saffron-600" />
+                    Devotee Profiles & Accounts
+                  </h2>
+                  <p className="text-xs text-ink-soft mt-0.5">
+                    Manage registered devotees, reset devotee credentials, and audit individual pooja histories.
+                  </p>
+                </div>
+              </div>
+
+              {/* Search & Filter Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-saffron-100 shadow-sm">
+                <div className="relative flex-1 min-w-[240px]">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search devotees by name, phone, gotra or city..."
+                    className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Status Dropdown */}
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:bg-white"
+                  >
+                    <option value="all">All Booking Statuses</option>
+                    <option value="confirmed">Confirmed Devotees</option>
+                    <option value="rescheduled">Rescheduled</option>
+                    <option value="refunded">Refunded</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="none">No Bookings Yet</option>
+                  </select>
+
+                  {/* Pooja Dropdown */}
+                  {availablePoojaSlugs.length > 0 && (
+                    <select
+                      value={poojaFilter}
+                      onChange={(e) => setPoojaFilter(e.target.value)}
+                      className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:bg-white max-w-[180px] truncate"
+                    >
+                      <option value="all">All Pujas</option>
+                      {availablePoojaSlugs.map((p) => (
+                        <option key={p.slug} value={p.slug}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {/* Reset */}
+                  {(search || statusFilter !== "all" || poojaFilter !== "all") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch("");
+                        setStatusFilter("all");
+                        setPoojaFilter("all");
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1.5 rounded-lg border border-saffron-200"
+                    >
+                      Reset Filters ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Devotees Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredDevotees.length === 0 ? (
+                  <div className="col-span-2 rounded-2xl border border-dashed border-saffron-200 bg-white p-12 text-center text-xs text-ink-soft">
+                    <p>No devotees found matching current criteria.</p>
+                    {(search || statusFilter !== "all" || poojaFilter !== "all") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch("");
+                          setStatusFilter("all");
+                          setPoojaFilter("all");
+                        }}
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-saffron-700 hover:underline bg-saffron-50 px-3 py-1.5 rounded-lg border border-saffron-200"
+                      >
+                        Reset All Filters ✕
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  filteredDevotees.map((devotee) => (
+                    <div
+                      key={devotee.id}
+                      className="rounded-2xl border border-saffron-100 bg-white p-5 shadow-sm space-y-4"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-800 font-bold text-xs">
+                            {initials(devotee.name)}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-ink">{devotee.name}</h3>
+                            <p className="text-xs text-ink-soft">
+                              📱 {devotee.phone} • Gotra: {devotee.gotra || "Kashyap"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-cream px-2.5 py-1 text-[11px] font-bold text-saffron-800 border border-saffron-100">
+                          {devotee.bookings.length} Sevas
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 text-xs text-ink-soft border-t border-saffron-50 pt-2">
+                        <div>City: {devotee.city}</div>
+                        {devotee.email && <div>Email: {devotee.email}</div>}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-saffron-100 pt-3 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDevotee(devotee)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-saffron-500/10 px-2.5 py-1.5 font-bold text-saffron-700 hover:bg-saffron-500/20 transition-colors"
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                          View Complete Profile & Media
+                        </button>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResettingPhone(devotee.phone);
+                              setNewPassword("");
+                              setResetMsg("");
+                              setResetErr("");
+                            }}
+                            className="text-saffron-700 font-semibold hover:underline"
+                          >
+                            Reset Password
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(devotee.id)}
+                            className="text-red-500 font-semibold hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Reset Password Modal / Form inline */}
+                      {resettingPhone === devotee.phone && (
+                        <div className="rounded-xl border border-saffron-200 bg-cream/40 p-3 space-y-2 mt-2">
+                          <div className="text-xs font-bold text-ink">
+                            Set New Password for {devotee.name}:
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Min 6 characters"
+                              className="flex-1 rounded-lg border border-saffron-200 bg-white px-3 py-1.5 text-xs text-ink focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleResetPassword(devotee.phone)}
+                              className="rounded-lg bg-saffron-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-600"
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setResettingPhone(null)}
+                              className="text-xs text-ink-soft hover:text-ink px-2"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                          {resetMsg && <div className="text-[11px] text-emerald-700 font-bold">{resetMsg}</div>}
+                          {resetErr && <div className="text-[11px] text-red-600 font-bold">{resetErr}</div>}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 7: Pooja Dates ── */}
+          {tab === "dates" && (
+            <DatesManager token={token || ""} onAuthError={handleAuthError} />
+          )}
+
+          {/* ── TAB 8: Coupons ── */}
+          {tab === "coupons" && (
+            <CouponsManager token={token || ""} onAuthError={handleAuthError} />
+          )}
+
+          {/* ── TAB 9: Account Settings ── */}
+          {tab === "account" && (
+            <AccountManager token={token || ""} onAuthError={handleAuthError} />
+          )}
+        </main>
+      </div>
+
+      {/* Customer Full Profile & Media Modal */}
+      {selectedDevotee && (
+        <CustomerProfileModal
+          user={selectedDevotee}
+          token={token || ""}
+          onClose={() => setSelectedDevotee(null)}
+          onUserUpdated={(updated) => {
+            setSelectedDevotee(updated);
+            setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+          }}
+          onRefund={handleRefund}
+          onDelete={(id) => {
+            handleDeleteUser(id);
+            setSelectedDevotee(null);
+          }}
+          onResetPassword={async (phone, newPass) => {
+            if (!token) return { ok: false, error: "Not authenticated" };
+            return await resetDevoteePassword(phone, newPass, token);
+          }}
+        />
+      )}
+    </div>
   );
 }

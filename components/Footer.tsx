@@ -33,7 +33,7 @@ export default function Footer() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logo.jpeg"
-                alt="templepujasewa — The Temple Puja"
+                alt="templepujasewa"
                 className="h-20 w-auto rounded-xl bg-white object-contain p-2 shadow-soft"
               />
             </a>
@@ -103,7 +103,7 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-3 border-t border-white/10 py-6 text-xs text-cream/40 sm:flex-row">
-          <p>© {new Date().getFullYear()} The Temple Puja. {t("footer.rights")}</p>
+          <p>© {new Date().getFullYear()} templepujasewa. {t("footer.rights")}</p>
           <p>
             {t("footer.madeWith")}
           </p>

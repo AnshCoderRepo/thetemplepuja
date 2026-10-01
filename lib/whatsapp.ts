@@ -76,7 +76,7 @@ export function receiptUrlFor(
 /** The WhatsApp message for a newly confirmed booking (sent to the admin). */
 export function bookingAlertText(info: BookingAlertInfo): string {
   const lines = [
-    "🙏 New Booking — The Temple Puja",
+    "🙏 New Booking — templepujasewa",
     "",
     `Booking ID: ${info.bookingId}`,
     `Pooja: ${info.poojaTitle}`,
@@ -109,7 +109,7 @@ export function devoteeBookingAlertText(info: BookingAlertInfo): string {
     info.receiptUrl ? `View your receipt: ${info.receiptUrl}` : null,
     "",
     "Om Shanti 🪔",
-    "— The Temple Puja",
+    "— templepujasewa",
   ];
   return lines.filter((l): l is string => Boolean(l)).join("\n");
 }
@@ -117,7 +117,7 @@ export function devoteeBookingAlertText(info: BookingAlertInfo): string {
 /** The WhatsApp message for a cancelled booking (sent to the admin). */
 export function cancelAlertText(info: BookingAlertInfo): string {
   const lines = [
-    "↩️ Booking Cancelled — The Temple Puja",
+    "↩️ Booking Cancelled — templepujasewa",
     "",
     `Booking ID: ${info.bookingId}`,
     `Pooja: ${info.poojaTitle}`,
@@ -141,7 +141,7 @@ export function reminderAlertText(info: BookingAlertInfo): string {
     info.receiptUrl ? `View your booking: ${info.receiptUrl}` : null,
     "",
     "Om Shanti 🪔",
-    "— The Temple Puja",
+    "— templepujasewa",
   ];
   return lines.filter((l): l is string => Boolean(l)).join("\n");
 }
@@ -155,7 +155,7 @@ export function devoteeCancelAlertText(info: BookingAlertInfo): string {
     `A refund of ${formatINR(info.amount)} will be processed within 5–7 business days.`,
     "",
     "If you'd like to rebook, visit our website anytime.",
-    "— The Temple Puja",
+    "— templepujasewa",
   ];
   return lines.join("\n");
 }

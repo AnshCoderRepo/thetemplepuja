@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAdminCreds,
+  getDefaultAdminEmail,
+  getDefaultAdminPassword,
   hashPassword,
   isValidSessionToken,
   saveAdminCreds,
@@ -29,11 +31,11 @@ export async function POST(req: NextRequest) {
     newPassword?: unknown;
   };
 
-  // Reset to the default demo credentials.
+  // Reset to the default configured credentials.
   if (body.reset === true) {
     await saveAdminCreds(
-      "admin@thetemplepuja.com",
-      await hashPassword("admin123")
+      getDefaultAdminEmail(),
+      await hashPassword(getDefaultAdminPassword())
     );
     return NextResponse.json({ ok: true });
   }

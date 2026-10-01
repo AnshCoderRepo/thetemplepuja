@@ -7,8 +7,9 @@ import {
   getCatalogEventSpecs,
   getCatalogPoojaDates,
   getCatalogPoojas,
+  getCatalogTemples,
 } from "./catalog";
-import { withEventBookedSeats, type Coupon, type Pooja, type PoojaDate, type UpcomingEventSpec } from "./data";
+import { withEventBookedSeats, type Coupon, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec } from "./data";
 import {
   cancelBooking,
   deleteUser,
@@ -31,6 +32,7 @@ export interface ResolvedCatalog {
   events: UpcomingEventSpec[];
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
+  temples: Temple[];
 }
 
 const DEFAULT_CONFIG = { email: "admin@thetemplepuja.com", isDefault: true };
@@ -83,7 +85,13 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
           Array.isArray(body.events) &&
           body.coupons
         ) {
-          return body as ResolvedCatalog;
+          return {
+            poojas: body.poojas,
+            events: body.events,
+            coupons: body.coupons,
+            poojaDates: body.poojaDates ?? [],
+            temples: body.temples ?? getCatalogTemples(),
+          };
         }
         throw new Error("unexpected catalog payload");
       } catch {
@@ -98,6 +106,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
           ),
           coupons: getCatalogCoupons(),
           poojaDates: getCatalogPoojaDates(),
+          temples: getCatalogTemples(),
         };
       }
     })();
@@ -127,7 +136,7 @@ async function post(path: string, body: unknown, token?: string | null) {
 
 // ===================== CATALOG (admin) =====================
 
-export type CatalogSection = "poojas" | "events" | "coupons" | "poojaDates";
+export type CatalogSection = "poojas" | "events" | "coupons" | "poojaDates" | "temples";
 
 export async function saveCatalogSection(
   section: CatalogSection,
@@ -248,16 +257,20 @@ export interface RazorpayOrderStart {
   keyId?: string;
   orderId?: string;
   amount?: number; // paise
+  subtotal?: number;
+  discount?: number;
   currency?: string;
   receipt?: string;
+  validatedAddons?: { id: string; name: string; price: number; quantity: number; emoji?: string }[];
   error?: string;
 }
 
-/** Ask the server to create a Razorpay order for a pooja at the server-side
+/** Ask the server to create a Razorpay order for a pooja and addons at the server-side
  * price (coupon-validated). Returns `{ configured: false }` in demo mode so
  * the checkout can fall back to its simulated payment. */
 export async function createRazorpayOrderRemote(input: {
   poojaSlug: string;
+  addons?: { id: string; quantity: number }[];
   couponCode: string | null;
   phone: string;
 }): Promise<RazorpayOrderStart> {
@@ -275,6 +288,9 @@ export async function createRazorpayOrderRemote(input: {
         keyId: body.keyId,
         orderId: body.orderId,
         amount: body.amount,
+        subtotal: body.subtotal,
+        discount: body.discount,
+        validatedAddons: body.validatedAddons,
         currency: body.currency,
         receipt: body.receipt,
       };
@@ -283,6 +299,72 @@ export async function createRazorpayOrderRemote(input: {
   } catch {
     // Server unreachable — demo mode.
     return { configured: false };
+  }
+}
+
+/** Add a video recording to a customer's profile (admin action). */
+export async function addCustomerMediaRemote(
+  userId: string,
+  media: {
+    title: string;
+    url: string;
+    description?: string;
+    poojaTitle?: string;
+    bookingId?: string;
+  },
+  token: string
+): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/users/media", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: "add", userId, media }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      user?: UserProfile;
+      error?: string;
+    };
+    if (res.ok && body.user) {
+      mergeUserFromServer(body.user);
+      return { ok: true, user: body.user };
+    }
+    return { ok: false, error: body.error };
+  } catch {
+    return { ok: false, error: "Network error" };
+  }
+}
+
+/** Delete a video recording from a customer's profile (admin action). */
+export async function deleteCustomerMediaRemote(
+  userId: string,
+  mediaId: string,
+  token: string
+): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/users/media", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: "delete", userId, mediaId }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      user?: UserProfile;
+      error?: string;
+    };
+    if (res.ok && body.user) {
+      mergeUserFromServer(body.user);
+      return { ok: true, user: body.user };
+    }
+    return { ok: false, error: body.error };
+  } catch {
+    return { ok: false, error: "Network error" };
   }
 }
 

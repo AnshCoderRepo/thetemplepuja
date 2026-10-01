@@ -20,7 +20,7 @@ export default function Contact() {
     // Deliver the enquiry straight to the team's WhatsApp (the channel the
     // whole site already uses) — no silent dead-end form.
     const text = encodeURIComponent(
-      `🙏 New enquiry — The Temple Puja\n\n` +
+      `🙏 New enquiry — templepujasewa\n\n` +
         `Name: ${name || "—"}\n` +
         `Message: ${message}`
     );

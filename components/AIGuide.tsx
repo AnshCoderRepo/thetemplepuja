@@ -115,7 +115,7 @@ export default function AIGuide() {
             : "pointer-events-none translate-y-6 scale-90 opacity-0"
         }`}
         role="dialog"
-        aria-label="The Temple Puja AI Guide chat"
+        aria-label="templepujasewa AI Guide chat"
         aria-hidden={!open}
       >
         {/* Header */}
@@ -126,7 +126,7 @@ export default function AIGuide() {
             </span>
             <div>
               <div className="text-sm font-bold text-white">
-                The Temple Puja AI Guide
+                templepujasewa AI Guide
               </div>
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-100">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />

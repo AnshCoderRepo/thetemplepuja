@@ -18,8 +18,8 @@ function ServiceInner({ service }: { service: string }) {
 
   useEffect(() => {
     document.title = pooja
-      ? `Book ${pooja.title} Online | The Temple Puja`
-      : "Book Pooja Online | The Temple Puja";
+      ? `Book ${pooja.title} Online | templepujasewa`
+      : "Book Pooja Online | templepujasewa";
   }, [pooja]);
 
   if (pooja === undefined) {

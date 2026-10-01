@@ -34,12 +34,13 @@ export interface AppliedCoupon {
   value?: number;
 }
 
-/** Final checkout numbers, reported back so the booking record and the
- * confirmation screen reflect exactly what was paid. */
 export interface CheckoutSummary {
   amount: number;
+  subtotal?: number;
+  addonTotal?: number;
   discount: number;
   coupon: AppliedCoupon | null;
+  addons?: { id: string; name: string; price: number; quantity: number; emoji?: string }[];
 }
 
 interface Props {
@@ -51,6 +52,8 @@ interface Props {
   /** Used to create the real Razorpay order server-side (price is derived
    * from the catalog on the server, never from the client). */
   poojaSlug?: string;
+  /** Selected chadhava / add-on offerings */
+  addons?: { id: string; name: string; price: number; quantity: number; emoji?: string }[];
   /** Admin-managed coupon map used for eligibility and discounts. */
   couponMap: Record<string, Coupon>;
   devoteeName?: string;
@@ -156,6 +159,7 @@ export default function RazorpayCheckout({
   poojaPrice,
   poojaTitle,
   poojaSlug,
+  addons,
   couponMap,
   devoteeName,
   phone,
@@ -178,10 +182,13 @@ export default function RazorpayCheckout({
   const [applied, setApplied] = useState<AppliedCoupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const addonTotal = (addons || []).reduce((acc, a) => acc + a.price * a.quantity, 0);
+  const subtotal = poojaPrice + addonTotal;
+
   const discount = applied
     ? couponDiscount(applied.code, poojaPrice, couponMap)
     : 0;
-  const total = Math.max(poojaPrice - discount, 0);
+  const total = Math.max(subtotal - discount, 0);
 
   const couponEligibility = (code: string): string | null =>
     couponProblem(
@@ -249,10 +256,8 @@ export default function RazorpayCheckout({
     setCouponMsg(null);
   }, [open]);
 
-  // Ask the server for a real Razorpay order. Re-runs when a coupon is
-  // applied/removed so the order is always priced with the final amount.
-  // In demo mode (no keys) this resolves to `none` and the simulated flow
-  // below runs as before.
+  // Ask the server for a real Razorpay order. Re-runs when a coupon or addon is
+  // changed so the order is always priced with the final amount.
   useEffect(() => {
     if (!open || !poojaSlug) return;
     let stale = false;
@@ -260,6 +265,7 @@ export default function RazorpayCheckout({
     void (async () => {
       const start = await createRazorpayOrderRemote({
         poojaSlug,
+        addons: addons?.map((a) => ({ id: a.id, quantity: a.quantity })),
         couponCode: applied?.code ?? null,
         phone: phone ?? "",
       });
@@ -281,7 +287,7 @@ export default function RazorpayCheckout({
     return () => {
       stale = true;
     };
-  }, [open, poojaSlug, applied?.code, phone, total]);
+  }, [open, poojaSlug, applied?.code, phone, total, addons]);
 
   if (!open) return null;
 
@@ -298,7 +304,14 @@ export default function RazorpayCheckout({
       const id = newBookingId();
       setBookingId(id);
       setPhase("success");
-      onSuccess(id, undefined, { amount: total, discount, coupon: applied });
+      onSuccess(id, undefined, {
+        amount: total,
+        subtotal,
+        addonTotal,
+        discount,
+        coupon: applied,
+        addons,
+      });
     }, 2000);
   };
 
@@ -320,7 +333,7 @@ export default function RazorpayCheckout({
       amount: realMode.amount,
       currency: realMode.currency,
       order_id: realMode.orderId,
-      name: "The Temple Puja",
+      name: "templepujasewa",
       description: poojaTitle,
       prefill: {
         name: devoteeName ?? "",
@@ -351,7 +364,14 @@ export default function RazorpayCheckout({
               razorpayPaymentId: paymentId,
               razorpaySignature: signature,
             },
-            { amount: total, discount, coupon: applied }
+            {
+              amount: total,
+              subtotal,
+              addonTotal,
+              discount,
+              coupon: applied,
+              addons,
+            }
           );
         }, 1200);
       },
@@ -442,7 +462,7 @@ export default function RazorpayCheckout({
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs">
                   🕉️
                 </span>
-                <span className="text-sm font-bold">The Temple Puja</span>
+                <span className="text-sm font-bold">templepujasewa</span>
               </div>
               <div className="mt-0.5 text-[11px] text-[#a9c6ff]">{poojaTitle}</div>
             </div>
@@ -797,7 +817,7 @@ export default function RazorpayCheckout({
               Payment Successful!
             </div>
             <div className="mt-1 text-xs text-gray-500">
-              {formatINR(displayAmount)} paid to The Temple Puja · {poojaTitle}
+              {formatINR(displayAmount)} paid to templepujasewa · {poojaTitle}
             </div>
             <button
               onClick={copyId}

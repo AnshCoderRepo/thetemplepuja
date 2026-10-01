@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     poojaSlug?: unknown;
     couponCode?: unknown;
     phone?: unknown;
+    addons?: unknown;
   };
 
   const poojaSlug = typeof body.poojaSlug === "string" ? body.poojaSlug.trim() : "";
@@ -21,6 +22,9 @@ export async function POST(req: NextRequest) {
       ? body.couponCode.trim().toUpperCase()
       : null;
   const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  const addons = Array.isArray(body.addons)
+    ? (body.addons as { id: string; quantity: number }[])
+    : undefined;
 
   if (!poojaSlug) {
     return NextResponse.json({ error: "Missing pooja." }, { status: 400 });
@@ -48,8 +52,9 @@ export async function POST(req: NextRequest) {
         (b) => b.status === "confirmed"
       ).length ?? 0)
     : 0;
-  const { amount, couponProblem: problem } = computeOrderAmount({
+  const { amount, subtotal, discount, validatedAddons, couponProblem: problem } = computeOrderAmount({
     pooja,
+    addons,
     couponCode,
     couponMap: catalog.coupons,
     phone,
@@ -64,13 +69,21 @@ export async function POST(req: NextRequest) {
     const order = await createRazorpayOrder({
       amount,
       receipt,
-      notes: { poojaSlug, couponCode: couponCode ?? "", phone },
+      notes: {
+        poojaSlug,
+        couponCode: couponCode ?? "",
+        phone,
+        addonCount: String(validatedAddons.length),
+      },
     });
     return NextResponse.json({
       configured: true,
       keyId: razorpayKeyId(),
       orderId: order.id,
       amount: order.amount, // paise — what the checkout should charge
+      subtotal,
+      discount,
+      validatedAddons,
       currency: order.currency,
       receipt: order.receipt,
     });

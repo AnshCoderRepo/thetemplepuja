@@ -53,18 +53,72 @@ export interface RazorpayOrder {
   notes?: Record<string, string>;
 }
 
-/** Compute what a devotee must pay for a pooja, server-side: base price minus
- * a validated coupon's discount. `confirmedCount` is the phone's confirmed
- * booking count (used by first-booking / min-booking coupon rules) — pass 0
- * when the devotee has no history. Pure and testable. */
+import { defaultChadhavaOfferings, type ChadhavaOffering } from "./data";
+
+export interface SelectedAddonInput {
+  id: string;
+  quantity: number;
+}
+
+export interface ValidatedAddon {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  emoji?: string;
+}
+
+/** Generate a unique, professional backend receipt number e.g. RCPT-20261001-000123 */
+export function generateReceiptNumber(seed?: string): string {
+  const d = new Date();
+  const datePart = d.toISOString().slice(0, 10).replace(/-/g, "");
+  const suffix = seed
+    ? seed.replace(/[^A-Za-z0-9]/g, "").slice(-6).toUpperCase().padStart(6, "0")
+    : Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `RCPT-${datePart}-${suffix}`;
+}
+
+/** Compute what a devotee must pay for a pooja and add-ons, server-side:
+ * base price + validated add-ons minus a validated coupon's discount. */
 export function computeOrderAmount(input: {
   pooja: Pooja;
+  addons?: SelectedAddonInput[];
   couponCode: string | null;
   couponMap: Record<string, Coupon>;
   phone: string;
   confirmedCount: number;
-}): { amount: number; discount: number; couponProblem: string | null } {
-  const price = input.pooja.price;
+}): {
+  amount: number;
+  subtotal: number;
+  addonTotal: number;
+  validatedAddons: ValidatedAddon[];
+  discount: number;
+  couponProblem: string | null;
+} {
+  const basePrice = input.pooja.price;
+  let addonTotal = 0;
+  const validatedAddons: ValidatedAddon[] = [];
+
+  if (input.addons && Array.isArray(input.addons)) {
+    for (const item of input.addons) {
+      if (!item || !item.id || typeof item.quantity !== "number" || item.quantity <= 0) continue;
+      const found = defaultChadhavaOfferings.find((c) => c.id === item.id);
+      if (found) {
+        const qty = Math.min(Math.max(1, Math.floor(item.quantity)), 20); // reasonable cap
+        const lineTotal = found.price * qty;
+        addonTotal += lineTotal;
+        validatedAddons.push({
+          id: found.id,
+          name: found.name,
+          price: found.price,
+          quantity: qty,
+          emoji: found.emoji,
+        });
+      }
+    }
+  }
+
+  const subtotal = basePrice + addonTotal;
   let discount = 0;
   let problem: string | null = null;
   if (input.couponCode) {
@@ -72,17 +126,26 @@ export function computeOrderAmount(input: {
       input.couponCode,
       {
         phone: input.phone,
-        price,
+        price: basePrice,
         poojaTitle: input.pooja.title,
       },
       input.couponMap,
       input.confirmedCount
     );
     if (!problem) {
-      discount = couponDiscount(input.couponCode, price, input.couponMap);
+      discount = couponDiscount(input.couponCode, basePrice, input.couponMap);
     }
   }
-  return { amount: Math.max(price - discount, 0), discount, couponProblem: problem };
+
+  const amount = Math.max(subtotal - discount, 0);
+  return {
+    amount,
+    subtotal,
+    addonTotal,
+    validatedAddons,
+    discount,
+    couponProblem: problem,
+  };
 }
 
 /** Create an order at Razorpay. Throws on failure (callers decide how to

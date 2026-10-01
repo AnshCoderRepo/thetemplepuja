@@ -162,7 +162,7 @@ export default function ProfilePage() {
             My <span className="text-amber-200">Sacred Profile</span>
           </>
         }
-        subtitle="View your personal details and every pooja you've booked with The Temple Puja."
+        subtitle="View your personal details and every pooja you've booked with templepujasewa."
         facts={[
           { icon: "🪔", label: "Booking history" },
           { icon: "🔒", label: "Private & secure" },

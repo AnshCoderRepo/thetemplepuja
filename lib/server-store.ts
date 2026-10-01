@@ -7,11 +7,13 @@ import bcrypt from "bcryptjs";
 import {
   coupons as staticCoupons,
   defaultPoojaDates,
+  defaultTemples as staticTemples,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEvents,
   type Coupon,
   type Pooja,
   type PoojaDate,
+  type Temple,
   type UpcomingEventSpec,
 } from "./data";
 import { createMemoryStore, type PersistenceStore } from "./persistence";
@@ -26,12 +28,23 @@ import {
   upsertInto,
   type BookingInput,
   type BookingRecord,
+  type CustomerMediaRecord,
   type RescheduleInput,
   type UserProfile,
 } from "./storage";
 
-export const DEFAULT_ADMIN_EMAIL = "admin@thetemplepuja.com";
-export const DEFAULT_ADMIN_PASSWORD = "admin123";
+export const DEFAULT_ADMIN_EMAIL =
+  process.env.ADMIN_EMAIL?.trim().toLowerCase() || "admin@thetemplepuja.com";
+export const DEFAULT_ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD || "admin123";
+
+export function getDefaultAdminEmail(): string {
+  return process.env.ADMIN_EMAIL?.trim().toLowerCase() || "admin@thetemplepuja.com";
+}
+
+export function getDefaultAdminPassword(): string {
+  return process.env.ADMIN_PASSWORD || "admin123";
+}
 
 /** bcrypt-hash a password (cost factor 10). Always async — never block the
  * event loop on a hash. */
@@ -111,7 +124,7 @@ async function withFallback<T>(
 
 // ===================== CATALOG =====================
 
-export type CatalogOverrideSection = "poojas" | "events" | "coupons" | "poojaDates";
+export type CatalogOverrideSection = "poojas" | "events" | "coupons" | "poojaDates" | "temples";
 
 /** Overrides merged over the static defaults — what consumers should render. */
 export async function getResolvedCatalog(): Promise<{
@@ -119,6 +132,7 @@ export async function getResolvedCatalog(): Promise<{
   events: UpcomingEventSpec[];
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
+  temples: Temple[];
 }> {
   const o = await withFallback((s) => s.getCatalogOverrides());
   return {
@@ -126,6 +140,7 @@ export async function getResolvedCatalog(): Promise<{
     events: o.events ?? staticEvents,
     coupons: o.coupons ?? staticCoupons,
     poojaDates: o.poojaDates ?? defaultPoojaDates,
+    temples: o.temples ?? staticTemples,
   };
 }
 
@@ -134,6 +149,7 @@ export async function saveCatalogOverrides(overrides: {
   events?: UpcomingEventSpec[];
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
+  temples?: Temple[];
 }): Promise<void> {
   await withFallback((s) => s.saveCatalogOverrides(overrides));
 }
@@ -153,9 +169,11 @@ export async function getAdminCreds(): Promise<{
   const creds = await withFallback((s) => s.getAdminCreds());
   if (creds.email && creds.passwordHash) return creds;
   // No stored credentials yet — seed with a bcrypt hash of the defaults.
+  const email = getDefaultAdminEmail();
+  const password = getDefaultAdminPassword();
   return {
-    email: DEFAULT_ADMIN_EMAIL,
-    passwordHash: await hashPassword(DEFAULT_ADMIN_PASSWORD),
+    email,
+    passwordHash: await hashPassword(password),
   };
 }
 
@@ -183,7 +201,7 @@ export async function verifyAdminLogin(
 }
 
 export async function adminCredsAreDefault(): Promise<boolean> {
-  return verifyAdminLogin(DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
+  return verifyAdminLogin(getDefaultAdminEmail(), getDefaultAdminPassword());
 }
 
 // ===================== SESSIONS =====================
@@ -380,3 +398,56 @@ export async function userHasPassword(phone: string): Promise<boolean> {
   const user = await findUserByPhone(phone);
   return Boolean(user?.email?.startsWith("pw:"));
 }
+
+// ===================== CUSTOMER MEDIA & VIDEOS =====================
+
+/** Add a video recording to a devotee profile and/or associated booking (admin action). */
+export async function addCustomerMediaRecord(
+  userId: string,
+  media: {
+    title: string;
+    url: string;
+    description?: string;
+    poojaTitle?: string;
+    bookingId?: string;
+  }
+): Promise<{ ok: boolean; user?: UserProfile }> {
+  const user = await withFallback((s) => s.findUserById(userId));
+  if (!user) return { ok: false };
+  const record: CustomerMediaRecord = {
+    id: "vid_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+    title: media.title.trim(),
+    url: media.url.trim(),
+    description: media.description?.trim(),
+    poojaTitle: media.poojaTitle?.trim(),
+    bookingId: media.bookingId?.trim(),
+    uploadedAt: new Date().toISOString(),
+  };
+  user.videos = [...(user.videos || []), record];
+  if (media.bookingId) {
+    const b = user.bookings.find((x) => x.bookingId === media.bookingId);
+    if (b) {
+      b.videos = [...(b.videos || []), record];
+    }
+  }
+  await withFallback((s) => s.saveUser(user));
+  return { ok: true, user };
+}
+
+/** Delete a video recording from a devotee profile (admin action). */
+export async function deleteCustomerMediaRecord(
+  userId: string,
+  mediaId: string
+): Promise<{ ok: boolean; user?: UserProfile }> {
+  const user = await withFallback((s) => s.findUserById(userId));
+  if (!user) return { ok: false };
+  user.videos = (user.videos || []).filter((v) => v.id !== mediaId);
+  for (const b of user.bookings) {
+    if (b.videos) {
+      b.videos = b.videos.filter((v) => v.id !== mediaId);
+    }
+  }
+  await withFallback((s) => s.saveUser(user));
+  return { ok: true, user };
+}
+
