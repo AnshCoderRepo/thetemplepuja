@@ -446,10 +446,10 @@ export const contactInfo = [
     href: getWhatsAppUrl(),
   },
   {
-    icon: "📞",
-    label: "Phone",
-    value: SITE_CONFIG.contact.phoneDisplay,
-    href: `tel:+${SITE_CONFIG.contact.countryCode}${SITE_CONFIG.contact.phoneRaw}`,
+    icon: "✉️",
+    label: "Email",
+    value: SITE_CONFIG.contact.email,
+    href: `mailto:${SITE_CONFIG.contact.email}`,
   },
 ];
 
@@ -537,13 +537,27 @@ export interface Pooja {
   slug: string;
   title: string;
   hindiTitle: string;
+  teluguTitle?: string;
+  tamilTitle?: string;
   emoji: string;
   gradient: string;
   price: number;
   duration: string;
+  hindiDuration?: string;
+  teluguDuration?: string;
+  tamilDuration?: string;
   bestMuhurat: string;
+  hindiBestMuhurat?: string;
+  teluguBestMuhurat?: string;
+  tamilBestMuhurat?: string;
   description: string;
+  hindiDescription?: string;
+  teluguDescription?: string;
+  tamilDescription?: string;
   benefits: string[];
+  hindiBenefits?: string[];
+  teluguBenefits?: string[];
+  tamilBenefits?: string[];
   /** Admin toggle — when false the pooja is hidden from the site (booking
    * form, catalogue and detail pages) until it is turned back on. Absent on
    * older stored data, which is treated as active. */
@@ -569,21 +583,60 @@ export interface Pooja {
   packages?: PoojaPackage[];
 
   // ── Event scheduling (optional) ──
-  // When daysFromToday is set, this pooja appears on the home page carousel
-  // as a bookable event. All fields below are optional — poojas without
-  // daysFromToday are catalogue-only (no carousel card).
-  /** Days from today for the event occurrence (0 = today). */
   daysFromToday?: number;
-  /** Display time, e.g. "7:00 PM IST". */
   eventTime?: string;
-  /** Seats label fallback when no capacity is set. */
   seats?: string;
-  /** Total seats — availability is computed from confirmed bookings. */
   capacity?: number;
-  /** Show the 🔴 Live badge on the carousel card. */
   live?: boolean;
-  /** Confirmed seats taken — attached by the catalog API for display. */
   bookedSeats?: number;
+}
+
+/** Get localized title for a pooja based on active locale */
+export function getLocalizedPoojaTitle(p: Pooja, locale?: string): string {
+  if (locale === "hi" && p.hindiTitle) return p.hindiTitle;
+  if (locale === "te" && p.teluguTitle) return p.teluguTitle;
+  if (locale === "ta" && p.tamilTitle) return p.tamilTitle;
+  return p.title;
+}
+
+/** Get secondary/native script badge for a pooja based on active locale */
+export function getLocalizedPoojaNativeBadge(p: Pooja, locale?: string): string {
+  if (locale === "hi") return p.hindiTitle;
+  if (locale === "te") return p.teluguTitle || p.hindiTitle;
+  if (locale === "ta") return p.tamilTitle || p.hindiTitle;
+  return p.hindiTitle;
+}
+
+/** Get localized description for a pooja based on active locale */
+export function getLocalizedPoojaDescription(p: Pooja, locale?: string): string {
+  if (locale === "hi" && p.hindiDescription) return p.hindiDescription;
+  if (locale === "te" && p.teluguDescription) return p.teluguDescription;
+  if (locale === "ta" && p.tamilDescription) return p.tamilDescription;
+  return p.description;
+}
+
+/** Get localized benefits for a pooja based on active locale */
+export function getLocalizedPoojaBenefits(p: Pooja, locale?: string): string[] {
+  if (locale === "hi" && p.hindiBenefits && p.hindiBenefits.length > 0) return p.hindiBenefits;
+  if (locale === "te" && p.teluguBenefits && p.teluguBenefits.length > 0) return p.teluguBenefits;
+  if (locale === "ta" && p.tamilBenefits && p.tamilBenefits.length > 0) return p.tamilBenefits;
+  return p.benefits;
+}
+
+/** Get localized best muhurat for a pooja based on active locale */
+export function getLocalizedPoojaBestMuhurat(p: Pooja, locale?: string): string {
+  if (locale === "hi" && p.hindiBestMuhurat) return p.hindiBestMuhurat;
+  if (locale === "te" && p.teluguBestMuhurat) return p.teluguBestMuhurat;
+  if (locale === "ta" && p.tamilBestMuhurat) return p.tamilBestMuhurat;
+  return p.bestMuhurat;
+}
+
+/** Get localized duration for a pooja based on active locale */
+export function getLocalizedPoojaDuration(p: Pooja, locale?: string): string {
+  if (locale === "hi" && p.hindiDuration) return p.hindiDuration;
+  if (locale === "te" && p.teluguDuration) return p.teluguDuration;
+  if (locale === "ta" && p.tamilDuration) return p.tamilDuration;
+  return p.duration;
 }
 
 /** True unless the admin explicitly deactivated the pooja. */
@@ -601,6 +654,8 @@ export const poojas: Pooja[] = [
     slug: "satyanarayan-katha",
     title: "Satyanarayan Katha",
     hindiTitle: "श्री सत्यनारायण कथा",
+    teluguTitle: "శ్రీ సత్యనారాయణ కథ",
+    tamilTitle: "ஸ்ரீ சத்யநாராயண கதை",
     emoji: "📿",
     gradient: "from-amber-400 to-orange-600",
     price: 1101,
@@ -612,12 +667,23 @@ export const poojas: Pooja[] = [
     deities: ["Lord Vishnu", "Lord Satyanarayan"],
     description:
       "The beloved vow-fulfillment ritual of Lord Vishnu's Satyanarayan form, bringing peace, prosperity and harmony to the whole family.",
+    hindiDescription:
+      "भगवान विष्णु के सत्यनारायण रूप का संकल्प पूर्ति अनुष्ठान, जो पूरे परिवार में सुख, शांति और समृद्धि लाता है।",
+    teluguDescription:
+      "కుటుంబంలో శాంతి, శ్రేయస్సు మరియు సామరస్యాన్ని తీసుకువచ్చే శ్రీ మహావిష్ణువు సత్యనారాయణ రూప పవిత్ర వ్రత పూజ.",
+    tamilDescription:
+      "குடும்பத்தில் அமைதி, செழிப்பு மற்றும் ஒற்றுமையைத் தரும் ஸ்ரீ மகாவிஷ்ணுவின் சத்யநாராயண விரத பூஜை.",
     benefits: ["Prosperity & abundance", "Family peace & harmony", "Vow fulfillment", "Blessed prasadam"],
+    hindiBenefits: ["सुख और समृद्धि", "पारिवारिक शांति और सद्भाव", "मनोकामना पूर्ति", "पवित्र प्रसाद आशीर्वाद"],
+    teluguBenefits: ["శ్రేయస్సు మరియు సమృద్ధి", "కుటుంబ శాంతి మరియు సామరస్యం", "సంకల్ప సిద్ధి", "పవిత్ర ప్రసాదం"],
+    tamilBenefits: ["செல்வம் மற்றும் வளம்", "குடும்ப அமைதி", "பிரார்த்தனை நிறைவேற்றம்", "புனித பிரசாதம்"],
   },
   {
     slug: "rudrabhishek",
     title: "Rudrabhishek",
     hindiTitle: "श्री रुद्राभिषेक",
+    teluguTitle: "శ్రీ రుద్రాభిషేకం",
+    tamilTitle: "ஸ்ரீ ருத்ராபிஷேகம்",
     emoji: "🕉️",
     gradient: "from-indigo-500 to-purple-600",
     price: 2501,
@@ -629,12 +695,23 @@ export const poojas: Pooja[] = [
     deities: ["Lord Shiva"],
     description:
       "Sacred abhishek of the Shiva Linga with panchamrit, bilva leaves and Vedic chants — a powerful ritual for protection and inner strength.",
+    hindiDescription:
+      "पंचामृत, बिल्वपत्र और वैदिक मंत्रों के साथ शिवलिंग का पवित्र अभिषेक — सुरक्षा, स्वास्थ्य और आत्मबल का अनुष्ठान।",
+    teluguDescription:
+      "పంచామృతం, బిల్వపత్రాలు మరియు వేద మంత్రాలతో శివలింగానికి పవిత్ర అభిషేకం — రక్షణ, ఆరోగ్యం మరియు అంతర్గత బలం కోసం.",
+    tamilDescription:
+      "பஞ்சாமிர்தம், வில்வ இலைகள் மற்றும் வேத மந்திரங்களுடன் சிவலிங்கத்திற்கு செய்யப்படும் புனித அபிஷேகம்.",
     benefits: ["Divine protection", "Removal of obstacles", "Health & longevity", "Inner strength"],
+    hindiBenefits: ["दिव्य सुरक्षा", "बाधाओं का निवारण", "आरोग्य और दीर्घायु", "आत्मिक शक्ति"],
+    teluguBenefits: ["దైవిక రక్షణ", "విఘ్న నివారణ", "ఆరోగ్యం మరియు దీర్ఘాయువు", "ఆత్మబలం"],
+    tamilBenefits: ["தெய்வீக பாதுகாப்பு", "தடைகள் நீங்குதல்", "ஆரோக்கியம் மற்றும் நீண்ட ஆயுள்", "மனோபலம்"],
   },
   {
     slug: "griha-pravesh",
     title: "Griha Pravesh",
     hindiTitle: "गृह प्रवेश",
+    teluguTitle: "గృహ ప్రవేశం",
+    tamilTitle: "கிரகப் பிரவேசம்",
     emoji: "🏠",
     gradient: "from-emerald-500 to-teal-600",
     price: 3501,
@@ -646,12 +723,23 @@ export const poojas: Pooja[] = [
     deities: ["Lord Ganesha", "Goddess Lakshmi"],
     description:
       "Vedic house-warming ceremony that purifies and energises your new home, invoking Goddess Lakshmi and Vastu Devta for lasting positivity.",
+    hindiDescription:
+      "वैदिक गृहप्रवेश अनुष्ठान जो आपके नए घर को शुद्ध और सकारात्मक ऊर्जा से भरता है, देवी लक्ष्मी और वास्तु देवता का आशीर्वाद दिलाता है।",
+    teluguDescription:
+      "లక్ష్మీ దేవి మరియు వాస్తు దేవతలను ఆహ్వానిస్తూ కొత్త ఇంటిని పవిత్రం చేసే మరియు పాజిటివ్ ఎనర్జీ నింపే వైదిక గృహ ప్రవేశ పూజ.",
+    tamilDescription:
+      "லக்ஷ்மி தேவி மற்றும் வாஸ்து தேவதையை வரவேற்று புதிய வீட்டைப் புனிதப்படுத்தும் மங்களகரமான கிரகப்பிரவேச பூஜை.",
     benefits: ["Positive energies", "Vastu harmony", "A peaceful home", "Blessings of Lakshmi"],
+    hindiBenefits: ["सकारात्मक ऊर्जा", "वास्तु दोष शांति", "सुखमय गृह", "माँ लक्ष्मी का आशीर्वाद"],
+    teluguBenefits: ["సానుకూల శక్తులు", "వాస్తు శాంతి", "శాంతియుత గృహం", "మహాలక్ష్మి అనుగ్రహం"],
+    tamilBenefits: ["நேர்மறை ஆற்றல்", "வாஸ்து சாந்தி", "அமைதியான இல்லம்", "லட்சுமி கடாட்சம்"],
   },
   {
     slug: "shani-dev-pooja",
     title: "Shani Dev Pooja",
     hindiTitle: "शनि देव पूजा",
+    teluguTitle: "శని దేవుని పూజ",
+    tamilTitle: "சனி பகவான் பூஜை",
     emoji: "🪐",
     gradient: "from-slate-600 to-gray-900",
     price: 1001,
@@ -663,12 +751,23 @@ export const poojas: Pooja[] = [
     deities: ["Lord Shani"],
     description:
       "Special worship of Lord Shani with tail oil, black til and Shani mantra japa to pacify Saturn and bring stability during sade sati.",
+    hindiDescription:
+      "सरसों के तेल, काले तिल और शनि मंत्र जाप के साथ भगवान शनि की विशेष पूजा, जो साढ़े साती में राहत और जीवन में स्थिरता लाती है।",
+    teluguDescription:
+      "ఏలినాటి శని ప్రభావం తగ్గించడానికి మరియు జీవితంలో స్థిరత్వం కోసం నువ్వుల నూనె మరియు మంత్ర జపంతో శని పూజ.",
+    tamilDescription:
+      "ஏழரை சனியின் தாக்கத்தைக் குறைக்கவும், வாழ்க்கையில் ஸ்திரத்தன்மை பெறவும் செய்யப்படும் சனி பகவான் வழிபாடு.",
     benefits: ["Sade sati relief", "Career stability", "Protection from malefic", "Patience & discipline"],
+    hindiBenefits: ["साढ़े साती में शांति", "करियर में स्थिरता", "अशुभ प्रभावों से रक्षा", "धैर्य व एकाग्रता"],
+    teluguBenefits: ["శని దోష నివారణ", "ఉద్యోగ స్థిరత్వం", "గ్రహ పీడల నుండి రక్షణ", "క్రమశిక్షణ"],
+    tamilBenefits: ["சனி தோஷ நிவாரணம்", "தொழில் ஸ்திரத்தன்மை", "தீய பார்வையில் இருந்து பாதுகாப்பு", "பொறுமை"],
   },
   {
     slug: "navgraha-shanti",
     title: "Navgraha Shanti",
     hindiTitle: "नवग्रह शांति",
+    teluguTitle: "నవగ్రహ శాంతి",
+    tamilTitle: "நவக்கிரக சாந்தி",
     emoji: "✨",
     gradient: "from-fuchsia-500 to-pink-600",
     price: 5001,
@@ -680,12 +779,23 @@ export const poojas: Pooja[] = [
     deities: ["Navgraha Devtas"],
     description:
       "A comprehensive ritual pacifying all nine planets with individual homas, dosha remedies and kumbha abhishek for overall well-being.",
+    hindiDescription:
+      "सभी नौ ग्रहों की शांति के लिए व्यक्तिगत हवन, दोष निवारण और कुंभ अभिषेक के साथ एक समग्र वैदिक अनुष्ठान।",
+    teluguDescription:
+      "సమగ్ర శ్రేయస్సు మరియు గ్రహ దోష నివారణ కోసం తొమ్మిది గ్రహాలకు చేసే సమగ్ర వైదిక హోమం మరియు అభిషేకం.",
+    tamilDescription:
+      "அனைத்து ஒன்பது கிரகங்களின் தோஷங்களை நீக்கி நல்வாழ்வு பெற செய்யப்படும் முழுமையான நவகிரக சாந்தி ஹோமம்.",
     benefits: ["Balances all 9 planets", "Removes doshas", "Overall well-being", "Auspicious beginnings"],
+    hindiBenefits: ["सभी 9 ग्रहों का संतुलन", "दोषों का समूल निवारण", "समग्र कल्याण", "शुभ कार्यों की शुरुआत"],
+    teluguBenefits: ["నవగ్రహాల సమతుల్యత", "సకల గ్రహ దోష నివారణ", "సర్వతోముఖాభివృద్ధి", "శుభారంభం"],
+    tamilBenefits: ["ஒன்பது கிரகங்களின் சமநிலை", "தோஷ நிவர்த்தி", "முழுமையான நல்வாழ்வு", "சுப ஆரம்பம்"],
   },
   {
     slug: "hanuman-pooja",
     title: "Hanuman Pooja",
     hindiTitle: "हनुमान पूजा",
+    teluguTitle: "హనుమాన్ పూజ",
+    tamilTitle: "ஹனுமான் பூஜை",
     emoji: "🐒",
     gradient: "from-orange-400 to-rose-500",
     price: 501,
@@ -697,12 +807,23 @@ export const poojas: Pooja[] = [
     deities: ["Lord Hanuman"],
     description:
       "Worship of Bajrang Bali with sindoor, chola and Hanuman Chalisa path to fill your life with courage, strength and fearlessness.",
+    hindiDescription:
+      "सिंदूर, चोला और हनुमान चालीसा पाठ के साथ बजरंगबली की पूजा, जो आपके जीवन को साहस, शक्ति और भयमुक्ति से भर देती है।",
+    teluguDescription:
+      "ధైర్యం, బలం మరియు భయ నివారణ కోసం సింధూరం మరియు హనుమాన్ చాలీసా పఠనంతో భజరంగబలి పూజ.",
+    tamilDescription:
+      "தைரியம், பலம் மற்றும் பயமின்மை பெற சிந்தூரம் மற்றும் ஹனுமான் சாலிசா பாராயணத்துடன் செய்யப்படும் வழிபாடு.",
     benefits: ["Courage & strength", "Removal of fear", "Enemy troubles removed", "Speedy justice"],
+    hindiBenefits: ["साहस और बल", "भय और संकट निवारण", "शत्रु बाधा शांति", "शीघ्र न्याय व सफलता"],
+    teluguBenefits: ["ధైర్యం మరియు బలం", "భయ నివారణ", "శత్రు పీడల నివారణ", "త్వరిత విజయం"],
+    tamilBenefits: ["தைரியம் மற்றும் பலம்", "பயமின்மை", "எதிரி தொல்லைகள் நீங்குதல்", "வெற்றி"],
   },
   {
     slug: "lakshmi-pooja",
     title: "Lakshmi Pooja",
     hindiTitle: "लक्ष्मी पूजा",
+    teluguTitle: "లక్ష్మీ పూజ",
+    tamilTitle: "லட்சுமி பூஜை",
     emoji: "🪙",
     gradient: "from-yellow-400 to-amber-600",
     price: 1101,
@@ -714,12 +835,23 @@ export const poojas: Pooja[] = [
     deities: ["Goddess Lakshmi"],
     description:
       "Invoke Mahalakshmi with lotus offerings, shri yantra pujan and 108 names path to attract wealth, prosperity and financial stability.",
+    hindiDescription:
+      "कमल पुष्प, श्री यंत्र पूजन और 108 नामावली पाठ के साथ महालक्ष्मी का आह्वान, जो धन, समृद्धि और वित्तीय स्थिरता लाता है।",
+    teluguDescription:
+      "సంపద, ఐశ్వర్యం మరియు వ్యాపార వృద్ధి కోసం కమల పుష్పాలు మరియు శ్రీ సూక్త పఠనంతో మహాలక్ష్మి పూజ.",
+    tamilDescription:
+      "செல்வம், வளம் மற்றும் தொழில் வளர்ச்சிக்காக தாமரை மலர்கள் மற்றும் ஸ்ரீ சூக்தத்துடன் செய்யப்படும் மகாலட்சுமி பூஜை.",
     benefits: ["Wealth & prosperity", "Business growth", "Financial stability", "Blessings of Mahalakshmi"],
+    hindiBenefits: ["धन व समृद्धि", "व्यापार में वृद्धि", "वित्तीय स्थिरता", "महालक्ष्मी की कृपा"],
+    teluguBenefits: ["ధన ధాన్య వృద్ధి", "వ్యాపార పురోగతి", "ఆర్థిక స్థిరత్వం", "మహాలక్ష్మి కృపాకటాక్షం"],
+    tamilBenefits: ["தன தானிய விருத்தி", "வியாபார வளர்ச்சி", "பொருளாதார ஸ்திரத்தன்மை", "மகாலட்சுமி அருள்"],
   },
   {
     slug: "maha-mrityunjaya-jap",
     title: "Maha Mrityunjaya Jap",
     hindiTitle: "महामृत्युंजय जाप",
+    teluguTitle: "మహా మృత్యుంజయ జపం",
+    tamilTitle: "மகா மிருத்யுஞ்சய ஜெபம்",
     emoji: "🔱",
     gradient: "from-sky-500 to-blue-700",
     price: 2101,
@@ -731,12 +863,23 @@ export const poojas: Pooja[] = [
     deities: ["Lord Shiva"],
     description:
       "11,000 recitations of the Maha Mrityunjaya mantra with havan — a profound ritual for healing, protection and victory over fear.",
+    hindiDescription:
+      "हवन के साथ महामृत्युंजय मंत्र के 11,000 जाप — स्वास्थ्य लाभ, सुरक्षा और भय पर विजय के लिए एक शक्तिशाली अनुष्ठान।",
+    teluguDescription:
+      "ఆరోగ్యం, ఆయుష్షు మరియు అకాల భయాల నివారణ కోసం 11,000 సార్లు మహా మృత్యుంజయ మంత్ర జపం మరియు హవనం.",
+    tamilDescription:
+      "உடல்நலம், நீண்ட ஆயுள் மற்றும் பயத்திலிருந்து விடுபட 11,000 முறை செய்யப்படும் மகா மிருத்யுஞ்சய மந்திர ஜெபம்.",
     benefits: ["Health & healing", "Protection from accidents", "Longevity", "Peace of mind"],
+    hindiBenefits: ["आरोग्य व स्वास्थ्य लाभ", "दुर्घटनाओं से रक्षा", "दीर्घायु वरदान", "मानसिक शांति"],
+    teluguBenefits: ["ఆరోగ్యం మరియు స్వస్థత", "ప్రమాదాల నుండి రక్షణ", "దీర్ఘాయుష్షు", "ప్రశాంతత"],
+    tamilBenefits: ["உடல்நலம் மற்றும் நிவாரணம்", "விபத்துக்களில் இருந்து பாதுகாப்பு", "நீண்ட ஆயுள்", "மன அமைதி"],
   },
   {
     slug: "saraswati-pooja",
     title: "Saraswati Pooja",
     hindiTitle: "सरस्वती पूजा",
+    teluguTitle: "సరస్వతీ పూజ",
+    tamilTitle: "சரஸ்வதி பூஜை",
     emoji: "📚",
     gradient: "from-rose-400 to-pink-600",
     price: 1501,
@@ -748,12 +891,23 @@ export const poojas: Pooja[] = [
     deities: ["Goddess Saraswati"],
     description:
       "Seek the blessings of Goddess Saraswati for students and artists — with aksharabhyas, pustak pujan and Vedic chants for wisdom.",
+    hindiDescription:
+      "विद्यार्थियों और कलाकारों के लिए माँ सरस्वती का आशीर्वाद — ज्ञान, एकाग्रता और वाक-सिद्धि के लिए वैदिक पूजन।",
+    teluguDescription:
+      "విద్యార్థులు మరియు కళాకారుల జ్ఞానం, విద్యా విజయం మరియు వాక్శుద్ధి కోసం జ్ఞాన సరస్వతి పూజ.",
+    tamilDescription:
+      "மாணவர்கள் மற்றும் கலைஞர்களின் ஞானம், கல்வி வெற்றி மற்றும் கலைத்திறனுக்காக செய்யப்படும் சரஸ்வதி பூஜை.",
     benefits: ["Wisdom & knowledge", "Academic success", "Creative inspiration", "Speech clarity"],
+    hindiBenefits: ["बुद्धि व विद्या", "शिक्षा में सफलता", "सृजनात्मक प्रेरणा", "वाक्-सिद्धि"],
+    teluguBenefits: ["జ్ఞానం మరియు విద్య", "విద్యా రంగంలో విజయం", "సృజనాత్మకత", "వాక్శుద్ధి"],
+    tamilBenefits: ["ஞானம் மற்றும் கல்வி", "தேர்வுகளில் வெற்றி", "கலை ஆர்வம்", "பேச்சாற்றல்"],
   },
   {
     slug: "durga-saptashati-path",
     title: "Durga Saptashati Path",
     hindiTitle: "दुर्गा सप्तशती पाठ",
+    teluguTitle: "దుర్గా సప్తశతి పారాయణం",
+    tamilTitle: "துர்கா சப்தசதி பாராயணம்",
     emoji: "🗡️",
     gradient: "from-red-500 to-rose-700",
     price: 2501,
@@ -765,12 +919,23 @@ export const poojas: Pooja[] = [
     deities: ["Maa Durga"],
     description:
       "Complete recitation of the 700 verses of Devi Mahatmya over seven days — the ultimate shield against negativity and fear.",
+    hindiDescription:
+      "सात दिनों में देवी माहात्म्य के 700 श्लोकों का संपूर्ण पाठ — नकारात्मकता से रक्षा और आत्मविश्वास का सर्वोच्च कवच।",
+    teluguDescription:
+      "దుష్ట శక్తులు మరియు ప్రతికూలతల నుండి రక్షణ కోసం దేవి మాహాత్మ్యంలోని 700 శ్లోకాల సంపూర్ణ పారాయణం.",
+    tamilDescription:
+      "எதிர்மறை சக்திகளில் இருந்து பாதுகாப்பு மற்றும் தைரியம் பெற தேவி மகாத்மியத்தின் 700 சுலோகங்களின் முழுமையான பாராயணம்.",
     benefits: ["Removal of negativity", "Divine protection", "Courage in adversity", "Shakti & confidence"],
+    hindiBenefits: ["नकारात्मकता का नाश", "दैवीय रक्षा कवच", "विपत्तियों में धैर्य", "शक्ति व आत्मविश्वास"],
+    teluguBenefits: ["ప్రతికూలతల తొలగింపు", "దైవిక రక్షణ", "కష్టాలలో ధైర్యం", "శక్తి మరియు ఆత్మవిశ్వాసం"],
+    tamilBenefits: ["எதிர்மறை நீங்குதல்", "தெய்வீக கவசம்", "துணிச்சல்", "சக்தி மற்றும் தன்னம்பிக்கை"],
   },
   {
     slug: "vishwakarma-pooja",
     title: "Vishwakarma Pooja",
     hindiTitle: "विश्वकर्मा पूजा",
+    teluguTitle: "విశ్వకర్మ పూజ",
+    tamilTitle: "விஸ்வகர்மா பூஜை",
     emoji: "⚒️",
     gradient: "from-amber-500 to-yellow-600",
     price: 1001,
@@ -782,12 +947,23 @@ export const poojas: Pooja[] = [
     deities: ["Lord Vishwakarma"],
     description:
       "Worship of the divine architect Vishwakarma for workshops, factories and vehicles — ensuring safety, skill and business growth.",
+    hindiDescription:
+      "कारखानों, कार्यशालाओं और वाहनों के लिए भगवान विश्वकर्मा की पूजा — सुरक्षा, कुशलता और व्यापार वृद्धि का आशीर्वाद।",
+    teluguDescription:
+      "కర్మాగారాలు, పనిముట్లు మరియు వాహనాల భద్రత మరియు వ్యాపార అభివృద్ధి కోసం దేవ శిల్పి విశ్వకర్మ పూజ.",
+    tamilDescription:
+      "தொழிற்சாலைகள், கருவிகள் மற்றும் வாகனங்களின் பாதுகாப்பு மற்றும் தொழில் வளர்ச்சிக்காக செய்யப்படும் விஸ்வகர்மா வழிபாடு.",
     benefits: ["Business prosperity", "Machine & vehicle safety", "Success in work", "Skill enhancement"],
+    hindiBenefits: ["व्यापारिक उन्नति", "मशीनों व वाहनों की सुरक्षा", "कार्यसिद्धि", "कौशल विकास"],
+    teluguBenefits: ["వ్యాపార అభివృద్ధి", "యంత్రాలు & వాహనాల రక్షణ", "కార్య విజయం", "నైపుణ్యాభివృద్ధి"],
+    tamilBenefits: ["தொழில் வெற்றி", "இயந்திரங்கள் மற்றும் வாகன பாதுகாப்பு", "வேலையில் வெற்றி", "திறன் மேம்பாடு"],
   },
   {
     slug: "kuber-pooja",
     title: "Kuber Pooja",
     hindiTitle: "कुबेर पूजा",
+    teluguTitle: "కుబేర పూజ",
+    tamilTitle: "குபேர பூஜை",
     emoji: "💎",
     gradient: "from-emerald-400 to-green-600",
     price: 1101,
@@ -799,7 +975,16 @@ export const poojas: Pooja[] = [
     deities: ["Lord Kuber"],
     description:
       "Worship of Lord Kuber with the Kuber Yantra to attract wealth, clear debts and open new doors of financial opportunity.",
+    hindiDescription:
+      "कुबेर यंत्र के साथ भगवान कुबेर की विशेष पूजा — धन आकर्षण, ऋण मुक्ति और नए आर्थिक अवसरों के द्वार खोलने के लिए।",
+    teluguDescription:
+      "ఆర్థిక అవకాశాలు, ధన లాభం మరియు రుణ విముక్తి కోసం కుబేర యంత్ర సహిత విశేష ధనదా పూజ.",
+    tamilDescription:
+      "நிதி வளர்ச்சி, கடன் நிவாரணம் மற்றும் புதிய வாய்ப்புகளை ஈர்க்க குபேர எந்திரத்துடன் செய்யப்படும் பூஜை.",
     benefits: ["Attract wealth", "Business growth", "Debt relief", "Financial wisdom"],
+    hindiBenefits: ["धन का आकर्षण", "व्यापारिक लाभ", "ऋण से मुक्ति", "आर्थिक सद्बुद्धि"],
+    teluguBenefits: ["ధన లాభం", "వ్యాపార వృద్ధి", "రుణ విముక్తి", "ఆర్థిక జ్ఞానం"],
+    tamilBenefits: ["தன வரவு", "வியாபார முன்னேற்றம்", "கடன் விடுதலை", "பொருளாதார ஞானம்"],
   },
 ];
 

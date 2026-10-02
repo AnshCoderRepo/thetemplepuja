@@ -4,14 +4,22 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Clock, Filter, Search, Sparkles, X } from "lucide-react";
 import Reveal from "./Reveal";
-import { activePoojas } from "@/lib/data";
+import {
+  activePoojas,
+  getLocalizedPoojaTitle,
+  getLocalizedPoojaNativeBadge,
+  getLocalizedPoojaDescription,
+  getLocalizedPoojaBenefits,
+} from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import { useCatalog } from "./useCatalog";
+import { useI18n } from "./I18nProvider";
 
 export default function PoojaCatalog({ notice }: { notice?: string }) {
   // Static defaults on first render (SSR-safe); swaps to the server catalog.
   // Inactive poojas (admin toggle) are hidden from visitors.
   const { poojas } = useCatalog();
+  const { locale, t } = useI18n();
   const list = activePoojas(poojas);
 
   const [search, setSearch] = useState("");
@@ -30,11 +38,17 @@ export default function PoojaCatalog({ notice }: { notice?: string }) {
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return list.filter((p) => {
+      const locTitle = getLocalizedPoojaTitle(p, locale).toLowerCase();
+      const locDesc = getLocalizedPoojaDescription(p, locale).toLowerCase();
       const matchesSearch =
         !q ||
         p.title.toLowerCase().includes(q) ||
         (p.hindiTitle && p.hindiTitle.toLowerCase().includes(q)) ||
+        (p.teluguTitle && p.teluguTitle.toLowerCase().includes(q)) ||
+        (p.tamilTitle && p.tamilTitle.toLowerCase().includes(q)) ||
+        locTitle.includes(q) ||
         p.description.toLowerCase().includes(q) ||
+        locDesc.includes(q) ||
         (p.category && p.category.toLowerCase().includes(q)) ||
         (p.deities && p.deities.some((d) => d.toLowerCase().includes(q)));
 
@@ -44,7 +58,7 @@ export default function PoojaCatalog({ notice }: { notice?: string }) {
 
       return matchesSearch && matchesCategory;
     });
-  }, [list, search, selectedCategory]);
+  }, [list, search, selectedCategory, locale]);
 
   return (
     <div className="container-px pb-24">
@@ -149,8 +163,8 @@ export default function PoojaCatalog({ notice }: { notice?: string }) {
                   <span className="absolute right-5 top-4 text-4xl drop-shadow-lg transition-transform duration-500 group-hover:scale-125 group-hover:-rotate-6">
                     {p.emoji}
                   </span>
-                  <span className="absolute left-5 top-4 font-devanagari text-sm font-semibold text-white/90">
-                    {p.hindiTitle}
+                  <span className="absolute left-5 top-4 text-sm font-semibold text-white/90">
+                    {getLocalizedPoojaNativeBadge(p, locale)}
                   </span>
                   <span className="absolute bottom-3 left-5 flex items-center gap-1.5 text-xs font-semibold text-white">
                     <Clock className="h-3.5 w-3.5" />
@@ -160,7 +174,9 @@ export default function PoojaCatalog({ notice }: { notice?: string }) {
 
                 <div className="flex flex-1 flex-col p-5">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <h3 className="font-display text-lg font-bold text-ink leading-snug">{p.title}</h3>
+                    <h3 className="font-display text-lg font-bold text-ink leading-snug">
+                      {getLocalizedPoojaTitle(p, locale)}
+                    </h3>
                   </div>
                   {p.category && (
                     <span className="inline-block self-start rounded-full bg-cream px-2.5 py-0.5 text-[10px] font-bold text-saffron-800 border border-saffron-100 mb-2">
@@ -168,10 +184,10 @@ export default function PoojaCatalog({ notice }: { notice?: string }) {
                     </span>
                   )}
                   <p className="mt-1 flex-1 text-xs leading-relaxed text-ink-soft">
-                    {p.description}
+                    {getLocalizedPoojaDescription(p, locale)}
                   </p>
                   <ul className="mt-4 flex flex-wrap gap-1.5">
-                    {p.benefits.slice(0, 2).map((b) => (
+                    {getLocalizedPoojaBenefits(p, locale).slice(0, 2).map((b) => (
                       <li
                         key={b}
                         className="rounded-full bg-saffron-50 px-2.5 py-1 text-[10px] font-semibold text-saffron-700"
@@ -188,7 +204,7 @@ export default function PoojaCatalog({ notice }: { notice?: string }) {
                       <span className="text-[11px] font-medium text-ink-soft/60"> onwards</span>
                     </div>
                     <span className="btn-primary !px-5 !py-2.5 text-xs">
-                      Book Now
+                      {t("hero.cta.book") || "Book Now"}
                     </span>
                   </div>
                 </div>

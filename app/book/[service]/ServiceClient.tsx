@@ -7,11 +7,19 @@ import BookPageHeader from "@/components/BookPageHeader";
 import PoojaCatalog from "@/components/PoojaCatalog";
 import BookingFlow from "@/components/BookingFlow";
 import { useCatalog } from "@/components/useCatalog";
-import { isPoojaActive } from "@/lib/data";
+import { useI18n } from "@/components/I18nProvider";
+import {
+  isPoojaActive,
+  getLocalizedPoojaTitle,
+  getLocalizedPoojaNativeBadge,
+  getLocalizedPoojaDuration,
+  getLocalizedPoojaBestMuhurat,
+} from "@/lib/data";
 import { formatINR } from "@/lib/format";
 
 function ServiceInner({ service }: { service: string }) {
   const search = useSearchParams();
+  const { locale } = useI18n();
   // Resolve from the backend catalog (falls back to the static list).
   const { poojas, loaded } = useCatalog();
   const pooja = loaded ? (poojas.find((p) => p.slug === service) ?? null) : undefined;
@@ -55,13 +63,13 @@ function ServiceInner({ service }: { service: string }) {
         <BookPageHeader
           eyebrow="🪔 Pooja Booking"
           title="Pooja Currently Unavailable"
-          subtitle={`${pooja.title} is temporarily paused by our team. It will be back soon — meanwhile, browse our other sacred services.`}
+          subtitle={`${getLocalizedPoojaTitle(pooja, locale)} is temporarily paused by our team. It will be back soon — meanwhile, browse our other sacred services.`}
         />
         <section className="section-pad bg-cream">
           <div className="mx-auto max-w-md rounded-3xl border border-saffron-100 bg-white p-10 text-center shadow-card">
             <span className="text-5xl">{pooja.emoji}</span>
             <h2 className="mt-4 font-display text-xl font-bold text-ink">
-              {pooja.title} is unavailable right now
+              {getLocalizedPoojaTitle(pooja, locale)} is unavailable right now
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-soft">
               This pooja has been temporarily paused and cannot be booked at the
@@ -82,16 +90,16 @@ function ServiceInner({ service }: { service: string }) {
         eyebrow={`${pooja.emoji} Pooja Booking`}
         title={
           <>
-            {pooja.title}{" "}
-            <span className="align-middle font-devanagari text-2xl font-semibold text-amber-200/90 sm:text-3xl">
-              {pooja.hindiTitle}
+            {getLocalizedPoojaTitle(pooja, locale)}{" "}
+            <span className="align-middle text-2xl font-semibold text-amber-200/90 sm:text-3xl">
+              {getLocalizedPoojaNativeBadge(pooja, locale)}
             </span>
           </>
         }
         subtitle="Enter devotee details for the sacred sankalp and complete booking."
         facts={[
-          { icon: "⏱️", label: pooja.duration },
-          { icon: "🪔", label: `Best: ${pooja.bestMuhurat}` },
+          { icon: "⏱️", label: getLocalizedPoojaDuration(pooja, locale) },
+          { icon: "🪔", label: `Best: ${getLocalizedPoojaBestMuhurat(pooja, locale)}` },
           { icon: "💎", label: `From ${formatINR(pooja.price)}` },
           { icon: "⭐", label: "4.9 rated pandits" },
         ]}

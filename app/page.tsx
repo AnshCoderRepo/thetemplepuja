@@ -1,10 +1,10 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
+import PoojaCatalog from "@/components/PoojaCatalog";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
-import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
 import { faqs } from "@/lib/data";
@@ -19,11 +19,28 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
+        
+        {/* All Sacred Poojas Catalog on Landing Page */}
+        <section id="poojas" className="pt-12 pb-6 bg-cream">
+          <div className="container-px mb-8 text-center">
+            <span className="eyebrow">
+              <span className="text-saffron-500">🪔</span>
+              Sacred Pooja Catalog
+            </span>
+            <h2 className="font-display text-3xl font-bold leading-tight text-ink sm:text-4xl md:text-5xl">
+              Choose Your Sacred Pooja
+            </h2>
+            <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-base">
+              Browse authentic Vedic poojas performed on auspicious dates by certified pandits. Book online in minutes.
+            </p>
+          </div>
+          <PoojaCatalog />
+        </section>
+
         <UpcomingEvents />
         <WhyChooseUs />
         <Testimonials />
         <FAQ />
-        <Contact />
       </main>
       <Footer />
     </>
