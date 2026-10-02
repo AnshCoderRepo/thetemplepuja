@@ -6,7 +6,7 @@ import { CalendarX2, Clock, Video } from "lucide-react";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 import { useI18n } from "@/components/I18nProvider";
-import { getUpcomingEvents, isEventFull, poojasAsEvents, seatsLabel } from "@/lib/data";
+import { getUpcomingEvents, isEventFull, poojasAsEvents, seatsLabel, getLocalizedPoojaTitle } from "@/lib/data";
 import { useCatalog } from "./useCatalog";
 import {
   CoverflowCarousel,
@@ -18,7 +18,7 @@ export default function UpcomingEvents() {
   const [today, setToday] = useState<Date | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const { poojas: catalogPoojas, loaded } = useCatalog();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   // Compute "today" only after mount so server and client renders match.
   useEffect(() => {
@@ -29,23 +29,32 @@ export default function UpcomingEvents() {
   const specs = loaded ? poojasAsEvents(catalogPoojas) : null;
   const events = today && specs ? getUpcomingEvents(today, specs) : [];
 
-  const slides: CoverflowSlide[] = events.map((event) => ({
-    // Emoji + gradient tiles, like the original event cards.
-    alt: event.title,
-    emoji: event.emoji,
-    gradient: event.gradient,
-    live: event.live,
-    // Muhurat stamp on the tile; caption stays title + meta only.
-    dateLabel: `${event.date} · ${event.time}`,
-    title: event.title,
-    meta: [
-      { label: "Seats", value: seatsLabel(event) },
-      { label: "Price", value: event.price },
-      { label: "Status", value: event.live ? "🔴 Live" : "Upcoming" },
-    ],
-  }));
+  const getEventTitle = (event: { slug: string; title: string }) => {
+    const matchingPooja = catalogPoojas.find((p) => p.slug === event.slug);
+    return matchingPooja ? getLocalizedPoojaTitle(matchingPooja, locale) : event.title;
+  };
+
+  const slides: CoverflowSlide[] = events.map((event) => {
+    const localizedTitle = getEventTitle(event);
+    return {
+      // Emoji + gradient tiles, like the original event cards.
+      alt: localizedTitle,
+      emoji: event.emoji,
+      gradient: event.gradient,
+      live: event.live,
+      // Muhurat stamp on the tile; caption stays title + meta only.
+      dateLabel: `${event.date} · ${event.time}`,
+      title: localizedTitle,
+      meta: [
+        { label: "Seats", value: seatsLabel(event) },
+        { label: "Price", value: event.price },
+        { label: "Status", value: event.live ? "🔴 Live" : "Upcoming" },
+      ],
+    };
+  });
 
   const active = events[activeIndex] ?? events[0];
+  const activeTitle = active ? getEventTitle(active) : "";
 
   return (
     <section id="events" className="section-pad relative bg-saffron-50">
@@ -105,7 +114,7 @@ export default function UpcomingEvents() {
                     className="btn-primary !cursor-not-allowed !opacity-60"
                   >
                     <Clock className="h-4 w-4" />
-                    Fully Booked — {active.title}
+                    Fully Booked — {activeTitle}
                   </span>
                 ) : (
                   <Link
@@ -113,7 +122,7 @@ export default function UpcomingEvents() {
                     className="btn-primary"
                   >
                     <Clock className="h-4 w-4" />
-                    Book Slot — {active.title}
+                    Book Slot — {activeTitle}
                   </Link>
                 )}
                 <p className="text-xs font-medium text-ink-soft/70">

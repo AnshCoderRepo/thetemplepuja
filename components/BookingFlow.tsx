@@ -28,6 +28,7 @@ import {
   activePoojas,
   computeUpcomingDates,
   defaultChadhavaOfferings,
+  getLocalizedPoojaTitle,
   type ChadhavaOffering,
   type Pooja,
 } from "@/lib/data";
@@ -35,6 +36,7 @@ import { isValidIndianPhone, validateBookingInput } from "@/lib/validation";
 import { formatINR } from "@/lib/format";
 import type { BookingAddonItem } from "@/lib/storage";
 import { useCatalog } from "./useCatalog";
+import { useI18n } from "./I18nProvider";
 import RazorpayCheckout, {
   type AppliedCoupon,
   type CheckoutSummary,
@@ -108,6 +110,7 @@ export default function BookingFlow({
   // uses the static defaults so SSR matches; once fetched we swap in the
   // server catalog.
   const { poojas: catalogPoojas, coupons: catalogCoupons, poojaDates } = useCatalog();
+  const { locale, t } = useI18n();
 
   const selectedPooja = catalogPoojas.find((p) => p.slug === prayerSlug);
   const basePrice = selectedPooja?.price ?? 0;
@@ -205,7 +208,7 @@ export default function BookingFlow({
       time: selectedTime ?? "—",
       panditName: null,
       name: form.name.trim() || "Devotee",
-      poojaTitle: selectedPooja?.title ?? "Pooja",
+      poojaTitle: selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Pooja",
       reason: form.reason.trim(),
       credentials: {
         username: form.phone.trim(),
@@ -613,7 +616,7 @@ export default function BookingFlow({
                         </option>
                         {activePoojas(catalogPoojas).map((p) => (
                           <option key={p.slug} value={p.slug}>
-                            {p.title} — {formatINR(p.price)}
+                            {getLocalizedPoojaTitle(p, locale)} — {formatINR(p.price)}
                           </option>
                         ))}
                       </select>

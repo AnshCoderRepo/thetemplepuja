@@ -7,14 +7,14 @@ export default function Footer() {
 
   const navLinks = [
     { label: t("nav.home"), href: "#home" },
+    { label: t("nav.bookPooja"), href: "#poojas" },
     { label: t("nav.events"), href: "#events" },
     { label: t("nav.whyUs"), href: "#why-us" },
     { label: t("nav.reviews"), href: "#testimonials" },
     { label: t("nav.faq"), href: "#faq" },
-    { label: t("nav.contact"), href: "#contact" },
   ];
   return (
-    <footer className="relative overflow-hidden bg-ink pt-16 text-cream">
+    <footer id="contact" className="relative overflow-hidden bg-ink pt-16 text-cream">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.05]"
         style={{

@@ -14,11 +14,11 @@ export default function Header() {
 
   const navLinks = [
     { label: t("nav.home"), href: "#home" },
+    { label: t("nav.bookPooja"), href: "#poojas" },
     { label: t("nav.events"), href: "#events" },
     { label: t("nav.whyUs"), href: "#why-us" },
     { label: t("nav.reviews"), href: "#testimonials" },
     { label: t("nav.faq"), href: "#faq" },
-    { label: t("nav.contact"), href: "#contact" },
   ];
 
   useEffect(() => {

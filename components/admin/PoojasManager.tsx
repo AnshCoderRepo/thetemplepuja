@@ -13,8 +13,10 @@ import {
   EyeOff,
   Flame,
   Globe,
+  Languages,
   Layers,
   LayoutGrid,
+  Loader2,
   MapPin,
   MoreVertical,
   Package,
@@ -91,6 +93,8 @@ interface PoojaDraft {
   slug: string;
   title: string;
   hindiTitle: string;
+  teluguTitle: string;
+  tamilTitle: string;
   category: string;
   type: "temple" | "home";
   online: boolean;
@@ -99,7 +103,13 @@ interface PoojaDraft {
   bestMuhurat: string;
   startDate: string;
   description: string;
+  hindiDescription: string;
+  teluguDescription: string;
+  tamilDescription: string;
   benefits: string[];
+  hindiBenefits: string[];
+  teluguBenefits: string[];
+  tamilBenefits: string[];
   emoji: string;
   gradient: string;
   imageUrl: string;
@@ -119,6 +129,8 @@ const emptyDraft: PoojaDraft = {
   slug: "",
   title: "",
   hindiTitle: "",
+  teluguTitle: "",
+  tamilTitle: "",
   category: "Rashifal Pooja",
   type: "temple",
   online: true,
@@ -127,7 +139,13 @@ const emptyDraft: PoojaDraft = {
   bestMuhurat: "Shukla Paksha Auspicious Muhurat",
   startDate: "Oct 4, 2026",
   description: "",
+  hindiDescription: "",
+  teluguDescription: "",
+  tamilDescription: "",
   benefits: ["Inner peace & spiritual protection", "Removal of persistent obstacles"],
+  hindiBenefits: ["आत्मिक शांति और सुरक्षा", "कठिन बाधाओं का निवारण"],
+  teluguBenefits: ["శాంతి మరియు దైవిక రక్షణ", "సకల విఘ్న నివారణ"],
+  tamilBenefits: ["மன அமைதி மற்றும் பாதுகாப்பு", "தடைகள் நீங்குதல்"],
   emoji: "🪔",
   gradient: "from-saffron-500 to-saffron-700",
   imageUrl: "",
@@ -167,6 +185,7 @@ export default function PoojasManager({
   const [draft, setDraft] = useState<PoojaDraft>(emptyDraft);
   const [newBenefit, setNewBenefit] = useState("");
   const [newPackage, setNewPackage] = useState<PoojaPackage>({ name: "", price: 501, description: "" });
+  const [isTranslating, setIsTranslating] = useState(false);
   
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -196,6 +215,77 @@ export default function PoojasManager({
     setTimeout(() => setSuccess(""), 4000);
   };
 
+  const autoTranslateAll = async () => {
+    if (!draft.title.trim() && !draft.description.trim()) {
+      setError("Please enter the English Title or Description first to translate.");
+      return;
+    }
+    setIsTranslating(true);
+    setError("");
+    try {
+      // 1. Translate Title
+      if (draft.title.trim()) {
+        const resTitle = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: draft.title.trim(), targets: ["hi", "te", "ta"] }),
+        });
+        const dataTitle = await resTitle.json();
+        if (dataTitle.ok && dataTitle.translations) {
+          setDraft((prev) => ({
+            ...prev,
+            hindiTitle: dataTitle.translations.hi || prev.hindiTitle,
+            teluguTitle: dataTitle.translations.te || prev.teluguTitle,
+            tamilTitle: dataTitle.translations.ta || prev.tamilTitle,
+          }));
+        }
+      }
+
+      // 2. Translate Description
+      if (draft.description.trim()) {
+        const resDesc = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: draft.description.trim(), targets: ["hi", "te", "ta"] }),
+        });
+        const dataDesc = await resDesc.json();
+        if (dataDesc.ok && dataDesc.translations) {
+          setDraft((prev) => ({
+            ...prev,
+            hindiDescription: dataDesc.translations.hi || prev.hindiDescription,
+            teluguDescription: dataDesc.translations.te || prev.teluguDescription,
+            tamilDescription: dataDesc.translations.ta || prev.tamilDescription,
+          }));
+        }
+      }
+
+      // 3. Translate Benefits
+      if (draft.benefits.length > 0) {
+        const resBen = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texts: draft.benefits, targets: ["hi", "te", "ta"] }),
+        });
+        const dataBen = await resBen.json();
+        if (dataBen.ok && dataBen.translations) {
+          setDraft((prev) => ({
+            ...prev,
+            hindiBenefits: dataBen.translations.hi || prev.hindiBenefits,
+            teluguBenefits: dataBen.translations.te || prev.teluguBenefits,
+            tamilBenefits: dataBen.translations.ta || prev.tamilBenefits,
+          }));
+        }
+      }
+
+      showNotification("✨ AI Translated content to Hindi, Telugu, and Tamil successfully!");
+    } catch (e) {
+      console.error("Auto-translate error:", e);
+      setError("Could not complete automatic translation. Please try again.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const startAdd = () => {
     setEditingSlug(null);
     setDraft(emptyDraft);
@@ -210,6 +300,8 @@ export default function PoojasManager({
       slug: p.slug,
       title: p.title,
       hindiTitle: p.hindiTitle ?? "",
+      teluguTitle: p.teluguTitle ?? "",
+      tamilTitle: p.tamilTitle ?? "",
       category: p.category ?? "Rashifal Pooja",
       type: p.type ?? "temple",
       online: p.online ?? true,
@@ -218,7 +310,13 @@ export default function PoojasManager({
       bestMuhurat: p.bestMuhurat ?? "",
       startDate: p.startDate ?? "Oct 4, 2026",
       description: p.description ?? "",
+      hindiDescription: p.hindiDescription ?? "",
+      teluguDescription: p.teluguDescription ?? "",
+      tamilDescription: p.tamilDescription ?? "",
       benefits: p.benefits ?? [],
+      hindiBenefits: p.hindiBenefits ?? [],
+      teluguBenefits: p.teluguBenefits ?? [],
+      tamilBenefits: p.tamilBenefits ?? [],
       emoji: p.emoji ?? "🪔",
       gradient: p.gradient ?? "from-saffron-500 to-saffron-700",
       imageUrl: p.imageUrl ?? "",
@@ -354,6 +452,8 @@ export default function PoojasManager({
       slug: draft.slug.trim(),
       title: draft.title.trim(),
       hindiTitle: draft.hindiTitle.trim() || draft.title.trim(),
+      teluguTitle: draft.teluguTitle.trim() || undefined,
+      tamilTitle: draft.tamilTitle.trim() || undefined,
       category: draft.category,
       type: draft.type,
       online: draft.online,
@@ -362,7 +462,13 @@ export default function PoojasManager({
       bestMuhurat: draft.bestMuhurat.trim() || "Auspicious Muhurat",
       startDate: draft.startDate.trim() || "Oct 4, 2026",
       description: draft.description.trim(),
+      hindiDescription: draft.hindiDescription.trim() || undefined,
+      teluguDescription: draft.teluguDescription.trim() || undefined,
+      tamilDescription: draft.tamilDescription.trim() || undefined,
       benefits: draft.benefits.filter(Boolean),
+      hindiBenefits: draft.hindiBenefits.filter(Boolean).length > 0 ? draft.hindiBenefits.filter(Boolean) : undefined,
+      teluguBenefits: draft.teluguBenefits.filter(Boolean).length > 0 ? draft.teluguBenefits.filter(Boolean) : undefined,
+      tamilBenefits: draft.tamilBenefits.filter(Boolean).length > 0 ? draft.tamilBenefits.filter(Boolean) : undefined,
       emoji: draft.emoji.trim() || "🪔",
       gradient: draft.gradient,
       imageUrl: draft.imageUrl.trim() || undefined,
@@ -515,12 +621,33 @@ export default function PoojasManager({
                 {/* ── STEP 1: Basic Info ── */}
                 {currentStep === 1 && (
                   <div className="space-y-5">
-                    <div>
-                      <h3 className="text-base font-bold text-ink">Basic Info</h3>
-                      <p className="text-xs text-ink-soft">Step 1 of 8 — Essential naming and spiritual description</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-saffron-100">
+                      <div>
+                        <h3 className="text-base font-bold text-ink">Basic Info & Multilingual Content</h3>
+                        <p className="text-xs text-ink-soft">Step 1 of 8 — Enter in English or all 4 languages, or 1-click Auto-Translate</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={autoTranslateAll}
+                        disabled={isTranslating || (!draft.title.trim() && !draft.description.trim())}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-saffron-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-purple-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isTranslating ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span>Translating to 4 Languages…</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                            <span>✨ AI Auto-Translate (Hindi, Telugu, Tamil)</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
                     <div className="space-y-4">
+                      {/* English Title */}
                       <div>
                         <label className="block text-xs font-bold text-ink mb-1">
                           Puja Name (English) *
@@ -536,29 +663,46 @@ export default function PoojasManager({
                           placeholder="e.g. Rahu-Ketu Mool Mantra Jap & Shanti Anushthan"
                           className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
                         />
-                        <p className="text-[11px] text-ink-soft/60 mt-1">Unique name for the puja (max 200 characters)</p>
                       </div>
 
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-xs font-bold text-ink">
-                            Puja Name (Hindi)
+                      {/* 3 Regional Language Titles */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 rounded-2xl border border-saffron-100 bg-saffron-50/40">
+                        <div>
+                          <label className="block text-[11px] font-bold text-saffron-900 mb-1">
+                            🇮🇳 हिन्दी Name (Hindi)
                           </label>
-                          <button
-                            type="button"
-                            onClick={autoTranslateHindi}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-600 hover:text-saffron-700"
-                          >
-                            <Sparkles className="h-3 w-3" /> Auto-Translate
-                          </button>
+                          <input
+                            type="text"
+                            value={draft.hindiTitle}
+                            onChange={(e) => setDraft({ ...draft, hindiTitle: e.target.value })}
+                            placeholder="पूजा का नाम (हिंदी)"
+                            className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                          />
                         </div>
-                        <input
-                          type="text"
-                          value={draft.hindiTitle}
-                          onChange={(e) => setDraft({ ...draft, hindiTitle: e.target.value })}
-                          placeholder="पूजा का नाम हिंदी में दर्ज करें"
-                          className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
-                        />
+                        <div>
+                          <label className="block text-[11px] font-bold text-saffron-900 mb-1">
+                            🇮🇳 తెలుగు Name (Telugu)
+                          </label>
+                          <input
+                            type="text"
+                            value={draft.teluguTitle}
+                            onChange={(e) => setDraft({ ...draft, teluguTitle: e.target.value })}
+                            placeholder="పూజ పేరు (తెలుగు)"
+                            className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-saffron-900 mb-1">
+                            🇮🇳 தமிழ் Name (Tamil)
+                          </label>
+                          <input
+                            type="text"
+                            value={draft.tamilTitle}
+                            onChange={(e) => setDraft({ ...draft, tamilTitle: e.target.value })}
+                            placeholder="பூஜை பெயர் (தமிழ்)"
+                            className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                          />
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -604,17 +748,60 @@ export default function PoojasManager({
                         </div>
                       </div>
 
+                      {/* English Description */}
                       <div>
                         <label className="block text-xs font-bold text-ink mb-1">
-                          Spiritual Description & Purpose *
+                          Spiritual Description (English) *
                         </label>
                         <textarea
-                          rows={4}
+                          rows={3}
                           value={draft.description}
                           onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                           placeholder="Brings deep mental peace, emotional stability & removes shadow planet dosha..."
-                          className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
+                          className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2 text-sm text-ink focus:border-saffron-500 focus:outline-none"
                         />
+                      </div>
+
+                      {/* 3 Regional Descriptions */}
+                      <div className="space-y-3 p-3.5 rounded-2xl border border-saffron-100 bg-saffron-50/40">
+                        <div>
+                          <label className="block text-[11px] font-bold text-saffron-900 mb-1">
+                            🇮🇳 हिन्दी Description (Hindi)
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={draft.hindiDescription}
+                            onChange={(e) => setDraft({ ...draft, hindiDescription: e.target.value })}
+                            placeholder="पूजा का आध्यात्मिक विवरण (हिंदी)"
+                            className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-saffron-900 mb-1">
+                              🇮🇳 తెలుగు Description (Telugu)
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={draft.teluguDescription}
+                              onChange={(e) => setDraft({ ...draft, teluguDescription: e.target.value })}
+                              placeholder="ఆధ్యాత్మిక వివరాలు (తెలుగు)"
+                              className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-saffron-900 mb-1">
+                              🇮🇳 தமிழ் Description (Tamil)
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={draft.tamilDescription}
+                              onChange={(e) => setDraft({ ...draft, tamilDescription: e.target.value })}
+                              placeholder="ஆன்மீக விளக்கம் (தமிழ்)"
+                              className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       {/* Visibility / Show & Hide Toggle */}
@@ -942,12 +1129,36 @@ export default function PoojasManager({
                 {/* ── STEP 6: Content ── */}
                 {currentStep === 6 && (
                   <div className="space-y-5">
-                    <div>
-                      <h3 className="text-base font-bold text-ink">Content & Spiritual Benefits</h3>
-                      <p className="text-xs text-ink-soft">Step 6 of 8 — Benefits devotees will receive</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-saffron-100">
+                      <div>
+                        <h3 className="text-base font-bold text-ink">Content & Spiritual Benefits</h3>
+                        <p className="text-xs text-ink-soft">Step 6 of 8 — Benefits devotees receive (available in all 4 languages)</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={autoTranslateAll}
+                        disabled={isTranslating || draft.benefits.length === 0}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-saffron-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
+                      >
+                        {isTranslating ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span>Translating…</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                            <span>✨ AI Translate Benefits</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
+                    {/* English Benefits */}
                     <div className="space-y-3">
+                      <label className="block text-xs font-bold text-ink">
+                        Devotee Benefits (English)
+                      </label>
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -955,6 +1166,14 @@ export default function PoojasManager({
                           onChange={(e) => setNewBenefit(e.target.value)}
                           placeholder="e.g. Removal of planetary obstacles and bad dreams"
                           className="flex-1 rounded-xl border border-saffron-200 bg-white px-4 py-2 text-sm text-ink focus:border-saffron-500 focus:outline-none"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (!newBenefit.trim()) return;
+                              setDraft({ ...draft, benefits: [...draft.benefits, newBenefit.trim()] });
+                              setNewBenefit("");
+                            }
+                          }}
                         />
                         <button
                           type="button"
@@ -965,18 +1184,18 @@ export default function PoojasManager({
                           }}
                           className="rounded-xl bg-saffron-500 px-4 py-2 text-xs font-bold text-white hover:bg-saffron-600"
                         >
-                          + Add Benefit
+                          + Add
                         </button>
                       </div>
 
-                      <div className="space-y-2 pt-2">
+                      <div className="space-y-1.5 pt-1">
                         {draft.benefits.map((benefit, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between rounded-xl bg-saffron-50/60 px-3.5 py-2 text-xs text-ink font-medium border border-saffron-100"
+                            className="flex items-center justify-between rounded-xl bg-saffron-50/60 px-3 py-1.5 text-xs text-ink font-medium border border-saffron-100"
                           >
                             <span className="flex items-center gap-2">
-                              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                              <Sparkles className="h-3 w-3 text-amber-500" />
                               {benefit}
                             </span>
                             <button
@@ -987,12 +1206,59 @@ export default function PoojasManager({
                               }}
                               className="text-red-500 hover:text-red-700"
                             >
-                              <X className="h-4 w-4" />
+                              <X className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         ))}
                       </div>
                     </div>
+
+                    {/* Regional Language Translated Benefits Display */}
+                    {(draft.hindiBenefits.length > 0 || draft.teluguBenefits.length > 0 || draft.tamilBenefits.length > 0) && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 rounded-2xl border border-saffron-100 bg-saffron-50/30">
+                        {/* Hindi Benefits */}
+                        <div>
+                          <span className="block text-[11px] font-bold text-saffron-900 mb-1.5">
+                            🇮🇳 हिन्दी Benefits ({draft.hindiBenefits.length})
+                          </span>
+                          <div className="space-y-1">
+                            {draft.hindiBenefits.map((b, i) => (
+                              <div key={i} className="rounded-lg bg-white px-2.5 py-1 text-[11px] text-ink border border-saffron-100">
+                                {b}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Telugu Benefits */}
+                        <div>
+                          <span className="block text-[11px] font-bold text-saffron-900 mb-1.5">
+                            🇮🇳 తెలుగు Benefits ({draft.teluguBenefits.length})
+                          </span>
+                          <div className="space-y-1">
+                            {draft.teluguBenefits.map((b, i) => (
+                              <div key={i} className="rounded-lg bg-white px-2.5 py-1 text-[11px] text-ink border border-saffron-100">
+                                {b}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tamil Benefits */}
+                        <div>
+                          <span className="block text-[11px] font-bold text-saffron-900 mb-1.5">
+                            🇮🇳 தமிழ் Benefits ({draft.tamilBenefits.length})
+                          </span>
+                          <div className="space-y-1">
+                            {draft.tamilBenefits.map((b, i) => (
+                              <div key={i} className="rounded-lg bg-white px-2.5 py-1 text-[11px] text-ink border border-saffron-100">
+                                {b}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
