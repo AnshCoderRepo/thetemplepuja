@@ -5,8 +5,7 @@ import { Send, MessageCircle } from "lucide-react";
 import Reveal from "./Reveal";
 import { contactInfo } from "@/lib/data";
 import { useI18n } from "@/components/I18nProvider";
-
-const WHATSAPP_NUMBER = "918765301563";
+import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
@@ -17,15 +16,13 @@ export default function Contact() {
     const data = new FormData(e.currentTarget);
     const name = String(data.get("name") ?? "").trim();
     const message = String(data.get("message") ?? "").trim();
-    // Deliver the enquiry straight to the team's WhatsApp (the channel the
-    // whole site already uses) — no silent dead-end form.
-    const text = encodeURIComponent(
-      `🙏 New enquiry — templepujasewa\n\n` +
-        `Name: ${name || "—"}\n` +
-        `Message: ${message}`
-    );
+    // Deliver the enquiry straight to the team's WhatsApp
+    const text =
+      `🙏 New enquiry — ${SITE_CONFIG.brandName}\n\n` +
+      `Name: ${name || "—"}\n` +
+      `Message: ${message}`;
     window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,
+      getWhatsAppUrl(text),
       "_blank",
       "noopener,noreferrer"
     );
@@ -98,9 +95,10 @@ export default function Contact() {
                 booking help, and event updates — available 24/7.
               </p>
               <a
-                href="https://wa.me/918765301563"
+                href={getWhatsAppUrl()}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
+                aria-label="Chat with us on WhatsApp"
                 className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-emerald-700 shadow transition-all hover:-translate-y-0.5 hover:shadow-xl"
               >
                 <MessageCircle className="h-4 w-4" />

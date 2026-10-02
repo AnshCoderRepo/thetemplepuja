@@ -48,7 +48,7 @@ export default function ScrollToTop() {
           key="scroll-to-top"
           onClick={scrollToTop}
           aria-label="Scroll to top"
-          className="fixed bottom-8 right-8 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-saffron-500 to-maroon-500 text-white shadow-glow backdrop-blur-sm transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2 md:bottom-10 md:right-10 md:h-14 md:w-14"
+          className="fixed bottom-22 right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-saffron-500 to-maroon-500 text-white shadow-glow backdrop-blur-sm transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2 md:bottom-26 md:right-8 md:h-12 md:w-12"
           initial={{ opacity: 0, scale: 0.4, y: 40 }}
           animate={{
             opacity,

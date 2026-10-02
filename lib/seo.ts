@@ -1,25 +1,24 @@
-// SEO helpers — the single source of truth for the public origin and the
-// JSON-LD structured data that helps Google understand and rank the site.
 import type { Pooja } from "./data";
+import { SITE_CONFIG, getWhatsAppUrl } from "./config";
 
 /** Public origin. Set SITE_URL in production; falls back to the known domain
  * so sitemap.xml / robots.txt / canonical URLs are correct out of the box. */
-export const SITE_URL = process.env.SITE_URL ?? "https://templepujasewa.com";
+export const SITE_URL = SITE_CONFIG.siteUrl;
 
 const ORG = {
   "@type": "Organization",
-  name: "templepujasewa",
+  name: SITE_CONFIG.brandName,
   url: SITE_URL,
   logo: `${SITE_URL}/logo.jpeg`,
   description:
     "India's trusted digital spiritual platform for booking certified pandits online — Satyanarayan Katha, Rudrabhishek, Griha Pravesh, Shani Dev Pooja and more, with HD video recordings of every ritual.",
   contactPoint: {
     "@type": "ContactPoint",
-    telephone: "+91-8765301563",
+    telephone: `+${SITE_CONFIG.contact.countryCode}-${SITE_CONFIG.contact.phoneRaw}`,
     contactType: "customer service",
     availableLanguage: ["English", "Hindi"],
   },
-  sameAs: [`https://wa.me/918765301563`],
+  sameAs: [getWhatsAppUrl()],
 } as const;
 
 export function organizationLd() {

@@ -88,7 +88,7 @@ function ServiceInner({ service }: { service: string }) {
             </span>
           </>
         }
-        subtitle={pooja.description}
+        subtitle="Enter devotee details for the sacred sankalp and complete booking."
         facts={[
           { icon: "⏱️", label: pooja.duration },
           { icon: "🪔", label: `Best: ${pooja.bestMuhurat}` },

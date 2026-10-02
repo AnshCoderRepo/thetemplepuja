@@ -23,6 +23,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { fetchUserByPhone, submitBooking, syncUserFromServer } from "@/lib/api";
+import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
 import {
   activePoojas,
   computeUpcomingDates,
@@ -254,7 +255,7 @@ export default function BookingFlow({
         setBookingData(null);
         setFormError(
           "We couldn't confirm your booking — the payment verification didn't " +
-            "go through. Please try again, or contact us on WhatsApp +91 87653 01563."
+            `go through. Please try again, or contact us on WhatsApp ${SITE_CONFIG.contact.phoneDisplay}.`
         );
       }
     }
@@ -490,9 +491,10 @@ export default function BookingFlow({
 
             <div className="text-center pt-2">
               <a
-                href={`https://wa.me/918765301563?text=${waText}`}
+                href={getWhatsAppUrl(waText)}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
+                aria-label="Share Booking on WhatsApp"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:underline"
               >
                 <MessageCircle className="h-4 w-4" />
@@ -569,40 +571,42 @@ export default function BookingFlow({
   // ============ FINAL BOOKING CONFIGURATION PAGE ============
   return (
     <>
-      <section className="section-pad bg-cream">
-        <div className="container-px grid gap-8 lg:grid-cols-[1fr_380px]">
-          {/* ============ MAIN CONFIGURATION & FORM ============ */}
-          <div className="space-y-6">
-            {/* Devotee & Pooja Details Card */}
-            <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft sm:p-8">
-              <div>
-                <h2 className="flex items-center gap-2 font-display text-xl font-bold text-ink sm:text-2xl">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-saffron-100 text-sm text-saffron-700">
-                    🙏
-                  </span>
-                  Configure Your Sacred Booking
-                </h2>
-                <p className="mt-1.5 text-sm text-ink-soft">
-                  Provide your devotee details for the sacred sankalp.
-                </p>
+      <section className="bg-cream py-2.5 md:py-3.5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-5 lg:grid-cols-[1.15fr_0.85fr] items-start">
+          {/* ============ LEFT COLUMN: FORM & PAYMENT ============ */}
+          <div className="space-y-4">
+            {/* Devotee Details Card */}
+            <div className="rounded-2xl border border-saffron-100 bg-white p-5 shadow-soft sm:p-6">
+              <div className="flex items-center gap-2.5 border-b border-saffron-100 pb-3">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-saffron-100 text-xs text-saffron-700">
+                  🙏
+                </span>
+                <div>
+                  <h2 className="font-display text-base font-bold text-ink sm:text-lg">
+                    Devotee & Pooja Details
+                  </h2>
+                  <p className="text-[11px] text-ink-soft">
+                    Provide devotee information for the sacred sankalp.
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-7 space-y-5">
-                <div className="grid gap-5 sm:grid-cols-2">
+              <div className="mt-4 space-y-3.5">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {/* Prayer Selection */}
                   <div className="sm:col-span-2">
-                    <label htmlFor="bk-prayer" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <label htmlFor="bk-prayer" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                       Selected Pooja *
                     </label>
                     <div className="relative">
-                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg">
+                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base">
                         🪔
                       </span>
                       <select
                         id="bk-prayer"
                         value={prayerSlug}
                         onChange={(e) => setPrayerSlug(e.target.value)}
-                        className={`${inputCls} appearance-none pl-11 pr-10 font-semibold`}
+                        className={`${inputCls} appearance-none pl-10 pr-9 font-semibold text-xs sm:text-sm`}
                       >
                         <option value="" disabled>
                           Select your prayer…
@@ -613,7 +617,7 @@ export default function BookingFlow({
                           </option>
                         ))}
                       </select>
-                      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-ink-soft/60">
+                      <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-ink-soft/60">
                         ▼
                       </span>
                     </div>
@@ -622,16 +626,16 @@ export default function BookingFlow({
                   {/* Fixed Date if from Live Event */}
                   {fromEvent && (
                     <div className="sm:col-span-2">
-                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                      <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                         Date of Pooja
                       </label>
-                      <div className="flex items-center gap-3 rounded-xl border border-saffron-100 bg-saffron-50/60 px-4 py-3">
-                        <CalendarDays className="h-5 w-5 shrink-0 text-saffron-600" />
-                        <span className="flex-1 text-sm font-semibold text-ink">
+                      <div className="flex items-center gap-2.5 rounded-xl border border-saffron-100 bg-saffron-50/60 px-3.5 py-2.5">
+                        <CalendarDays className="h-4 w-4 shrink-0 text-saffron-600" />
+                        <span className="flex-1 text-xs sm:text-sm font-semibold text-ink">
                           {formatDate(date)}
                           {initialTime ? ` · ${initialTime}` : ""}
                         </span>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-saffron-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-saffron-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-saffron-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-saffron-700">
                           🔒 Fixed Slot
                         </span>
                       </div>
@@ -640,7 +644,7 @@ export default function BookingFlow({
 
                   {/* Devotee Mobile */}
                   <div>
-                    <label htmlFor="bk-phone" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <label htmlFor="bk-phone" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                       Mobile Number (WhatsApp) *
                     </label>
                     <input
@@ -654,7 +658,7 @@ export default function BookingFlow({
                       className={inputCls}
                     />
                     {form.phone.length === 10 && !phoneValid && (
-                      <p className="mt-1 text-[11px] text-red-500 font-medium">
+                      <p className="mt-1 text-[10px] text-red-500 font-medium">
                         Enter a valid 10-digit Indian mobile number.
                       </p>
                     )}
@@ -662,7 +666,7 @@ export default function BookingFlow({
 
                   {/* Devotee Name */}
                   <div>
-                    <label htmlFor="bk-name" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <label htmlFor="bk-name" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                       Devotee Full Name *
                     </label>
                     <input
@@ -676,7 +680,7 @@ export default function BookingFlow({
 
                   {/* Gotra */}
                   <div>
-                    <label htmlFor="bk-gotra" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <label htmlFor="bk-gotra" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                       Gotra (or Kashyap) *
                     </label>
                     <input
@@ -690,7 +694,7 @@ export default function BookingFlow({
 
                   {/* City */}
                   <div>
-                    <label htmlFor="bk-city" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <label htmlFor="bk-city" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                       City / Location *
                     </label>
                     <input
@@ -704,7 +708,7 @@ export default function BookingFlow({
 
                   {/* Email */}
                   <div className="sm:col-span-2">
-                    <label htmlFor="bk-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <label htmlFor="bk-email" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                       Email Address (for receipt & video link)
                     </label>
                     <input
@@ -719,7 +723,7 @@ export default function BookingFlow({
 
                   {/* Intention / Sankalp Reason */}
                   <div className="sm:col-span-2">
-                    <label htmlFor="bk-reason" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <label htmlFor="bk-reason" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                       Why do you want this Pooja? (Sankalp Intention) *
                     </label>
                     <textarea
@@ -735,26 +739,124 @@ export default function BookingFlow({
               </div>
             </div>
 
-            {/* Chadhava & Sacred Add-ons Section */}
-            <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft sm:p-8">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-saffron-100 pb-4">
-                <div>
-                  <h3 className="text-base font-bold text-ink flex items-center gap-2">
-                    <span className="text-lg">🌸</span>
-                    Add Sacred Chadhava & Offerings (Optional)
-                  </h3>
-                  <p className="text-xs text-ink-soft mt-0.5">
-                    Enhance your ritual with sacred prasad, flower mala, and Brahmin seva.
-                  </p>
+            {/* Payment & Order Summary Card (Directly Below Form on Left Side) */}
+            <div className="rounded-2xl border border-saffron-100 bg-white p-5 shadow-soft sm:p-6">
+              <div className="flex items-center justify-between border-b border-saffron-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-saffron-500 to-maroon-600 text-sm text-white shadow-soft">
+                    💳
+                  </span>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-ink sm:text-lg">
+                      Booking Summary & Payment
+                    </h3>
+                    <p className="text-[11px] text-ink-soft">
+                      {selectedPooja ? selectedPooja.title : "Select a pooja to continue"}
+                    </p>
+                  </div>
                 </div>
-                {addonItems.length > 0 && (
-                  <span className="inline-flex items-center gap-1 self-start rounded-full bg-saffron-100 px-3 py-1 text-xs font-bold text-saffron-800">
-                    {addonItems.reduce((acc, a) => acc + a.quantity, 0)} added ({formatINR(addonTotal)})
+
+                {selectedPooja && (
+                  <span className="font-display text-lg sm:text-xl font-bold text-saffron-700">
+                    {formatINR(total)}
                   </span>
                 )}
               </div>
 
-              <div className="mt-5 grid gap-3.5 sm:grid-cols-2">
+              {selectedPooja ? (
+                <div className="mt-3.5 space-y-3">
+                  {/* Financial calculation breakdown */}
+                  <div className="rounded-xl border border-saffron-100 bg-cream/50 p-3.5 space-y-2 text-xs sm:text-sm">
+                    <div className="flex items-center justify-between text-ink-soft">
+                      <span>Pooja Seva ({selectedPooja.title})</span>
+                      <span className="font-semibold text-ink">{formatINR(selectedPooja.price)}</span>
+                    </div>
+
+                    {addonItems.length > 0 && (
+                      <div className="border-t border-dashed border-saffron-200/80 pt-2 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-saffron-800 uppercase tracking-wider">
+                          <span>Selected Add-ons ({addonItems.reduce((acc, a) => acc + a.quantity, 0)}):</span>
+                          <span>+{formatINR(addonTotal)}</span>
+                        </div>
+                        {addonItems.map((a) => (
+                          <div key={a.id} className="flex justify-between text-xs text-ink-soft pl-2">
+                            <span>{a.emoji} {a.name} × {a.quantity}</span>
+                            <span className="font-medium text-ink">{formatINR(a.price * a.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between border-t border-saffron-200 pt-2 font-bold text-ink">
+                      <div className="flex flex-col">
+                        <span className="text-sm sm:text-base">Total Payable</span>
+                        <span className="text-[10px] font-normal text-ink-soft">Includes all taxes, dakshina & seva</span>
+                      </div>
+                      <span className="font-display text-xl sm:text-2xl font-bold text-saffron-600">
+                        {formatINR(total)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {formError && (
+                    <div className="rounded-xl bg-red-50 p-2.5 text-xs font-semibold text-red-600 border border-red-100">
+                      ⚠️ {formError}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={proceed}
+                    className="btn-primary !w-full !py-3 text-sm sm:text-base font-bold shadow-md shadow-saffron-500/20"
+                  >
+                    <Lock className="h-4 w-4" />
+                    Proceed to Payment ({formatINR(total)})
+                  </button>
+
+                  <div className="grid gap-2 sm:grid-cols-2 pt-0.5 text-[10px] sm:text-[11px] font-medium text-ink-soft">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-saffron-50/70 px-2.5 py-1.5 text-saffron-800">
+                      🎟️ <span>Discount coupons on next step</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-emerald-700">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>100% Encrypted by Razorpay</span>
+                    </div>
+                  </div>
+
+                  <p className="flex items-center gap-1 text-center justify-center text-[10px] sm:text-[11px] text-ink-soft/70 pt-0.5">
+                    <BadgeCheck className="h-3.5 w-3.5 text-saffron-500 shrink-0" />
+                    Free cancellation & rescheduling up to 24 hours before the muhurat.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-3 text-center text-xs text-ink-soft py-3">
+                  Please select a pooja above to view payment summary.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* ============ RIGHT COLUMN: SACRED ADD-ONS & OFFERINGS ============ */}
+          <aside className="self-start lg:sticky lg:top-6 space-y-3">
+            <div className="rounded-2xl border border-saffron-100 bg-white p-5 shadow-soft sm:p-6">
+              <div className="flex items-center justify-between border-b border-saffron-100 pb-3">
+                <div>
+                  <h3 className="font-display text-base font-bold text-ink flex items-center gap-1.5">
+                    <span>🌸</span>
+                    Sacred Add-ons
+                  </h3>
+                  <p className="text-[11px] text-ink-soft mt-0.5">
+                    Optional offerings for your ritual
+                  </p>
+                </div>
+                {addonItems.length > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-saffron-100 px-2.5 py-0.5 text-[10px] font-bold text-saffron-800">
+                    {addonItems.reduce((acc, a) => acc + a.quantity, 0)} added
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-3.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
                 {defaultChadhavaOfferings.map((offering) => {
                   const qty = selectedAddons[offering.id] || 0;
                   const isAdded = qty > 0;
@@ -762,62 +864,56 @@ export default function BookingFlow({
                   return (
                     <div
                       key={offering.id}
-                      className={`flex flex-col justify-between rounded-2xl border p-4 transition-all ${
+                      className={`flex items-center justify-between gap-2.5 rounded-xl border p-2.5 transition-all ${
                         isAdded
-                          ? "border-saffron-400 bg-saffron-50/40 shadow-xs ring-1 ring-saffron-200"
+                          ? "border-saffron-400 bg-saffron-50/50 ring-1 ring-saffron-200 shadow-xs"
                           : "border-saffron-100 bg-cream/30 hover:border-saffron-200 hover:bg-white"
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-2xl shadow-xs border border-saffron-100">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-lg shadow-xs border border-saffron-100">
                           {offering.emoji}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <h4 className="font-bold text-ink text-xs leading-snug">
-                              {offering.name}
-                            </h4>
-                          </div>
-                          <p className="text-[11px] text-ink-soft/80 mt-1 line-clamp-2 leading-relaxed">
-                            {offering.description}
-                          </p>
+                          <h4 className="font-bold text-ink text-xs truncate">
+                            {offering.name}
+                          </h4>
+                          <span className="font-display font-bold text-saffron-700 text-xs">
+                            {formatINR(offering.price)}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="mt-3.5 flex items-center justify-between border-t border-dashed border-saffron-100/80 pt-3">
-                        <span className="font-display font-bold text-saffron-700 text-sm">
-                          {formatINR(offering.price)}
-                        </span>
-
+                      <div className="shrink-0">
                         {isAdded ? (
-                          <div className="flex items-center gap-2 rounded-xl bg-white border border-saffron-200 px-2 py-1 shadow-xs">
+                          <div className="flex items-center gap-1 rounded-lg bg-white border border-saffron-200 px-1.5 py-0.5 shadow-xs">
                             <button
                               type="button"
                               onClick={() => updateAddonQty(offering.id, -1)}
-                              className="flex h-6 w-6 items-center justify-center rounded-lg text-saffron-700 hover:bg-saffron-50 transition-colors"
+                              className="flex h-5 w-5 items-center justify-center rounded text-saffron-700 hover:bg-saffron-50 transition-colors"
                               aria-label="Decrease quantity"
                             >
-                              <Minus className="h-3.5 w-3.5" />
+                              <Minus className="h-3 w-3" />
                             </button>
-                            <span className="w-5 text-center font-mono text-xs font-bold text-ink">
+                            <span className="w-4 text-center font-mono text-xs font-bold text-ink">
                               {qty}
                             </span>
                             <button
                               type="button"
                               onClick={() => updateAddonQty(offering.id, 1)}
-                              className="flex h-6 w-6 items-center justify-center rounded-lg text-saffron-700 hover:bg-saffron-50 transition-colors"
+                              className="flex h-5 w-5 items-center justify-center rounded text-saffron-700 hover:bg-saffron-50 transition-colors"
                               aria-label="Increase quantity"
                             >
-                              <Plus className="h-3.5 w-3.5" />
+                              <Plus className="h-3 w-3" />
                             </button>
                           </div>
                         ) : (
                           <button
                             type="button"
                             onClick={() => updateAddonQty(offering.id, 1)}
-                            className="inline-flex items-center gap-1 rounded-xl bg-white border border-saffron-300 px-3 py-1.5 text-xs font-bold text-saffron-700 shadow-xs hover:bg-saffron-500 hover:text-white hover:border-saffron-500 transition-all"
+                            className="inline-flex items-center gap-1 rounded-lg bg-white border border-saffron-300 px-2.5 py-1 text-xs font-bold text-saffron-700 shadow-xs hover:bg-saffron-500 hover:text-white hover:border-saffron-500 transition-all"
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="h-3 w-3" />
                             Add
                           </button>
                         )}
@@ -826,126 +922,13 @@ export default function BookingFlow({
                   );
                 })}
               </div>
-            </div>
-          </div>
 
-          {/* ============ LIVE ORDER SUMMARY SIDEBAR ============ */}
-          <aside className="self-start lg:sticky lg:top-6">
-            <div className="overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-card">
-              {selectedPooja ? (
-                <>
-                  <div className={`relative h-20 bg-gradient-to-br ${selectedPooja.gradient}`}>
-                    <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px]" />
-                    <span className="absolute -bottom-6 left-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-3xl shadow-card border border-saffron-100">
-                      {selectedPooja.emoji}
-                    </span>
-                  </div>
-
-                  <div className="px-6 pb-6 pt-9">
-                    <h3 className="font-display text-lg font-bold text-ink">
-                      {selectedPooja.title}
-                    </h3>
-                    <p className="mt-0.5 text-xs text-ink-soft">
-                      {selectedPooja.duration} · {selectedPooja.bestMuhurat}
-                    </p>
-
-                    <dl className="mt-4 space-y-2 border-t border-dashed border-saffron-100 pt-3 text-xs">
-                      <div className="flex items-center justify-between">
-                        <dt className="flex items-center gap-1.5 text-ink-soft">
-                          <CalendarDays className="h-3.5 w-3.5 text-saffron-600" /> Date
-                        </dt>
-                        <dd className="font-semibold text-ink">
-                          {date ? formatDate(date) : "To be confirmed"}
-                        </dd>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <dt className="flex items-center gap-1.5 text-ink-soft">🙏 Pandit</dt>
-                        <dd className="max-w-[180px] truncate text-right font-semibold text-ink">
-                          Certified Vedic Scholar
-                        </dd>
-                      </div>
-                    </dl>
-
-                    {/* Order Financial Breakdown */}
-                    <div className="mt-4 space-y-2 border-t border-dashed border-saffron-100 pt-3 text-xs">
-                      <div className="flex justify-between text-ink-soft">
-                        <span>Pooja Base Seva</span>
-                        <span className="font-semibold text-ink">{formatINR(selectedPooja.price)}</span>
-                      </div>
-
-                      {addonItems.length > 0 && (
-                        <div className="space-y-1 rounded-xl bg-cream/40 p-2.5 border border-saffron-100">
-                          <span className="text-[10px] font-bold text-saffron-800 uppercase tracking-wider block">
-                            Selected Chadhavas:
-                          </span>
-                          {addonItems.map((a) => (
-                            <div key={a.id} className="flex justify-between text-[11px] text-ink-soft">
-                              <span>{a.emoji} {a.name} x{a.quantity}</span>
-                              <span className="font-medium text-ink">{formatINR(a.price * a.quantity)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between text-ink-soft pt-1">
-                        <span>Subtotal</span>
-                        <span className="font-semibold text-ink">{formatINR(subtotal)}</span>
-                      </div>
-
-                      <div className="flex items-end justify-between border-t border-saffron-200 pt-3">
-                        <div>
-                          <span className="font-bold text-ink text-sm block">Total Payable</span>
-                          <span className="text-[10px] text-ink-soft">Includes all taxes & seva</span>
-                        </div>
-                        <span className="font-display text-2xl font-bold text-saffron-600">
-                          {formatINR(total)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {formError && (
-                      <p className="mt-3 rounded-xl bg-red-50 p-2.5 text-xs font-semibold text-red-600">
-                        {formError}
-                      </p>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={proceed}
-                      className="btn-primary !w-full !py-3.5 text-sm font-bold mt-5 shadow-md shadow-saffron-500/20"
-                    >
-                      <Lock className="h-4 w-4" />
-                      Proceed to Payment
-                    </button>
-
-                    <p className="mt-3 rounded-lg bg-saffron-50 px-3 py-1.5 text-center text-[11px] font-semibold text-saffron-700">
-                      🎟️ Apply discount coupons on payment step
-                    </p>
-
-                    <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                      Razorpay 100% Secure & Encrypted
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="px-6 py-10 text-center">
-                  <span className="text-4xl">🪔</span>
-                  <h3 className="mt-4 font-display text-lg font-bold text-ink">
-                    Your Booking Summary
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                    Select a prayer and your summary, price and date will
-                    appear here.
-                  </p>
+              {addonItems.length > 0 && (
+                <div className="mt-3 rounded-xl bg-saffron-50 p-2 text-center text-xs font-semibold text-saffron-800 border border-saffron-100">
+                  Total Add-on Seva: {formatINR(addonTotal)}
                 </div>
               )}
             </div>
-
-            <p className="mt-4 flex items-start gap-2 px-2 text-[11px] leading-relaxed text-ink-soft/70">
-              <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-saffron-500" />
-              Free cancellation & rescheduling up to 24 hours before the muhurat.
-            </p>
           </aside>
         </div>
       </section>

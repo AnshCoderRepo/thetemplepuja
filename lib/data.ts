@@ -1,3 +1,5 @@
+import { SITE_CONFIG, getWhatsAppUrl } from "./config";
+
 export const stats = [
   { value: "10,847+", label: "Total Bookings", icon: "🪔" },
   { value: "50+", label: "Pooja Types", icon: "🕉️" },
@@ -440,14 +442,14 @@ export const contactInfo = [
   {
     icon: "📱",
     label: "WhatsApp",
-    value: "+91 87653 01563",
-    href: "https://wa.me/918765301563",
+    value: SITE_CONFIG.contact.phoneDisplay,
+    href: getWhatsAppUrl(),
   },
   {
     icon: "📞",
     label: "Phone",
-    value: "+91 87653 01563",
-    href: "tel:+918765301563",
+    value: SITE_CONFIG.contact.phoneDisplay,
+    href: `tel:+${SITE_CONFIG.contact.countryCode}${SITE_CONFIG.contact.phoneRaw}`,
   },
 ];
 

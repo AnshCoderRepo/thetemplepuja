@@ -1,7 +1,20 @@
-// Translation keys for English and Hindi.
+// Translation keys for English, Hindi, Telugu, and Tamil.
 // Organized by section/page for easy maintenance.
 
-export type Locale = "en" | "hi";
+export type Locale = "en" | "hi" | "te" | "ta";
+
+export interface LanguageOption {
+  code: Locale;
+  label: string;
+  nativeName: string;
+}
+
+export const SUPPORTED_LANGUAGES: LanguageOption[] = [
+  { code: "en", label: "EN", nativeName: "English" },
+  { code: "hi", label: "हिन्दी", nativeName: "हिन्दी" },
+  { code: "te", label: "తెలుగు", nativeName: "తెలుగు" },
+  { code: "ta", label: "தமிழ்", nativeName: "தமிழ்" },
+];
 
 export const translations = {
   en: {
@@ -146,7 +159,7 @@ export const translations = {
     "notFound.browsePoojas": "Browse Poojas",
     "notFound.hindi": "पथ नहीं मिला",
 
-    // ─── Footer sections ───
+    // ─── Events ───
     "events.title": "Upcoming Sacred",
     "events.titleHighlight": "Events",
     "events.subtitle": "Join live poojas performed on auspicious dates. Limited seats available — book early to secure your spot.",
@@ -354,7 +367,362 @@ export const translations = {
     "contact.info.email": "ईमेल",
     "contact.info.hours": "समय",
   },
+
+  te: {
+    // ─── Header ───
+    "header.greeting": "శ్రీ గణేశాయ నమః",
+    "header.tagline": "డిజిటల్ ఆధ్యాత్మిక వేదిక",
+    "nav.home": "హోమ్",
+    "nav.events": "కార్యక్రమాలు",
+    "nav.whyUs": "మా ప్రత్యేకత",
+    "nav.reviews": "సమీక్షలు",
+    "nav.faq": "ప్రశ్నోత్తరాలు",
+    "nav.contact": "సంప్రదించండి",
+    "nav.login": "లాగిన్",
+    "nav.bookPooja": "పూజ బుక్ చేయండి",
+
+    // ─── Hero ───
+    "hero.badge": "విశ్వాసం, పవిత్రత మరియు భక్తి కలయిక",
+    "hero.title1": "విశ్వసనీయ పూజలను",
+    "hero.title2": "& పవిత్ర క్రతువులను బుక్ చేయండి",
+    "hero.subtitle": "ప్రపంచంలో ఎక్కడి నుంచైనా దైవత్వాన్ని అనుభవించండి. సర్టిఫైడ్ పండితులు. ప్రామాణిక వైదిక పూజలు. స్వచ్ఛమైన భక్తి.",
+    "hero.rating": "రేటింగ్ 4.9 / 5.0",
+    "hero.scroll": "స్క్రోల్ చేయండి",
+    "hero.stat.bookings": "మొత్తం బుకింగ్‌లు",
+    "hero.stat.poojas": "పూజా రకాలు",
+    "hero.stat.pandits": "సర్టిఫైడ్ పండితులు",
+    "hero.stat.support": "సహాయం",
+    "hero.cta.book": "పూజ బుక్ చేయండి",
+    "hero.cta.explore": "కార్యక్రమాలు చూడండి",
+
+    // ─── Why Us ───
+    "whyUs.title": "ఎందుకు ఎంచుకోవాలి",
+    "whyUs.titleHighlight": "టెంపుల్ పూజా సేవ",
+    "whyUs.subtitle": "మేము ప్రాచీన వైదిక సంప్రదాయాలను ఆధునిక సౌలభ్యంతో మిళితం చేస్తాము, ప్రతి ఆచారం అత్యంత భక్తితో మరియు ప్రామాణికతతో నిర్వహించబడుతుందని నిర్ధారిస్తాము.",
+    "whyUs.1.title": "సర్టిఫైడ్ పండితులు",
+    "whyUs.1.desc": "ప్రతి పండితుడు ధృవీకరించబడిన మరియు ప్రామాణిక వైదిక ఆచారాలలో శిక్షణ పొందినవారు.",
+    "whyUs.2.title": "ముహూర్త తేదీలు",
+    "whyUs.2.desc": "నిపుణులైన జ్యోతిష్కులు లెక్కించిన శుభ ముహూర్త తేదీల నుండి ఎంచుకోండి.",
+    "whyUs.3.title": "సురక్షిత చెల్లింపులు",
+    "whyUs.3.desc": "Razorpay తో సురక్షితంగా చెల్లించండి — UPI, కార్డులు, నెట్‌బ్యాంకింగ్ మరియు వ్యాలెట్లు.",
+    "whyUs.4.title": "వాట్సాప్ అప్‌డేట్లు",
+    "whyUs.4.desc": "వాట్సాప్‌లో తక్షణ బుకింగ్ నిర్ధారణలు మరియు రిమైండర్‌లను పొందండి.",
+
+    // ─── Footer ───
+    "footer.description": "భక్తులను సర్టిఫైడ్ పండితులు నిర్వహించే ప్రామాణిక వైదిక పూజలు మరియు ఆచారాలతో అనుసంధానించే పవిత్ర డిజిటల్ వేదిక.",
+    "footer.quickLinks": "ముఖ్యమైన లింకులు",
+    "footer.contactUs": "మమ్మల్ని సంప్రదించండి",
+    "footer.newsletter": "వార్తాలేఖ",
+    "footer.newsletterDesc": "రాబోయే పూజలు మరియు శుభ తేదీల గురించి సమాచారం పొందండి.",
+    "footer.emailPlaceholder": "మీ ఇమెయిల్ చిరునామా",
+    "footer.subscribe": "సబ్‌స్క్రైబ్ చేయండి",
+    "footer.rights": "సర్వ హక్కులు ప్రత్యేకించబడ్డాయి.",
+    "footer.madeWith": "దైవం కోసం 🙏 తో రూపొందించబడింది",
+
+    // ─── Book Page ───
+    "book.title": "పవిత్ర పూజా",
+    "book.titleHighlight": "జాబితా",
+    "book.subtitle": "ప్రామాణిక వైదిక పూజల సమాహారాన్ని వీక్షించండి. ప్రతి ఆచారం శుభ ముహూర్త తేదీలలో సర్టిఫైడ్ పండితులచే భక్తితో నిర్వహించబడుతుంది.",
+    "book.allPoojas": "అన్ని పూజలు",
+    "book.search": "పూజను వెతకండి…",
+    "book.priceFrom": "నుండి",
+    "book.bookNow": "ఇప్పుడే బుక్ చేయండి",
+    "book.noResults": "పూజలు ఏవీ కనుగొనబడలేదు",
+    "book.noResultsDesc": "మరొక శోధన పదాన్ని ప్రయత్నించండి.",
+
+    // ─── Login ───
+    "login.title": "తిరిగి స్వాగతం",
+    "login.titleHighlight": "స్వాగతం",
+    "login.subtitle": "మీరు బుక్ చేసిన మొబైల్ నంబర్ లేదా మీ అడ్మిన్ ఇమెయిల్ మరియు పాస్‌వర్డ్‌తో సైన్ ఇన్ చేయండి.",
+    "login.mobileLabel": "మొబైల్ నంబర్ లేదా అడ్మిన్ ఇమెయిల్",
+    "login.passwordLabel": "పాస్‌వర్డ్",
+    "login.passwordHint": "(అడ్మిన్ లాగిన్ కోసం అవసరం)",
+    "login.loginBtn": "లాగిన్",
+    "login.devoteeHint": "భక్తులు: మొబైల్ నంబరే మీ ఐడీ",
+    "login.adminHint": "అడ్మిన్?",
+    "login.adminDesc": "డాష్‌బోర్డ్ తెరవడానికి పైన మీ అడ్మిన్ ఇమెయిల్ + పాస్‌వర్డ్ నమోదు చేయండి.",
+    "login.newDevotee": "కొత్త భక్తులా?",
+    "login.createProfile": "మీ ప్రొఫైల్‌ను సృష్టించండి",
+    "login.activateNote": "— ఇది మీ మొదటి పూజా బుకింగ్‌తో సక్రియం అవుతుంది.",
+    "login.forgotPassword": "పాస్‌వర్డ్ మర్చిపోయారా?",
+
+    // ─── Signup ───
+    "signup.title": "మీ ప్రొఫైల్‌ను",
+    "signup.titleHighlight": "సృష్టించండి",
+    "signup.subtitle": "వేలాది మంది భక్తులతో చేరండి. మీ మొదటి పూజ బుక్ చేసుకున్నప్పుడు మీ ప్రొఫైల్ సృష్టించబడుతుంది.",
+    "signup.name": "పూర్తి పేరు",
+    "signup.phone": "మొబైల్ నంబర్",
+    "signup.email": "ఇమెయిల్ (ఐచ్ఛికం)",
+    "signup.city": "నగరం",
+    "signup.gotra": "గోత్రం",
+    "signup.submit": "ప్రొఫైల్ సృష్టించండి",
+    "signup.hasAccount": "ఇప్పటికే ప్రొఫైల్ ఉందా?",
+    "signup.loginHere": "ఇక్కడ లాగిన్ అవ్వండి",
+
+    // ─── Forgot Password ───
+    "forgot.title": "పాస్‌వర్డ్",
+    "forgot.titleHighlight": "మర్చిపోయారా?",
+    "forgot.subtitle": "మీ రిజిస్టర్డ్ మొబైల్ నంబర్‌ను నమోదు చేయండి మరియు మీ ఖాతాను రీసెట్ చేయడానికి మేము మీకు వన్-టైమ్ పాస్‌వర్డ్ (OTP) పంపుతాము.",
+    "forgot.step1": "దశ 1 / 3",
+    "forgot.step2": "దశ 2 / 3",
+    "forgot.step3": "దశ 3 / 3",
+    "forgot.complete": "పాస్‌వర్డ్ రీసెట్ పూర్తయింది",
+    "forgot.resetPassword": "పాస్‌వర్డ్ రీసెట్ చేయండి",
+    "forgot.enterOtp": "OTP నమోదు చేయండి",
+    "forgot.newPassword": "కొత్త పాస్‌వర్డ్",
+    "forgot.sendOtp": "OTP పంపండి",
+    "forgot.verifyOtp": "OTP ధృవీకరించండి",
+    "forgot.setPassword": "పాస్‌వర్డ్ సెట్ చేయండి",
+    "forgot.backToLogin": "తిరిగి లాగిన్‌కు వెళ్ళండి",
+
+    // ─── Profile ───
+    "profile.title": "మీ",
+    "profile.titleHighlight": "ప్రొఫైల్",
+    "profile.bookings": "మీ బుకింగ్‌లు",
+    "profile.noBookings": "ఇంకా ఎలాంటి బుకింగ్‌లు లేవు",
+    "profile.noBookingsDesc": "ప్రారంభించడానికి మీ మొదటి పూజను బుక్ చేయండి.",
+    "profile.bookFirst": "పూజ బుక్ చేయండి",
+    "profile.logout": "లాగౌట్",
+
+    // ─── Common ───
+    "common.loading": "లోడ్ అవుతోంది…",
+    "common.error": "ఏదో తప్పు జరిగింది",
+    "common.retry": "మళ్ళీ ప్రయత్నించండి",
+    "common.cancel": "రద్దు చేయండి",
+    "common.confirm": "ధృవీకరించండి",
+    "common.save": "సేవ్ చేయండి",
+    "common.delete": "తొలగించండి",
+    "common.edit": "సవరించండి",
+    "common.close": "మూసివేయండి",
+    "common.back": "వెనుకకు",
+    "common.next": "తరువాత",
+    "common.search": "శోధించండి",
+    "common.noResults": "ఫలితాలు ఏవీ కనుగొనబడలేదు",
+    "common.phone": "ఫోన్",
+    "common.email": "ఇమెయిల్",
+    "common.city": "నగరం",
+    "common.name": "పేరు",
+
+    // ─── 404 ───
+    "notFound.title": "404",
+    "notFound.message": "ఈ పవిత్ర పేజీ ఉనికిలో లేదు. బహుశా మీరు కోరుకుంటున్న మార్గం ఇంకా నక్షత్రాలలో వ్రాయబడలేదు.",
+    "notFound.backHome": "హోమ్‌కు తిరిగి వెళ్ళండి",
+    "notFound.browsePoojas": "పూజలను వీక్షించండి",
+    "notFound.hindi": "మార్గం కనుగొనబడలేదు",
+
+    // ─── Events ───
+    "events.title": "రాబోయే పవిత్ర",
+    "events.titleHighlight": "కార్యక్రమాలు",
+    "events.subtitle": "శుభ తేదీలలో నిర్వహించే లైవ్ పూజలలో పాల్గొనండి. పరిమిత స్థానాలు మాత్రమే అందుబాటులో ఉన్నాయి.",
+    "events.seatsLeft": "సీట్లు మిగిలి ఉన్నాయి",
+    "events.filled": "పూర్తయింది",
+    "events.book": "బుక్ చేయండి",
+    "events.viewAll": "అన్ని పూజలను వీక్షించండి",
+
+    // ─── Testimonials ───
+    "testimonials.title": "మా భక్తులు",
+    "testimonials.titleHighlight": "ఏమంటున్నారు",
+    "testimonials.subtitle": "వేలాది కుటుంబాలు తమ ఆధ్యాత్మిక ప్రయాణంలో మమ్మల్ని విశ్వసిస్తున్నాయి. వారి అభిప్రాయాలు ఇక్కడ ఉన్నాయి.",
+
+    // ─── FAQ ───
+    "faq.title": "తరచుగా అడిగే",
+    "faq.titleHighlight": "ప్రశ్నలు",
+    "faq.subtitle": "టెంపుల్ పూజా సేవతో పూజను బుక్ చేయడం గురించి మీరు తెలుసుకోవలసిన ప్రతి సమాచారం.",
+
+    // ─── Contact ───
+    "contact.title": "మమ్మల్ని",
+    "contact.titleHighlight": "సంప్రదించండి",
+    "contact.subtitle": "ప్రశ్నలు ఉన్నాయా? మీకు సహాయం చేయడానికి మేము ఇక్కడ ఉన్నాము. ఎప్పుడైనా మమ్మల్ని సంప్రదించండి.",
+    "contact.form.name": "మీ పేరు",
+    "contact.form.email": "ఇమెయిల్ చిరునామా",
+    "contact.form.phone": "ఫోన్ నంబర్",
+    "contact.form.subject": "విషయం",
+    "contact.form.message": "మీ సందేశం",
+    "contact.form.send": "సందేశం పంపండి",
+    "contact.info.address": "చిరునామా",
+    "contact.info.phone": "ఫోన్",
+    "contact.info.email": "ఇమెయిల్",
+    "contact.info.hours": "సమయాలు",
+  },
+
+  ta: {
+    // ─── Header ───
+    "header.greeting": "ஸ்ரீ கணேசாய நமஹ",
+    "header.tagline": "டிஜிட்டல் ஆன்மீக தளம்",
+    "nav.home": "முகப்பு",
+    "nav.events": "நிகழ்வுகள்",
+    "nav.whyUs": "ஏன் நாங்கள்",
+    "nav.reviews": "மதிப்புரைகள்",
+    "nav.faq": "கேள்வி பதில்",
+    "nav.contact": "தொடர்பு கொள்ள",
+    "nav.login": "உள்நுழைக",
+    "nav.bookPooja": "பூஜை முன்பதிவு",
+
+    // ─── Hero ───
+    "hero.badge": "நம்பிக்கை, புனிதம் மற்றும் பக்தியின் சங்கமம்",
+    "hero.title1": "நம்பகமான பூஜைகள்",
+    "hero.title2": "& புனித சடங்குகளை முன்பதிவு செய்க",
+    "hero.subtitle": "உலகில் எங்கிருந்தும் தெய்வீகத்தை உணருங்கள். சான்றளிக்கப்பட்ட பண்டிதர்கள். உண்மையான வேத சடங்குகள். தூய பக்தி.",
+    "hero.rating": "மதிப்பீடு 4.9 / 5.0",
+    "hero.scroll": "கீழே உருட்டவும்",
+    "hero.stat.bookings": "மொத்த முன்பதிவுகள்",
+    "hero.stat.poojas": "பூஜை வகைகள்",
+    "hero.stat.pandits": "சான்றளிக்கப்பட்ட பண்டிதர்கள்",
+    "hero.stat.support": "உதவி",
+    "hero.cta.book": "பூஜை முன்பதிவு",
+    "hero.cta.explore": "நிகழ்வுகளைக் காண்க",
+
+    // ─── Why Us ───
+    "whyUs.title": "ஏன் தேர்ந்தெடுக்க வேண்டும்",
+    "whyUs.titleHighlight": "டெம்பிள் பூஜை சேவை",
+    "whyUs.subtitle": "பண்டைய வேத மரபுகளை நவீன வசதியுடன் இணைத்து, ஒவ்வொரு சடங்கும் மிகுந்த பக்தியுடனும் நம்பகத்தன்மையுடனும் செய்யப்படுவதை உறுதி செய்கிறோம்.",
+    "whyUs.1.title": "சான்றளிக்கப்பட்ட பண்டிதர்கள்",
+    "whyUs.1.desc": "ஒவ்வொரு பண்டிதரும் உண்மையான வேத சடங்குகளில் சரிபார்க்கப்பட்டு பயிற்சி பெற்றவர்கள்.",
+    "whyUs.2.title": "சுப முகூர்த்த தேதிகள்",
+    "whyUs.2.desc": "ஜோதிட நிபுணர்களால் கணக்கிடப்பட்ட சுப முகூர்த்த தேதிகளில் இருந்து தேர்ந்தெடுக்கவும்.",
+    "whyUs.3.title": "பாதுகாப்பான கட்டணங்கள்",
+    "whyUs.3.desc": "Razorpay மூலம் பாதுகாப்பாக பணம் செலுத்துங்கள் — UPI, கார்டுகள், நெட்பேங்கிங் மற்றும் வாலட்கள்.",
+    "whyUs.4.title": "வாட்ஸ்அப் தகவல்கள்",
+    "whyUs.4.desc": "வாட்ஸ்அப்பில் உடனடி முன்பதிவு உறுதிப்படுத்தல்கள் மற்றும் நினைவூட்டல்களைப் பெறுங்கள்.",
+
+    // ─── Footer ───
+    "footer.description": "பக்தர்களை சான்றளிக்கப்பட்ட பண்டிதர்களால் செய்யப்படும் உண்மையான வேத பூஜைகள் மற்றும் சடங்குகளுடன் இணைக்கும் புனித டிஜிட்டல் தளம்.",
+    "footer.quickLinks": "முக்கிய இணைப்புகள்",
+    "footer.contactUs": "எங்களைத் தொடர்பு கொள்ள",
+    "footer.newsletter": "செய்திமடல்",
+    "footer.newsletterDesc": "வரவிருக்கும் பூஜைகள் மற்றும் சுப தேதிகள் பற்றிய அறிவிப்புகளைப் பெறுங்கள்.",
+    "footer.emailPlaceholder": "உங்கள் மின்னஞ்சல் முகவரி",
+    "footer.subscribe": "இணையுங்கள்",
+    "footer.rights": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
+    "footer.madeWith": "தெய்வீகத்திற்காக 🙏 உடன் உருவாக்கப்பட்டது",
+
+    // ─── Book Page ───
+    "book.title": "புனித பூஜை",
+    "book.titleHighlight": "பட்டியல்",
+    "book.subtitle": "உண்மையான வேத பூஜைகளின் தொகுப்பைப் பார்வையிடவும். ஒவ்வொரு சடங்கும் சுப முகூர்த்த தேதிகளில் சான்றளிக்கப்பட்ட பண்டிதர்களால் பக்தியுடன் செய்யப்படுகிறது.",
+    "book.allPoojas": "அனைத்து பூஜைகள்",
+    "book.search": "பூஜையைத் தேடுங்கள்…",
+    "book.priceFrom": "இருந்து",
+    "book.bookNow": "இப்போதே முன்பதிவு செய்க",
+    "book.noResults": "பூஜைகள் எதுவும் கிடைக்கவில்லை",
+    "book.noResultsDesc": "வேறு தேடல் சொல்லை முயற்சிக்கவும்.",
+
+    // ─── Login ───
+    "login.title": "மீண்டும் வருக",
+    "login.titleHighlight": "வருக",
+    "login.subtitle": "முன்பதிவு செய்யப் பயன்படுத்திய மொபைல் எண் அல்லது உங்கள் நிர்வாகி மின்னஞ்சல் மற்றும் கடவுச்சொல் மூலம் உள்நுழைக.",
+    "login.mobileLabel": "மொபைல் எண் அல்லது நிர்வாகி மின்னஞ்சல்",
+    "login.passwordLabel": "கடவுச்சொல்",
+    "login.passwordHint": "(நிர்வாகி உள்நுழைவுக்குத் தேவை)",
+    "login.loginBtn": "உள்நுழைக",
+    "login.devoteeHint": "பக்தர்கள்: மொபைல் எண்ணே உங்கள் அடையாளம்",
+    "login.adminHint": "நிர்வாகியா?",
+    "login.adminDesc": "டாஷ்போர்டைத் திறக்க மேலே உங்கள் நிர்வாகி மின்னஞ்சல் + கடவுச்சொல்லை உள்ளிடவும்.",
+    "login.newDevotee": "புதிய பக்தரா?",
+    "login.createProfile": "உங்கள் சுயவிவரத்தை உருவாக்கவும்",
+    "login.activateNote": "— இது உங்கள் முதல் பூஜை முன்பதிவின் போது செயல்படுத்தப்படும்.",
+    "login.forgotPassword": "கடவுச்சொல்லை மறந்துவிட்டீர்களா?",
+
+    // ─── Signup ───
+    "signup.title": "உங்கள் சுயவிவரத்தை",
+    "signup.titleHighlight": "உருவாக்குக",
+    "signup.subtitle": "ஆயிரக்கணக்கான பக்தர்களுடன் இணையுங்கள். உங்கள் முதல் பூஜையை முன்பதிவு செய்யும் போது உங்கள் சுயவிவரம் உருவாக்கப்படும்.",
+    "signup.name": "முழு பெயர்",
+    "signup.phone": "மொபைல் எண்",
+    "signup.email": "மின்னஞ்சல் (விருப்பமானது)",
+    "signup.city": "நகரம்",
+    "signup.gotra": "கோத்திரம்",
+    "signup.submit": "சுயவிவரத்தை உருவாக்கு",
+    "signup.hasAccount": "ஏற்கனவே சுயவிவரம் உள்ளதா?",
+    "signup.loginHere": "இங்கே உள்நுழைக",
+
+    // ─── Forgot Password ───
+    "forgot.title": "கடவுச்சொல்லை",
+    "forgot.titleHighlight": "மறந்துவிட்டீர்களா?",
+    "forgot.subtitle": "பதிவுசெய்த மொபைல் எண்ணை உள்ளிடவும், கணக்கை மீட்டமைக்க ஒரு முறை கடவுச்சொல்லை (OTP) அனுப்புவோம்.",
+    "forgot.step1": "படி 1 / 3",
+    "forgot.step2": "படி 2 / 3",
+    "forgot.step3": "படி 3 / 3",
+    "forgot.complete": "கடவுச்சொல் மீட்டமைப்பு முடிந்தது",
+    "forgot.resetPassword": "கடவுச்சொல்லை மீட்டமை",
+    "forgot.enterOtp": "OTP உள்ளிடவும்",
+    "forgot.newPassword": "புதிய கடவுச்சொல்",
+    "forgot.sendOtp": "OTP அனுப்புக",
+    "forgot.verifyOtp": "OTP சரிபார்க்கவும்",
+    "forgot.setPassword": "கடவுச்சொல்லை அமைக்கவும்",
+    "forgot.backToLogin": "உள்நுழைவுக்குத் திரும்பு",
+
+    // ─── Profile ───
+    "profile.title": "உங்கள்",
+    "profile.titleHighlight": "சுயவிவரம்",
+    "profile.bookings": "உங்கள் முன்பதிவுகள்",
+    "profile.noBookings": "இதுவரை முன்பதிவுகள் எதுவும் இல்லை",
+    "profile.noBookingsDesc": "தொடங்குவதற்கு உங்கள் முதல் பூஜையை முன்பதிவு செய்யுங்கள்.",
+    "profile.bookFirst": "பூஜை முன்பதிவு செய்க",
+    "profile.logout": "வெளியேறுக",
+
+    // ─── Common ───
+    "common.loading": "ஏற்றுகிறது…",
+    "common.error": "ஏதோ தவறு நடந்துவிட்டது",
+    "common.retry": "மீண்டும் முயற்சிக்கவும்",
+    "common.cancel": "ரத்து செய்க",
+    "common.confirm": "உறுதிப்படுத்துக",
+    "common.save": "சேமிக்க",
+    "common.delete": "நீக்குக",
+    "common.edit": "திருத்து",
+    "common.close": "மூடுக",
+    "common.back": "பின்செல்",
+    "common.next": "அடுத்து",
+    "common.search": "தேடுக",
+    "common.noResults": "முடிவுகள் எதுவும் இல்லை",
+    "common.phone": "தொலைபேசி",
+    "common.email": "மின்னஞ்சல்",
+    "common.city": "நகரம்",
+    "common.name": "பெயர்",
+
+    // ─── 404 ───
+    "notFound.title": "404",
+    "notFound.message": "இந்த புனித பக்கம் கிடைக்கவில்லை. நீங்கள் தேடும் பாதை இன்னும் நட்சத்திரங்களில் எழுதப்படவில்லை போலும்.",
+    "notFound.backHome": "முகப்புக்குத் திரும்பு",
+    "notFound.browsePoojas": "பூஜைகளைப் பார்க்கவும்",
+    "notFound.hindi": "பாதை கிடைக்கவில்லை",
+
+    // ─── Events ───
+    "events.title": "வரவிருக்கும் புனித",
+    "events.titleHighlight": "நிகழ்வுகள்",
+    "events.subtitle": "சுப தேதிகளில் செய்யப்படும் நேரலை பூஜைகளில் சேருங்கள். குறைந்த இடங்களே உள்ளன — உங்கள் இடத்தை முன்கூட்டியே முன்பதிவு செய்யுங்கள்.",
+    "events.seatsLeft": "இடங்கள் உள்ளன",
+    "events.filled": "நிரம்பியது",
+    "events.book": "முன்பதிவு",
+    "events.viewAll": "அனைத்து பூஜைகளையும் காண்க",
+
+    // ─── Testimonials ───
+    "testimonials.title": "எங்கள் பக்தர்கள்",
+    "testimonials.titleHighlight": "கூறுவது என்ன",
+    "testimonials.subtitle": "ஆயிரக்கணக்கான குடும்பங்கள் தங்களின் ஆன்மீகப் பயணத்தில் எங்களை நம்புகின்றன. அவர்களின் கருத்துக்கள் இங்கே.",
+
+    // ─── FAQ ───
+    "faq.title": "அடிக்கடி கேட்கப்படும்",
+    "faq.titleHighlight": "கேள்விகள்",
+    "faq.subtitle": "டெம்பிள் பூஜை சேவையில் பூஜை முன்பதிவு செய்வது பற்றி நீங்கள் தெரிந்து கொள்ள வேண்டிய அனைத்தும்.",
+
+    // ─── Contact ───
+    "contact.title": "எங்களைத்",
+    "contact.titleHighlight": "தொடர்பு கொள்ள",
+    "contact.subtitle": "கேள்விகள் உள்ளதா? உதவ நாங்கள் தயாராக உள்ளோம். எந்த நேரத்திலும் எங்களைத் தொடர்பு கொள்ளலாம்.",
+    "contact.form.name": "உங்கள் பெயர்",
+    "contact.form.email": "மின்னஞ்சல் முகவரி",
+    "contact.form.phone": "தொலைபேசி எண்",
+    "contact.form.subject": "பொருள்",
+    "contact.form.message": "உங்கள் செய்தி",
+    "contact.form.send": "செய்தி அனுப்பு",
+    "contact.info.address": "முகவரி",
+    "contact.info.phone": "தொலைபேசி",
+    "contact.info.email": "மின்னஞ்சல்",
+    "contact.info.hours": "நேரம்",
+  },
 } as const;
 
 /** Flat lookup type — every dot-separated key is accessible. */
 export type TranslationKey = keyof typeof translations.en;
+

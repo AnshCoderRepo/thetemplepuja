@@ -18,10 +18,11 @@
 // blocks or breaks a booking.
 
 import { formatINR } from "./format";
+import { SITE_CONFIG } from "./config";
 
 const TWILIO_API = "https://api.twilio.com/2010-04-01/Accounts";
 const SEND_TIMEOUT_MS = 8_000;
-const DEFAULT_ADMIN_WHATSAPP = "whatsapp:+918765301563";
+const DEFAULT_ADMIN_WHATSAPP = `whatsapp:+${SITE_CONFIG.contact.whatsappNumber}`;
 
 export interface BookingAlertInfo {
   bookingId: string;

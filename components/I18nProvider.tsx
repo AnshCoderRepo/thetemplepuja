@@ -24,8 +24,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOCALE_KEY);
-      if (saved === "en" || saved === "hi") {
-        setLocaleState(saved);
+      if (saved === "en" || saved === "hi" || saved === "te" || saved === "ta") {
+        setLocaleState(saved as Locale);
       }
     } catch {
       // localStorage unavailable — default to English
