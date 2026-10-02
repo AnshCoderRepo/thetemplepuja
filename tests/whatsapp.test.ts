@@ -148,7 +148,7 @@ describe("sendAdminWhatsApp", () => {
     process.env.TWILIO_ACCOUNT_SID = "AC123";
     process.env.TWILIO_AUTH_TOKEN = "tok123";
     process.env.TWILIO_WHATSAPP_FROM = "whatsapp:+14155238886";
-    process.env.ADMIN_WHATSAPP_TO = "whatsapp:+918765301563";
+    process.env.ADMIN_WHATSAPP_TO = "whatsapp:+917070410031";
     expect(whatsappConfigured()).toBe(true);
 
     const fetchMock = vi
@@ -169,7 +169,7 @@ describe("sendAdminWhatsApp", () => {
     expect(headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
     const body = init.body as string;
     expect(body).toContain("From=whatsapp%3A%2B14155238886");
-    expect(body).toContain("To=whatsapp%3A%2B918765301563");
+    expect(body).toContain("To=whatsapp%3A%2B917070410031");
     expect(body).toContain("Body=Namaste+%F0%9F%99%8F");
   });
 
@@ -206,7 +206,7 @@ describe("sendAdminWhatsApp", () => {
 
     await sendAdminWhatsApp("hi");
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(init.body as string).toContain("To=whatsapp%3A%2B918765301563");
+    expect(init.body as string).toContain("To=whatsapp%3A%2B917070410031");
   });
 
   it("sendWhatsApp can address the devotee directly", async () => {

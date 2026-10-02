@@ -8,6 +8,7 @@ import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 import { faqs } from "@/lib/data";
 import { useI18n } from "@/components/I18nProvider";
+import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
 
 // Atmospheric imagery for the FAQ tiles (verified Unsplash photos).
 const faqImages = [
@@ -53,7 +54,7 @@ export default function FAQ() {
                 anything about poojas, muhurats, pandits or your booking.
               </p>
               <a
-                href="https://wa.me/918765301563?text=Namaste%2C%20I%20would%20like%20to%20know%20more%20about%20your%20Puja%20services."
+                href={getWhatsAppUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Chat with us on WhatsApp"
@@ -63,7 +64,7 @@ export default function FAQ() {
                 Chat on WhatsApp
               </a>
               <p className="mt-4 text-xs text-cream/60">
-                📞 +91 87653 01563 · replies within minutes
+                📞 {SITE_CONFIG.contact.phoneDisplay} · replies within minutes
               </p>
             </div>
           </Reveal>

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const WHATSAPP_URL =
-  "https://wa.me/918765301563?text=Namaste%2C%20I%20would%20like%20to%20know%20more%20about%20your%20Puja%20services.";
+import { getWhatsAppUrl } from "@/lib/config";
 
 export default function FloatingWhatsApp() {
   const [mounted, setMounted] = useState(false);
@@ -20,7 +18,7 @@ export default function FloatingWhatsApp() {
 
   return (
     <div className="fixed bottom-6 right-6 z-40 flex items-center md:bottom-8 md:right-8 group">
-      {/* Optional tooltip */}
+      {/* Tooltip */}
       <div
         className={`pointer-events-none absolute right-full mr-3 hidden rounded-xl bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-sm transition-all duration-300 md:block ${
           showTooltip
@@ -34,7 +32,7 @@ export default function FloatingWhatsApp() {
 
       {/* WhatsApp Action Button */}
       <a
-        href={WHATSAPP_URL}
+        href={getWhatsAppUrl()}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat with us on WhatsApp"

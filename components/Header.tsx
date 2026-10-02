@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X, Phone } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import LanguageToggle from "@/components/LanguageToggle";
+import { SITE_CONFIG } from "@/lib/config";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -49,11 +50,11 @@ export default function Header() {
               <span className="tracking-wide">Digital Spiritual Platform</span>
             </p>
             <a
-              href="tel:+918765301563"
+              href={`tel:+${SITE_CONFIG.contact.countryCode}${SITE_CONFIG.contact.phoneRaw}`}
               className="flex items-center gap-1.5 transition-colors hover:text-white"
             >
               <Phone className="h-3.5 w-3.5" />
-              +91 87653 01563
+              {SITE_CONFIG.contact.phoneDisplay}
             </a>
           </div>
         </div>

@@ -17,78 +17,60 @@ interface Props {
 
 export default function BookPageHeader({ eyebrow, title, subtitle, facts = [], crumb }: Props) {
   return (
-    <header className="relative overflow-hidden bg-gradient-to-br from-saffron-600 via-saffron-700 to-maroon-800 pb-16 pt-28 md:pb-20 md:pt-36">
-      {/* Decorative background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-20 left-1/2 h-72 w-[720px] -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-24 right-[-60px] h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
-        <span className="absolute left-[6%] top-20 animate-float text-4xl opacity-30">🪔</span>
-        <span className="absolute right-[8%] top-28 animate-float text-5xl opacity-20 [animation-delay:1.2s]">🕉️</span>
-        <span className="absolute bottom-8 right-[18%] animate-float text-3xl opacity-20 [animation-delay:2s]">🔔</span>
-        <span className="absolute bottom-12 left-[14%] animate-float text-3xl opacity-20 [animation-delay:2.6s]">📿</span>
+    <header className="relative overflow-hidden bg-gradient-to-r from-saffron-700 via-saffron-800 to-maroon-900 pb-2 pt-10 md:pb-2.5 md:pt-12 text-white">
+      {/* Subtle background glow */}
+      <div className="pointer-events-none absolute inset-0 opacity-20">
+        <div className="absolute -top-10 left-1/2 h-32 w-[500px] -translate-x-1/2 rounded-full bg-white/20 blur-2xl" />
       </div>
 
-      <div className="container-px relative">
-        <Link
-          href="/"
-          aria-label="templepujasewa, back to home"
-          className="mb-5 inline-block transition-transform duration-300 hover:scale-105"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.jpeg"
-            alt="templepujasewa"
-            className="h-12 w-auto rounded-xl bg-white object-contain p-1.5 shadow-soft"
-          />
-        </Link>
-
-        <nav
-          aria-label="Breadcrumb"
-          className="flex items-center gap-1.5 text-xs font-medium text-amber-100/70"
-        >
-          <Link href="/" className="transition-colors hover:text-white">
-            Home
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          {crumb ? (
-            <span className="text-amber-50">{crumb}</span>
-          ) : (
-            <Link href="/book" className="transition-colors hover:text-white">
-              Book Pooja
+      <div className="container-px relative max-w-7xl mx-auto">
+        {/* Compact Nav + Breadcrumb Row */}
+        <div className="flex items-center justify-between gap-2 text-[11px] text-amber-100/70 border-b border-white/10 pb-1.5 mb-1.5">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1 font-medium">
+            <Link href="/" className="transition-colors hover:text-white">
+              Home
             </Link>
+            <ChevronRight className="h-2.5 w-2.5" />
+            {crumb ? (
+              <span className="text-amber-50">{crumb}</span>
+            ) : (
+              <Link href="/book" className="transition-colors hover:text-white">
+                Book Pooja
+              </Link>
+            )}
+            {!crumb && facts.length > 0 && (
+              <>
+                <ChevronRight className="h-2.5 w-2.5" />
+                <span className="max-w-[200px] truncate text-amber-50">Booking</span>
+              </>
+            )}
+          </nav>
+
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-100 backdrop-blur">
+            {eyebrow}
+          </span>
+        </div>
+
+        {/* Title + Facts in one tight, cohesive row */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h1 className="font-display text-base font-bold leading-snug text-white sm:text-lg md:text-xl">
+            {title}
+          </h1>
+
+          {facts.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              {facts.map((f) => (
+                <span
+                  key={f.label}
+                  className="inline-flex items-center gap-1 rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-50 backdrop-blur"
+                >
+                  <span className="text-xs">{f.icon}</span>
+                  {f.label}
+                </span>
+              ))}
+            </div>
           )}
-          {!crumb && facts.length > 0 && (
-            <>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span className="max-w-[200px] truncate text-amber-50">Booking</span>
-            </>
-          )}
-        </nav>
-
-        <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-100 backdrop-blur">
-          {eyebrow}
-        </span>
-
-        <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl">
-          {title}
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-amber-50/80 sm:text-base">
-          {subtitle}
-        </p>
-
-        {facts.length > 0 && (
-          <div className="mt-6 flex flex-wrap gap-2.5">
-            {facts.map((f) => (
-              <span
-                key={f.label}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-white/15"
-              >
-                <span>{f.icon}</span>
-                {f.label}
-              </span>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </header>
   );
