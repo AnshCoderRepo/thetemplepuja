@@ -14,13 +14,15 @@ export function Field({
   label,
   hint,
   children,
+  className = "",
 }: {
   label: string;
   hint?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <label className="block">
+    <label className={`block ${className}`}>
       <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-ink-soft">
         {label}
       </span>
@@ -147,9 +149,19 @@ export function GradientPicker({
   );
 }
 
-export function ManagerCard({ children }: { children: ReactNode }) {
+export function ManagerCard({
+  children,
+  active = true,
+}: {
+  children: ReactNode;
+  active?: boolean;
+}) {
   return (
-    <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft">
+    <div
+      className={`rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft transition-opacity ${
+        active ? "opacity-100" : "opacity-60 bg-slate-50"
+      }`}
+    >
       {children}
     </div>
   );
@@ -161,30 +173,42 @@ export function ManagerHeader({
   count,
   onAdd,
   onReset,
+  addLabel = "+ Add",
 }: {
   title: string;
   subtitle: string;
-  count: number;
+  count?: number;
   onAdd: () => void;
   onReset: () => void;
+  addLabel?: string;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 className="flex items-center gap-2 font-display text-xl font-bold text-ink">
           {title}
-          <span className="rounded-full bg-saffron-100 px-2.5 py-0.5 text-[11px] font-bold text-saffron-700">
-            {count}
-          </span>
+          {count !== undefined && (
+            <span className="rounded-full bg-saffron-100 px-2.5 py-0.5 text-[11px] font-bold text-saffron-700">
+              {count}
+            </span>
+          )}
         </h2>
         <p className="mt-0.5 text-xs text-ink-soft">{subtitle}</p>
       </div>
       <div className="flex gap-2.5">
-        <button onClick={onReset} className="btn-outline !px-4 !py-2.5 text-xs">
+        <button
+          type="button"
+          onClick={onReset}
+          className="btn-outline !px-4 !py-2.5 text-xs"
+        >
           Reset to defaults
         </button>
-        <button onClick={onAdd} className="btn-primary !px-4 !py-2.5 text-xs">
-          + Add
+        <button
+          type="button"
+          onClick={onAdd}
+          className="btn-primary !px-4 !py-2.5 text-xs"
+        >
+          {addLabel}
         </button>
       </div>
     </div>

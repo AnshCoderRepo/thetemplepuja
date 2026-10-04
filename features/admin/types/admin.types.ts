@@ -3,6 +3,7 @@ import type { Users } from "lucide-react";
 export type AdminTab =
   | "analytics"
   | "poojas"
+  | "festivals"
   | "temples"
   | "bookings"
   | "orders"

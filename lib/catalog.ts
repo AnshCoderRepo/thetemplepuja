@@ -7,11 +7,13 @@
 // browser, e.g. during SSR and unit tests).
 import {
   coupons as staticCoupons,
+  defaultFestivals as staticFestivals,
   defaultPoojaDates,
   defaultTemples as staticTemples,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEventSpecs,
   type Coupon,
+  type FestivalEvent,
   type Pooja,
   type PoojaDate,
   type Temple,
@@ -21,6 +23,7 @@ import { STORAGE_KEYS } from "./constants";
 
 const POOJAS_KEY = STORAGE_KEYS.CATALOG_POOJAS;
 const EVENTS_KEY = STORAGE_KEYS.CATALOG_EVENTS;
+const FESTIVALS_KEY = STORAGE_KEYS.CATALOG_FESTIVALS;
 const COUPONS_KEY = STORAGE_KEYS.CATALOG_COUPONS;
 const POOJA_DATES_KEY = STORAGE_KEYS.CATALOG_POOJA_DATES;
 const TEMPLES_KEY = STORAGE_KEYS.CATALOG_TEMPLES;
@@ -83,6 +86,20 @@ export function saveCatalogEventSpecs(specs: UpcomingEventSpec[]): void {
 
 export function resetCatalogEventSpecs(): void {
   clear(EVENTS_KEY);
+}
+
+// ===================== FESTIVALS =====================
+
+export function getCatalogFestivals(): FestivalEvent[] {
+  return read<FestivalEvent[]>(FESTIVALS_KEY) ?? staticFestivals;
+}
+
+export function saveCatalogFestivals(festivals: FestivalEvent[]): void {
+  write(FESTIVALS_KEY, festivals);
+}
+
+export function resetCatalogFestivals(): void {
+  clear(FESTIVALS_KEY);
 }
 
 // ===================== COUPONS =====================

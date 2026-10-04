@@ -11,12 +11,14 @@ import { isPoojaActive } from "@/lib/data";
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     poojaSlug?: unknown;
+    packageTier?: unknown;
     couponCode?: unknown;
     phone?: unknown;
     addons?: unknown;
   };
 
   const poojaSlug = typeof body.poojaSlug === "string" ? body.poojaSlug.trim() : "";
+  const packageTier = typeof body.packageTier === "string" ? body.packageTier.trim() : undefined;
   const couponCode =
     typeof body.couponCode === "string" && body.couponCode.trim()
       ? body.couponCode.trim().toUpperCase()
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest) {
     : 0;
   const { amount, subtotal, discount, validatedAddons, couponProblem: problem } = computeOrderAmount({
     pooja,
+    packageTier,
     addons,
     couponCode,
     couponMap: catalog.coupons,

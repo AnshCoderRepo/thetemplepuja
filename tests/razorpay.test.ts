@@ -258,4 +258,65 @@ describe("computeOrderAmount", () => {
     expect(r.couponProblem).toContain("not a valid coupon");
     expect(r.amount).toBe(1101);
   });
+
+  it("calculates exact user scenario: Puja ₹1500 + Kumkum(151x1) + Chunri(251x2) + Prasad(201x1) + Donation(500x1) = ₹2854", () => {
+    const r = computeOrderAmount({
+      pooja: pooja(1500),
+      packageTier: "single",
+      addons: [
+        { id: "kumkum", quantity: 1, ...({ price: 99999 } as any) }, // frontend tries to tamper price, server ignores
+        { id: "chunri", quantity: 2 },
+        { id: "special-prasad", quantity: 1 },
+        { id: "temple-donation", quantity: 1 },
+      ],
+    });
+    // Base: 1500
+    // Kumkum: 151 * 1 = 151
+    // Chunri: 251 * 2 = 502
+    // Prasad: 201 * 1 = 201
+    // Donation: 500 * 1 = 500
+    // Total = 1500 + 151 + 502 + 201 + 500 = 2854
+    expect(r.amount).toBe(2854);
+    expect(r.addons).toHaveLength(4);
+
+    const kumkum = r.addons.find((a) => a.id === "kumkum");
+    expect(kumkum?.itemType).toBe("chadhava");
+    expect(kumkum?.price).toBe(151);
+    expect(kumkum?.quantity).toBe(1);
+
+    const chunri = r.addons.find((a) => a.id === "chunri");
+    expect(chunri?.itemType).toBe("chadhava");
+    expect(chunri?.price).toBe(251);
+    expect(chunri?.quantity).toBe(2);
+
+    const prasad = r.addons.find((a) => a.id === "special-prasad");
+    expect(prasad?.itemType).toBe("addon");
+    expect(prasad?.price).toBe(201);
+    expect(prasad?.quantity).toBe(1);
+
+    const donation = r.addons.find((a) => a.id === "temple-donation");
+    expect(donation?.itemType).toBe("addon");
+    expect(donation?.price).toBe(500);
+    expect(donation?.quantity).toBe(1);
+  });
+
+  it("separates Chadhava items and other Add-ons correctly and validates tier multipliers", () => {
+    const r = computeOrderAmount({
+      pooja: pooja(1000),
+      packageTier: "couple", // 1.8x = 1800 + 1 = 1801
+      addons: [
+        { id: "nariyal", quantity: 2 }, // 351 * 2 = 702
+        { id: "bhojan-brahmins", quantity: 1 }, // 501 * 1 = 501
+      ],
+    });
+    // Base: 1801
+    // Nariyal (chadhava): 702
+    // Bhojan (addon): 501
+    // Total = 1801 + 702 + 501 = 3004
+    expect(r.amount).toBe(3004);
+    const nariyal = r.addons.find((a) => a.id === "nariyal");
+    expect(nariyal?.itemType).toBe("chadhava");
+    const bhojan = r.addons.find((a) => a.id === "bhojan-brahmins");
+    expect(bhojan?.itemType).toBe("addon");
+  });
 });

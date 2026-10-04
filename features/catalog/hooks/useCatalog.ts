@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import {
   coupons as staticCoupons,
+  defaultFestivals as staticFestivals,
   defaultPoojaDates,
   poojas as staticPoojas,
   type Coupon,
+  type FestivalEvent,
   type Pooja,
   type PoojaDate,
   type UpcomingEventSpec,
@@ -19,6 +21,7 @@ import type { ResolvedCatalog } from "../types/catalog.types";
 export interface CatalogState {
   poojas: Pooja[];
   events: UpcomingEventSpec[];
+  festivals: FestivalEvent[];
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   loaded: boolean;
@@ -68,6 +71,7 @@ export function useCatalog(): CatalogState {
   return {
     poojas: catalog?.poojas ?? staticPoojas,
     events: catalog?.events ?? [],
+    festivals: catalog?.festivals ?? staticFestivals,
     coupons: catalog?.coupons ?? staticCoupons,
     poojaDates: catalog?.poojaDates ?? defaultPoojaDates,
     loaded: catalog !== null,

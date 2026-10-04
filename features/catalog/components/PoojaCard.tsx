@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Clock } from "lucide-react";
 import type { Pooja } from "@/lib/data";
 import {
@@ -10,7 +11,7 @@ import {
   getLocalizedPoojaTitle,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
-import { useI18n, useBookingModal } from "@/components/providers";
+import { useI18n } from "@/components/providers";
 
 export interface PoojaCardProps {
   pooja: Pooja;
@@ -18,11 +19,15 @@ export interface PoojaCardProps {
 
 export default function PoojaCard({ pooja: p }: PoojaCardProps) {
   const { locale, t } = useI18n();
-  const { openBooking } = useBookingModal();
+  const router = useRouter();
+
+  const handleNavigateToPooja = () => {
+    router.push(`/book/${p.slug}`);
+  };
 
   return (
     <div
-      onClick={() => openBooking(p.slug)}
+      onClick={handleNavigateToPooja}
       className="group card-hover flex h-full flex-col overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-soft cursor-pointer transition-all duration-300 hover:border-saffron-300"
     >
       <div
@@ -74,7 +79,7 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              openBooking(p.slug);
+              handleNavigateToPooja();
             }}
             className="inline-flex items-center gap-1 font-bold text-saffron-600 group-hover:text-saffron-700 hover:underline"
           >

@@ -175,21 +175,78 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
         </div>
 
         {/* Itemized Chadhavas / Addons */}
-        {booking.addons && booking.addons.length > 0 && (
-          <div className="rounded-2xl border border-saffron-100 bg-cream/30 p-5 space-y-2 text-xs">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-saffron-800">
-              Offerings & Chadhavas Itemization
-            </p>
-            <div className="space-y-1.5 pt-1">
-              {booking.addons.map((addon) => (
-                <div key={addon.id} className="flex justify-between items-center text-ink border-b border-dashed border-saffron-100 pb-1.5 last:border-0 last:pb-0">
-                  <span>{addon.emoji || "🌸"} {addon.name} <span className="text-ink-soft font-mono">x{addon.quantity}</span></span>
-                  <span className="font-semibold">{formatINR(addon.price * addon.quantity)}</span>
+        {booking.addons && booking.addons.length > 0 && (() => {
+          const chadhavaList = booking.addons.filter(
+            (a) =>
+              a.itemType === "chadhava" ||
+              (!a.itemType &&
+                a.category !== "Prasad Seva" &&
+                a.category !== "Temple Donation" &&
+                a.category !== "Anna Daan" &&
+                a.category !== "Sacred Relic")
+          );
+          const otherAddonList = booking.addons.filter(
+            (a) =>
+              a.itemType === "addon" ||
+              (!a.itemType &&
+                (a.category === "Prasad Seva" ||
+                  a.category === "Temple Donation" ||
+                  a.category === "Anna Daan" ||
+                  a.category === "Sacred Relic"))
+          );
+
+          return (
+            <div className="rounded-2xl border border-saffron-100 bg-cream/30 p-5 space-y-3 text-xs">
+              {chadhavaList.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-saffron-800 flex items-center gap-1">
+                    <span>🌸</span> Sacred Chadhavas
+                  </p>
+                  {chadhavaList.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="flex justify-between items-center text-ink border-b border-dashed border-saffron-100 pb-1.5 last:border-0 last:pb-0"
+                    >
+                      <span>
+                        {addon.emoji || "🌸"} {addon.name}{" "}
+                        <span className="text-ink-soft font-mono">
+                          x{addon.quantity}
+                        </span>
+                      </span>
+                      <span className="font-semibold">
+                        {formatINR(addon.price * addon.quantity)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {otherAddonList.length > 0 && (
+                <div className="space-y-1.5 pt-1 border-t border-saffron-200/60">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+                    <span>🍯</span> Other Add-ons & Seva
+                  </p>
+                  {otherAddonList.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="flex justify-between items-center text-ink border-b border-dashed border-saffron-100 pb-1.5 last:border-0 last:pb-0"
+                    >
+                      <span>
+                        {addon.emoji || "🍯"} {addon.name}{" "}
+                        <span className="text-ink-soft font-mono">
+                          x{addon.quantity}
+                        </span>
+                      </span>
+                      <span className="font-semibold">
+                        {formatINR(addon.price * addon.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Financial Breakdown Table */}
         <div className="rounded-2xl border border-saffron-100 bg-cream/70 p-5">

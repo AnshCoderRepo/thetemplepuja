@@ -10,6 +10,8 @@ export interface BookingAddonItem {
   price: number;
   quantity: number;
   emoji?: string;
+  category?: string;
+  itemType?: "chadhava" | "addon";
 }
 
 export interface CustomerMediaRecord {

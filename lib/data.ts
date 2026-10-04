@@ -226,6 +226,305 @@ export function getUpcomingEvents(
     .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
 }
 
+// ===================== DYNAMIC FESTIVALS & SEASONAL EVENTS =====================
+
+export interface FestivalEvent {
+  id: string;
+  name: string;
+  badge?: string;
+  hindiBadge?: string;
+  teluguBadge?: string;
+  tamilBadge?: string;
+  heroTitle: string;
+  hindiHeroTitle?: string;
+  teluguHeroTitle?: string;
+  tamilHeroTitle?: string;
+  heroSubtitle: string;
+  hindiHeroSubtitle?: string;
+  teluguHeroSubtitle?: string;
+  tamilHeroSubtitle?: string;
+  startDate?: string; // ISO date "YYYY-MM-DD"
+  endDate?: string; // ISO date "YYYY-MM-DD"
+  daysFromToday?: number; // relative offset for automatic seasonal rollover
+  durationDays?: number; // length of festival in days (default: 9)
+  heroImage?: string;
+  mobileHeroImage?: string;
+  relatedPoojaSlugs: string[];
+  relatedTemples?: string[];
+  ctaText?: string;
+  hindiCtaText?: string;
+  teluguCtaText?: string;
+  tamilCtaText?: string;
+  ctaLink?: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
+  active?: boolean;
+  priority?: number; // 1 = highest
+}
+
+export interface FestivalStatus {
+  isLive: boolean;
+  isUpcoming: boolean;
+  isEnded: boolean;
+  daysUntilStart: number;
+  startDateISO: string;
+  endDateISO: string;
+  formattedDateRange: string;
+  countdownText: string;
+}
+
+export const defaultFestivals: FestivalEvent[] = [
+  {
+    id: "navratri-2026",
+    name: "Navratri 2026",
+    badge: "🪔 UPCOMING FESTIVAL",
+    hindiBadge: "🪔 आगामी पावन पर्व",
+    teluguBadge: "🪔 రాబోయే పండుగ",
+    tamilBadge: "🪔 வரவிருக்கும் திருவிழா",
+    heroTitle: "Celebrate Navratri with Divine Pujas",
+    hindiHeroTitle: "माँ दुर्गा के दिव्य अनुष्ठानों के साथ नवरात्रि मनाएं",
+    teluguHeroTitle: "దివ్య నవరాత్రి పూజలతో అమ్మవారి అనుగ్రహం పొందండి",
+    tamilHeroTitle: "புனித நவராத்திரி பூஜைகளுடன் அன்னையின் அருள் பெறுங்கள்",
+    heroSubtitle:
+      "Book special Navratri & Durga Saptashati Pujas from trusted temples and bring divine blessings to your home.",
+    hindiHeroSubtitle:
+      "प्रसिद्ध पवित्र मंदिरों से विशेष नवरात्रि एवं दुर्गा सप्तशती पूजा बुक करें और घर लाएं माँ का आशीर्वाद।",
+    teluguHeroSubtitle:
+      "ప్రసిద్ధ పుణ్యక్షేత్రాల నుండి ప్రత్యేక నవరాత్రి పూజలు బుక్ చేసుకోండి, మీ ఇంటికి అమ్మవారి దీవెనలు పొందండి.",
+    tamilHeroSubtitle:
+      "புனித கோயில்களில் இருந்து சிறப்பு நவராத்திரி பூஜைகளை பதிவு செய்து உங்கள் இல்லத்தில் தெய்வீக ஆசீர்வாதங்களை பெறுங்கள்.",
+    daysFromToday: 7,
+    durationDays: 9,
+    heroImage: "/festivals/durga-puja.jpg",
+    relatedPoojaSlugs: [
+      "durga-saptashati-path",
+      "navgraha-shanti",
+      "lakshmi-pooja",
+    ],
+    ctaText: "Book Navratri Puja",
+    hindiCtaText: "नवरात्रि पूजा बुक करें",
+    teluguCtaText: "నవరాత్రి పూజ బుక్ చేయండి",
+    tamilCtaText: "நவராத்திரி பூஜை பதிவு செய்க",
+    ctaLink: "/book/durga-saptashati-path",
+    secondaryCtaText: "Explore All Pujas",
+    secondaryCtaLink: "#poojas",
+    priority: 1,
+    active: true,
+  },
+  {
+    id: "diwali-2026",
+    name: "Diwali Mahotsav",
+    badge: "✨ Deepawali Special",
+    hindiBadge: "✨ दीपावली महापर्व",
+    teluguBadge: "✨ దీపావళి మహోత్సవం",
+    tamilBadge: "✨ தீபாவளி திருநாள்",
+    heroTitle: "Invite Prosperity with Diwali Lakshmi Pooja",
+    hindiHeroTitle: "दीपावली पर महालक्ष्मी पूजा से लाएं सुख-समृद्धि",
+    teluguHeroTitle: "దీపావళి లక్ష్మీ పూజతో ఐశ్వర్యం మరియు సంపదను ఆహ్వానించండి",
+    tamilHeroTitle: "தீபாவளி லட்சுமி பூஜையுடன் செல்வ வளம் பெறுங்கள்",
+    heroSubtitle:
+      "Authentic Vedic Lakshmi-Ganesha Pujan and Kuber Havan performed live from sacred Kashi & Ayodhya temples.",
+    hindiHeroSubtitle:
+      "काशी और अयोध्या के पवित्र धामों से वैदिक लक्ष्मी-गणेश पूजन एवं कुबेर हवन का सीधा प्रसारण।",
+    teluguHeroSubtitle:
+      "కాశీ మరియు అయోధ్య దివ్య క్షేత్రాల నుండి ప్రత్యక్ష వేద లక్ష్మీ-గణపతి మరియు కుబేర పూజలు.",
+    tamilHeroSubtitle:
+      "காசி மற்றும் அயோத்தி புனித ஸ்தலங்களில் இருந்து நேரடி வேத லட்சுமி-விநாயகர் பூஜை.",
+    daysFromToday: 25,
+    durationDays: 5,
+    heroImage: "/festivals/diwali.jpg",
+    relatedPoojaSlugs: [
+      "lakshmi-pooja",
+      "satyanarayan-katha",
+      "griha-pravesh",
+    ],
+    ctaText: "Book Diwali Pooja",
+    hindiCtaText: "दिवाली पूजा बुक करें",
+    teluguCtaText: "దీపావళి పూజ బుక్ చేయండి",
+    tamilCtaText: "தீபாவளி பூஜை பதிவு செய்க",
+    ctaLink: "/book/lakshmi-pooja",
+    secondaryCtaText: "Explore All Pujas",
+    secondaryCtaLink: "#poojas",
+    priority: 2,
+    active: true,
+  },
+  {
+    id: "shivratri-special",
+    name: "Maha Shivratri Seva",
+    badge: "🕉️ Sacred Shiva Aradhana",
+    hindiBadge: "🕉️ पावन शिव आराधना",
+    teluguBadge: "🕉️ పవిత్ర శివార్చన",
+    tamilBadge: "🕉️ புனித சிவ ஆராதனை",
+    heroTitle: "Maha Rudrabhishek & Shiva Havan",
+    hindiHeroTitle: "महा रुद्राभिषेक एवं विशेष शिव साधना",
+    teluguHeroTitle: "మహా రుద్రాభిషేకం మరియు శివ హోమం",
+    tamilHeroTitle: "மகா ருத்ராபிஷேகம் மற்றும் சிவ ஹோமம்",
+    heroSubtitle:
+      "Seek Lord Shiva's divine grace with live Jyotirlinga Abhishek and personalized Vedic sankalpa.",
+    hindiHeroSubtitle:
+      "ज्योतिर्लिंगों से सीधे रुद्राभिषेक और आपके नाम-गोत्र से वैदिक संकल्प के साथ शिव कृपा पाएं।",
+    teluguHeroSubtitle:
+      "జ్యోతిర్లింగ క్షేత్రం నుండి లైవ్ అభిషేకం మరియు మీ గోత్ర నామాలతో వేద సంకల్పం.",
+    tamilHeroSubtitle:
+      "ஜோதிர்லிங்க ஸ்தலத்தில் இருந்து நேரடி ருத்ராபிஷேகம் மற்றும் உங்கள் கோத்ர நாம சங்கல்பம்.",
+    daysFromToday: 45,
+    durationDays: 3,
+    heroImage: "/festivals/shivratri.jpg",
+    relatedPoojaSlugs: [
+      "rudrabhishek",
+      "maha-mrityunjaya-jap",
+      "navgraha-shanti",
+    ],
+    ctaText: "Book Rudrabhishek",
+    hindiCtaText: "रुद्राभिषेक बुक करें",
+    teluguCtaText: "రుద్రాభిషేకం బుక్ చేయండి",
+    tamilCtaText: "ருத்ராபிஷேகம் பதிவு செய்க",
+    ctaLink: "/book/rudrabhishek",
+    secondaryCtaText: "Explore All Pujas",
+    secondaryCtaLink: "#poojas",
+    priority: 3,
+    active: true,
+  },
+];
+
+export function getFestivalDates(
+  fest: FestivalEvent,
+  today: Date = new Date()
+): { startISO: string; endISO: string; startDate: Date; endDate: Date } {
+  if (fest.startDate && fest.endDate) {
+    const s = new Date(fest.startDate + "T00:00:00");
+    const e = new Date(fest.endDate + "T23:59:59");
+    return {
+      startISO: toISODate(s),
+      endISO: toISODate(e),
+      startDate: s,
+      endDate: e,
+    };
+  }
+
+  const offset = fest.daysFromToday ?? 0;
+  const duration = fest.durationDays ?? 9;
+  const s = addDays(today, offset);
+  s.setHours(0, 0, 0, 0);
+  const e = addDays(s, Math.max(duration - 1, 0));
+  e.setHours(23, 59, 59, 999);
+  return {
+    startISO: toISODate(s),
+    endISO: toISODate(e),
+    startDate: s,
+    endDate: e,
+  };
+}
+
+export function getFestivalStatus(
+  fest: FestivalEvent,
+  today: Date = new Date()
+): FestivalStatus {
+  const { startISO, endISO, startDate, endDate } = getFestivalDates(fest, today);
+  const now = today.getTime();
+  const startTime = startDate.getTime();
+  const endTime = endDate.getTime();
+
+  const isLive = now >= startTime && now <= endTime;
+  const isEnded = now > endTime;
+  const isUpcoming = now < startTime;
+
+  let daysUntilStart = 0;
+  let countdownText = "";
+
+  if (isLive) {
+    countdownText = "🔴 Live Festival • Special Pujas Today";
+  } else if (isUpcoming) {
+    daysUntilStart = Math.max(
+      1,
+      Math.ceil((startTime - now) / (1000 * 60 * 60 * 24))
+    );
+    countdownText = `${fest.name} begins in ${daysUntilStart} day${
+      daysUntilStart > 1 ? "s" : ""
+    }`;
+  } else {
+    countdownText = "Festival Concluded";
+  }
+
+  const sMonth = eventDateFmt.format(startDate);
+  const eMonth = eventDateFmt.format(endDate);
+  const formattedDateRange = `${sMonth} – ${eMonth}`;
+
+  return {
+    isLive,
+    isUpcoming,
+    isEnded,
+    daysUntilStart,
+    startDateISO: startISO,
+    endDateISO: endISO,
+    formattedDateRange,
+    countdownText,
+  };
+}
+
+export function isFestivalActive(f: FestivalEvent): boolean {
+  return f.active !== false;
+}
+
+export function getUpcomingFestivals(
+  today: Date = new Date(),
+  festivals: FestivalEvent[] = defaultFestivals
+): (FestivalEvent & { status: FestivalStatus })[] {
+  return festivals
+    .filter(isFestivalActive)
+    .map((f) => ({
+      ...f,
+      status: getFestivalStatus(f, today),
+    }))
+    .filter((f) => !f.status.isEnded)
+    .sort((a, b) => {
+      const pA = a.priority ?? 99;
+      const pB = b.priority ?? 99;
+      if (pA !== pB) return pA - pB;
+      return a.status.startDateISO.localeCompare(b.status.startDateISO);
+    });
+}
+
+export function getLocalizedFestivalTitle(
+  fest: FestivalEvent,
+  locale?: string
+): string {
+  if (locale === "hi" && fest.hindiHeroTitle) return fest.hindiHeroTitle;
+  if (locale === "te" && fest.teluguHeroTitle) return fest.teluguHeroTitle;
+  if (locale === "ta" && fest.tamilHeroTitle) return fest.tamilHeroTitle;
+  return fest.heroTitle;
+}
+
+export function getLocalizedFestivalSubtitle(
+  fest: FestivalEvent,
+  locale?: string
+): string {
+  if (locale === "hi" && fest.hindiHeroSubtitle) return fest.hindiHeroSubtitle;
+  if (locale === "te" && fest.teluguHeroSubtitle) return fest.teluguHeroSubtitle;
+  if (locale === "ta" && fest.tamilHeroSubtitle) return fest.tamilHeroSubtitle;
+  return fest.heroSubtitle;
+}
+
+export function getLocalizedFestivalBadge(
+  fest: FestivalEvent,
+  locale?: string
+): string {
+  if (locale === "hi" && fest.hindiBadge) return fest.hindiBadge;
+  if (locale === "te" && fest.teluguBadge) return fest.teluguBadge;
+  if (locale === "ta" && fest.tamilBadge) return fest.tamilBadge;
+  return fest.badge || "🪔 UPCOMING FESTIVAL";
+}
+
+export function getLocalizedFestivalCta(
+  fest: FestivalEvent,
+  locale?: string
+): string {
+  if (locale === "hi" && fest.hindiCtaText) return fest.hindiCtaText;
+  if (locale === "te" && fest.teluguCtaText) return fest.teluguCtaText;
+  if (locale === "ta" && fest.tamilCtaText) return fest.tamilCtaText;
+  return fest.ctaText || "Book Festival Puja";
+}
+
 // ===================== EVENT SEAT INVENTORY =====================
 // Live events hold a fixed number of seats. A booking made from an event slot
 // records which occurrence it took (eventDateISO) and how many seats it holds
@@ -478,9 +777,81 @@ export interface ChadhavaOffering {
   teluguCategory?: string;
   tamilCategory?: string;
   image?: string;
+  type?: "chadhava" | "addon";
+  badge?: string;
+  hindiBadge?: string;
+  teluguBadge?: string;
+  tamilBadge?: string;
 }
 
 export const defaultChadhavaOfferings: ChadhavaOffering[] = [
+  // ── 1. Sacred Chadhavas ──
+  {
+    id: "kumkum",
+    name: "Kumkum",
+    hindiName: "पवित्र कुमकुम एवं रोली",
+    teluguName: "పవిత్ర కుంకుమ",
+    tamilName: "புனித குங்குமம்",
+    description: "Auspicious purified vermilion and fragrant sacred roli consecrated at the deity feet.",
+    hindiDescription: "संकल्प सिद्धि हेतु देव चरणों में अर्पित पवित्र सिंदूर, रोली एवं अक्षत अर्पण।",
+    teluguDescription: "సంకల్ప సమయంలో దేవుని పాదాల వద్ద సమర్పించబడే పవిత్రమైన కుంకుమ.",
+    tamilDescription: "சங்கல்பத்தின் போது இறைவனின் திருப்பாதங்களில் சமர்ப்பிக்கப்படும் புனித குங்குமம்.",
+    price: 151,
+    emoji: "🔴",
+    category: "Special Chadhava",
+    hindiCategory: "विशेष चढ़ावा",
+    teluguCategory: "ప్రత్యేక సమర్పణ",
+    tamilCategory: "சிறப்பு காணிக்கை",
+    badge: "Special Chadhava",
+    hindiBadge: "विशेष चढ़ावा",
+    teluguBadge: "ప్రత్యేక సమర్పణ",
+    tamilBadge: "சிறப்பு காணிக்கை",
+    type: "chadhava",
+  },
+  {
+    id: "chunri",
+    name: "Chunri",
+    hindiName: "माता की चुनरी एवं वस्त्र",
+    teluguName: "అమ్మవారి పవిత్ర చున్రీ",
+    tamilName: "அன்னையின் புனித சுனரி ஆடை",
+    description: "Traditional embroidered sacred red chunri and holy vastra offered with your sankalpa.",
+    hindiDescription: "माता रानी को अखंड सौभाग्य व कृपा हेतु अर्पित की जाने वाली पवित्र गोटेदार लाल चुनरी।",
+    teluguDescription: "అమ్మవారికి సమర్పించే పవిత్రమైన ఎరుపు చున్రీ మరియు వస్త్రం.",
+    tamilDescription: "அம்மனுக்கு பக்தியுடன் சமர்ப்பிக்கப்படும் புனித சிவப்பு சுனரி ஆடை.",
+    price: 251,
+    emoji: "🧣",
+    category: "Vastra Chadhava",
+    hindiCategory: "वस्त्र चढ़ावा",
+    teluguCategory: "వస్త్ర సమర్పణ",
+    tamilCategory: "ஆடை காணிக்கை",
+    badge: "Special Chadhava",
+    hindiBadge: "विशेष चढ़ावा",
+    teluguBadge: "ప్రత్యేక సమర్పణ",
+    tamilBadge: "சிறப்பு காணிக்கை",
+    type: "chadhava",
+  },
+  {
+    id: "nariyal",
+    name: "Nariyal",
+    hindiName: "श्रीफल एवं पवित्र नारियल",
+    teluguName: "శ్రీఫలం / పవిత్ర కొబ్బరికాయ",
+    tamilName: "புனித தேங்காய் (ஸ்ரீபலம்)",
+    description: "Consecrated auspicious coconut wrapped in sacred mauli thread for sankalp fulfillment.",
+    hindiDescription: "मनोकामना पूर्ति एवं विघ्न निवारण हेतु मौली धागे से लिपटा पावन श्रीफल व नारियल अर्पण।",
+    teluguDescription: "కోరికల నెరవేర్పు మరియు సంకల్ప సిద్ధి కోసం సమర్పించే పవిత్ర కొబ్బరికాయ.",
+    tamilDescription: "சங்கல்பம் நிறைவேற மௌலி கயிறு சுற்றப்பட்ட புனித ஸ்ரீபலம் தேங்காய்.",
+    price: 351,
+    emoji: "🥥",
+    category: "Shriphal Chadhava",
+    hindiCategory: "श्रीफल चढ़ावा",
+    teluguCategory: "శ్రీఫల సమర్పణ",
+    tamilCategory: "ஸ்ரீபல காணிக்கை",
+    badge: "Special Chadhava",
+    hindiBadge: "विशेष चढ़ावा",
+    teluguBadge: "ప్రత్యేక సమర్పణ",
+    tamilBadge: "சிறப்பு காணிக்கை",
+    type: "chadhava",
+  },
   {
     id: "flower-chadhava",
     name: "Pushpa Mala & Flower Chadhava",
@@ -497,40 +868,9 @@ export const defaultChadhavaOfferings: ChadhavaOffering[] = [
     hindiCategory: "पुष्प सेवा",
     teluguCategory: "పుష్ప సేవ",
     tamilCategory: "மலர் சேவை",
-  },
-  {
-    id: "special-prasad",
-    name: "Special Temple Prasadam",
-    hindiName: "विशेष महाप्रसाद",
-    teluguName: "ప్రత్యేక ఆలయ ప్రసాదం",
-    tamilName: "சிறப்பு கோயில் பிரசாதம்",
-    description: "Sanctified dry fruit & sweet prasad energised with mantras and sent with divine blessings.",
-    hindiDescription: "मंत्रों से अभिमंत्रित सूखे मेवे एवं मिष्ठान का दिव्य महाप्रसाद जो आपके घर भेजा जाता है।",
-    teluguDescription: "మంత్రాలతో పవిత్రీకరించబడిన డ్రై ఫ్రూట్ మరియు మధురమైన దివ్య మహాప్రసాదం.",
-    tamilDescription: "மந்திரங்களால் புனிதப்படுத்தப்பட்ட உலர் பழங்கள் மற்றும் இனிப்பு பிரசாதம்.",
-    price: 101,
-    emoji: "🍯",
-    category: "Prasad Seva",
-    hindiCategory: "प्रसाद सेवा",
-    teluguCategory: "ప్రసాద సేవ",
-    tamilCategory: "பிரசாத சேவை",
-  },
-  {
-    id: "rudraksha-offering",
-    name: "Blessed Rudraksha Mala Arpan",
-    hindiName: "अभिमंत्रित रुद्राक्ष अर्पण",
-    teluguName: "పవిత్ర రుద్రాక్ష మాల సమర్పణ",
-    tamilName: "புனித ருத்ராட்ச மாலை சமர்ப்பணம்",
-    description: "5-Mukhi certified Rudraksha touch-energised on the Shiva lingam during abhishek.",
-    hindiDescription: "अभिषेक के समय शिवलिंग पर स्पर्श कर अभिमंत्रित 5-मुखी प्रामाणिक रुद्राक्ष माला।",
-    teluguDescription: "అభిషేక సమయంలో శివలింగాన్ని తాకించి పవిత్రీకరించిన 5-ముఖాల రుద్రాక్ష.",
-    tamilDescription: "அபிஷேகத்தின் போது சிவலிங்கத்தில் வைத்து புனிதப்படுத்தப்பட்ட 5-முக ருத்ராட்சம்.",
-    price: 251,
-    emoji: "📿",
-    category: "Sacred Relic",
-    hindiCategory: "पवित्र उपहार",
-    teluguCategory: "పవిత్ర వస్తువు",
-    tamilCategory: "புனித பொருள்",
+    badge: "Auspicious",
+    hindiBadge: "पावन अर्पण",
+    type: "chadhava",
   },
   {
     id: "panchamrit-abhishek",
@@ -548,23 +888,9 @@ export const defaultChadhavaOfferings: ChadhavaOffering[] = [
     hindiCategory: "अभिषेक सेवा",
     teluguCategory: "అభిషేక సేవ",
     tamilCategory: "அபிஷேக சேவை",
-  },
-  {
-    id: "bhojan-brahmins",
-    name: "Bhojan Seva for Brahmins",
-    hindiName: "ब्राह्मण भोजन सेवा",
-    teluguName: "బ్రాహ్మణ భోజన సేవ",
-    tamilName: "பிராமணர் அன்னதான சேவை",
-    description: "Sattvic feast offering served to Vedic brahmins and temple devotees in your gotra's name.",
-    hindiDescription: "आपके गोत्र व नाम से वैदिक ब्राह्मणों एवं मंदिर के भक्तों को कराया जाने वाला सात्विक भोजन।",
-    teluguDescription: "మీ గోత్రం మరియు పేరుతో వేద బ్రాహ్మణులకు సమర్పించబడే సాత్విక భోజన సేవ.",
-    tamilDescription: "உங்கள் கோத்ரம் மற்றும் பெயரில் வேத பிராமணர்களுக்கு வழங்கப்படும் சாத்வீக அன்னதானம்.",
-    price: 501,
-    emoji: "🍲",
-    category: "Anna Daan",
-    hindiCategory: "अन्न दान",
-    teluguCategory: "అన్నదానం",
-    tamilCategory: "அன்னதானம்",
+    badge: "Abhishek Special",
+    hindiBadge: "अभिषेक अर्पण",
+    type: "chadhava",
   },
   {
     id: "sindoor-chola",
@@ -582,8 +908,108 @@ export const defaultChadhavaOfferings: ChadhavaOffering[] = [
     hindiCategory: "चोला सेवा",
     teluguCategory: "చోళా సేవ",
     tamilCategory: "ஆடை சேவை",
+    badge: "Chola Arpan",
+    hindiBadge: "चोला अर्पण",
+    type: "chadhava",
+  },
+
+  // ── 2. Other Add-ons ──
+  {
+    id: "special-prasad",
+    name: "Prasad (Special Temple Prasadam)",
+    hindiName: "विशेष महाप्रसाद",
+    teluguName: "ప్రత్యేక ఆలయ ప్రసాదం",
+    tamilName: "சிறப்பு கோயில் பிரசாதம்",
+    description: "Sanctified dry fruit & sweet prasad energised with mantras and sent with divine blessings.",
+    hindiDescription: "मंत्रों से अभिमंत्रित सूखे मेवे एवं मिष्ठान का दिव्य महाप्रसाद जो आपके घर भेजा जाता है।",
+    teluguDescription: "మంత్రాలతో పవిత్రీకరించబడిన డ్రై ఫ్రూట్ మరియు మధురమైన దివ్య మహాప్రసాదం.",
+    tamilDescription: "மந்திரங்களால் புனிதப்படுத்தப்பட்ட உலர் பழங்கள் மற்றும் இனிப்பு பிரசாதம்.",
+    price: 201,
+    emoji: "🍯",
+    category: "Prasad Seva",
+    hindiCategory: "प्रसाद सेवा",
+    teluguCategory: "ప్రసాద సేవ",
+    tamilCategory: "பிரசாத சேவை",
+    badge: "Sanctified Prasad",
+    hindiBadge: "अभिमंत्रित प्रसाद",
+    type: "addon",
+  },
+  {
+    id: "temple-donation",
+    name: "Donation (Gau Seva & Mandir Daan)",
+    hindiName: "मंदिर एवं गौ सेवा दान",
+    teluguName: "గోసేవ మరియు ఆలయ విరాళం",
+    tamilName: "கோ சேவை மற்றும் கோயில் நன்கொடை",
+    description: "Sacred charitable donation for temple gaushala fodder, upkeep and Vedic vidyarthi seva in your gotra.",
+    hindiDescription: "मंदिर गौशाला, नित्य पूजा व्यवस्था एवं वेद शिक्षार्थियों की सेवा हेतु पवित्र दान संकल्प।",
+    teluguDescription: "ఆలయ నిర్వహణ మరియు గోసేవ కోసం మీ గోత్ర నామాలతో పవిత్ర విరాళ సమర్పణ.",
+    tamilDescription: "கோயில் நல்வாழ்வு மற்றும் கோ சேவைக்காக உங்கள் கோத்ர நாமத்தில் செய்யப்படும் புனித நன்கொடை.",
+    price: 500,
+    emoji: "🙏",
+    category: "Temple Donation",
+    hindiCategory: "मंदिर दान",
+    teluguCategory: "ఆలయ విరాళం",
+    tamilCategory: "கோயில் நன்கொடை",
+    badge: "Punya Daan",
+    hindiBadge: "पुण्य दान",
+    type: "addon",
+  },
+  {
+    id: "bhojan-brahmins",
+    name: "Bhojan Seva for Brahmins",
+    hindiName: "ब्राह्मण भोजन सेवा",
+    teluguName: "బ్రాహ్మణ భోజన సేవ",
+    tamilName: "பிராமணர் அன்னதான சேவை",
+    description: "Sattvic feast offering served to Vedic brahmins and temple devotees in your gotra's name.",
+    hindiDescription: "आपके गोत्र व नाम से वैदिक ब्राह्मणों एवं मंदिर के भक्तों को कराया जाने वाला सात्विक भोजन।",
+    teluguDescription: "మీ గోత్రం మరియు పేరుతో వేద బ్రాహ్మణులకు సమర్పించబడే సాత్విక భోజన సేవ.",
+    tamilDescription: "உங்கள் கோத்ரம் மற்றும் பெயரில் வேத பிராமணர்களுக்கு வழங்கப்படும் சாத்வீக அன்னதானம்.",
+    price: 501,
+    emoji: "🍲",
+    category: "Anna Daan",
+    hindiCategory: "अन्न दान",
+    teluguCategory: "అన్నదానం",
+    tamilCategory: "அன்னதானம்",
+    badge: "Anna Daan",
+    hindiBadge: "अन्न दान",
+    type: "addon",
+  },
+  {
+    id: "rudraksha-offering",
+    name: "Blessed Rudraksha Mala Arpan",
+    hindiName: "अभिमंत्रित रुद्राक्ष अर्पण",
+    teluguName: "పవిత్ర రుద్రాక్ష మాల సమర్పణ",
+    tamilName: "புனித ருத்ராட்ச மாலை சமர்ப்பணம்",
+    description: "5-Mukhi certified Rudraksha touch-energised on the Shiva lingam during abhishek.",
+    hindiDescription: "अभिषेक के समय शिवलिंग पर स्पर्श कर अभिमंत्रित 5-मुखी प्रामाणिक रुद्राक्ष माला।",
+    teluguDescription: "అభిషేక సమయంలో శివలింగాన్ని తాకించి పవిత్రీకరించిన 5-ముఖాల రుద్రాక్ష.",
+    tamilDescription: "அபிஷேகத்தின் போது சிவலிங்கத்தில் வைத்து புனிதப்படுத்தப்பட்ட 5-முக ருத்ராட்சம்.",
+    price: 251,
+    emoji: "📿",
+    category: "Sacred Relic",
+    hindiCategory: "पवित्र उपहार",
+    teluguCategory: "పవిత్ర వస్తువు",
+    tamilCategory: "புனித பொருள்",
+    badge: "Sacred Relic",
+    hindiBadge: "पवित्र उपहार",
+    type: "addon",
   },
 ];
+
+export function getChadhavas(): ChadhavaOffering[] {
+  return defaultChadhavaOfferings.filter((c) => c.type === "chadhava" || !c.type);
+}
+
+export function getOtherAddons(): ChadhavaOffering[] {
+  return defaultChadhavaOfferings.filter((c) => c.type === "addon");
+}
+
+export function getLocalizedOfferingBadge(offering: ChadhavaOffering, locale?: string): string {
+  if (locale === "hi" && offering.hindiBadge) return offering.hindiBadge;
+  if (locale === "te" && offering.teluguBadge) return offering.teluguBadge;
+  if (locale === "ta" && offering.tamilBadge) return offering.tamilBadge;
+  return offering.badge || "";
+}
 
 export function getChadhavaOffering(id: string): ChadhavaOffering | undefined {
   return defaultChadhavaOfferings.find((c) => c.id === id);
@@ -1203,6 +1629,17 @@ export function activeTemples(list: Temple[]): Temple[] {
   return list.filter(isTempleActive);
 }
 
+export function getTempleForPooja(pooja?: Pooja | null): Temple {
+  if (!pooja) return defaultTemples[1];
+  if (pooja.templeSlugs && pooja.templeSlugs.length > 0) {
+    const found = defaultTemples.find((t) => pooja.templeSlugs?.includes(t.slug));
+    if (found) return found;
+  }
+  const match = defaultTemples.find((t) => t.poojaSlugs?.includes(pooja.slug));
+  if (match) return match;
+  return defaultTemples[1]; // Kashi Vishwanath Temple
+}
+
 export const defaultTemples: Temple[] = [
   {
     slug: "navagrah-temple",
@@ -1215,7 +1652,7 @@ export const defaultTemples: Temple[] = [
     pincode: "456006",
     description:
       "Ancient temple dedicated to the nine planetary deities situated on the banks of Triveni. Famous for Rahu-Ketu and Shani Shanti rituals.",
-    image: "https://images.unsplash.com/photo-1609766857041-ed402ea8069a?auto=format&fit=crop&w=800&q=80",
+    image: "/festivals/ganesha-altar.jpg",
     timings: "5:30 AM – 9:00 PM",
     active: true,
     poojaSlugs: ["navgraha-shanti", "shani-dev-pooja"],

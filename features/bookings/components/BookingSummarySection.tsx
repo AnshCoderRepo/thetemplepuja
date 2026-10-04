@@ -1,12 +1,11 @@
 "use client";
 
-import { Check, Edit3, Lock, ShieldCheck, Sparkles, Video } from "lucide-react";
+import { CreditCard, Edit3, Lock, ShieldCheck } from "lucide-react";
 import { getLocalizedPoojaTitle, type Pooja } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
 import type { BookingAddonItem } from "@/lib/storage";
 import type { BookingFormData, PackageTier } from "../types/booking.types";
-import { formatBookingDate } from "../services/bookingService";
 
 interface BookingSummarySectionProps {
   selectedPooja?: Pooja;
@@ -29,7 +28,6 @@ export default function BookingSummarySection({
   packagePrice,
   total,
   addonItems,
-  addonTotal,
   form,
   date,
   time,
@@ -40,298 +38,230 @@ export default function BookingSummarySection({
   const { locale, t } = useI18n();
 
   const getTierLabel = () => {
-    if (locale === "hi") {
-      return selectedTier === "single"
-        ? "एकल संकल्प"
-        : selectedTier === "couple"
-        ? "दंपति संकल्प"
-        : "परिवार / कुल संकल्प";
-    }
-    if (locale === "te") {
-      return selectedTier === "single"
-        ? "ఏక సంకల్పం (ఒక్కరు)"
-        : selectedTier === "couple"
-        ? "దంపతుల సంకల్పం"
-        : "కుటుంబ సంకల్పం";
-    }
-    if (locale === "ta") {
-      return selectedTier === "single"
-        ? "தனிநபர் சங்கல்பம்"
-        : selectedTier === "couple"
-        ? "தம்பதியர் சங்கல்பம்"
-        : "குடும்ப சங்கல்பம்";
-    }
-    return selectedTier === "single"
-      ? "Single Devotee"
-      : selectedTier === "couple"
-      ? "Couple / Dampati"
-      : "Family / Kul Sankalp";
+    if (selectedTier === "single") return locale === "hi" ? "एकल संकल्प" : "Single Devotee";
+    if (selectedTier === "couple") return locale === "hi" ? "दंपति संकल्प" : "Couple / Dampati";
+    return locale === "hi" ? "परिवार संकल्प" : "Family / Kul Sankalp";
   };
 
-  const tierLabel = getTierLabel();
   const poojaTitle = selectedPooja
     ? getLocalizedPoojaTitle(selectedPooja, locale)
     : t("booking.modalTitle");
 
-  const totalIncludesNote =
-    locale === "hi"
-      ? "सभी पूजन सामग्री, आचार्य दक्षिणा एवं कर सम्मिलित"
-      : locale === "te"
-      ? "అన్ని పూజా సామాగ్రి, పండిత దక్షిణ మరియు పన్నులు కలిపి"
-      : locale === "ta"
-      ? "அனைத்து பூஜை பொருட்கள், பண்டித தட்சிணை மற்றும் வரிகள் உட்பட"
-      : "Includes all ritual samagri, purohit dakshina & tax";
+  // Separate Chadhavas from Other Add-ons
+  const chadhavaItems = addonItems.filter(
+    (a) =>
+      a.itemType === "chadhava" ||
+      (!a.itemType &&
+        a.category !== "Prasad Seva" &&
+        a.category !== "Temple Donation" &&
+        a.category !== "Anna Daan" &&
+        a.category !== "Sacred Relic")
+  );
 
-  const trustBadges = [
-    {
-      icon: <Video className="h-5 w-5" />,
-      bg: "bg-amber-50 text-amber-700",
-      title:
-        locale === "hi"
-          ? "व्हाट्सऐप वीडियो प्रमाण"
-          : locale === "te"
-          ? "వాట్సాప్ వీడియో రుజువు"
-          : locale === "ta"
-          ? "வாட்ஸ்அப் வீடியோ பதிவு"
-          : "WhatsApp Video Proof",
-      desc:
-        locale === "hi"
-          ? "संकल्प एवं पूजा का वीडियो 48-72 घंटों में आपके व्हाट्सऐप पर भेजा जाएगा।"
-          : locale === "te"
-          ? "పూజ & సంకల్ప వీడియో 48-72 గంటల్లో మీ వాట్సాప్‌కు పంపబడుతుంది."
-          : locale === "ta"
-          ? "பூஜை மற்றும் சங்கல்ப வீடியோ 48-72 மணிநேரத்தில் வாட்ஸ்அப்பில் அனுப்பப்படும்."
-          : "Puja & sankalp video will be sent to your WhatsApp within 48-72 hours.",
-    },
-    {
-      icon: <Sparkles className="h-5 w-5" />,
-      bg: "bg-saffron-50 text-saffron-700",
-      title:
-        locale === "hi"
-          ? "प्रमाणित तीर्थ आचार्य"
-          : locale === "te"
-          ? "సర్టిఫైడ్ వేద పండితులు"
-          : locale === "ta"
-          ? "சான்றளிக்கப்பட்ட வேத பண்டிதர்கள்"
-          : "Certified Vedic Purohits",
-      desc:
-        locale === "hi"
-          ? "शास्त्रोक्त विधि से योग्य एवं अनुभवी आचार्यों द्वारा अनुष्ठान।"
-          : locale === "te"
-          ? "శాస్త్రోక్తంగా అర్హత కలిగిన అనుభవజ్ఞులైన పండితులచే పూజలు."
-          : locale === "ta"
-          ? "சாஸ்திர முறைப்படி தகுதி வாய்ந்த பண்டிதர்களால் செய்யப்படும் பூஜைகள்."
-          : "Rituals conducted by experienced Vedic Purohits adhering to Shastras.",
-    },
-    {
-      icon: <Check className="h-5 w-5" />,
-      bg: "bg-emerald-50 text-emerald-700",
-      title:
-        locale === "hi"
-          ? "अभिमंत्रित प्रसाद"
-          : locale === "te"
-          ? "పవిత్ర ప్రసాదం"
-          : locale === "ta"
-          ? "புனித பிரசாதம்"
-          : "Sanctified Prasad",
-      desc:
-        locale === "hi"
-          ? "अभिमंत्रित प्रसाद एवं रक्षा सूत्र आपके दिए गए पते पर भेजा जाएगा।"
-          : locale === "te"
-          ? "పవిత్ర ప్రసాదం మరియు రక్షా సూత్రం మీ చిరునామాకు పంపబడుతుంది."
-          : locale === "ta"
-          ? "புனித பிரசாதம் மற்றும் ரக்ஷா சூத்திரம் உங்கள் முகவரிக்கு அனுப்பப்படும்."
-          : "Consecrated prasad and raksha sutra dispatched to your address.",
-    },
-  ];
+  const otherAddonItems = addonItems.filter(
+    (a) =>
+      a.itemType === "addon" ||
+      (!a.itemType &&
+        (a.category === "Prasad Seva" ||
+          a.category === "Temple Donation" ||
+          a.category === "Anna Daan" ||
+          a.category === "Sacred Relic"))
+  );
+
+  const chadhavaSubtotal = chadhavaItems.reduce(
+    (sum, a) => sum + a.price * a.quantity,
+    0
+  );
+  const otherAddonSubtotal = otherAddonItems.reduce(
+    (sum, a) => sum + a.price * a.quantity,
+    0
+  );
+  const subtotal = packagePrice + chadhavaSubtotal + otherAddonSubtotal;
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-saffron-100 bg-white p-5 sm:p-8 shadow-card">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-saffron-100 pb-4">
+    <div className="mx-auto max-w-2xl space-y-4">
+      {/* Clean Order Summary Card */}
+      <div className="rounded-2xl border border-saffron-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-saffron-100 pb-3">
           <div>
-            <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-saffron-700">
-              <Sparkles className="h-3 w-3" /> {t("booking.summary.eyebrow")}
-            </span>
-            <h2 className="font-display text-lg sm:text-2xl font-bold text-ink">
-              {t("booking.summary.title")}
-            </h2>
+            <h3 className="text-base font-bold text-ink">
+              {locale === "hi" ? "ऑर्डर सारांश" : "ORDER SUMMARY"}
+            </h3>
+            <p className="text-[11px] text-ink-soft">
+              {locale === "hi"
+                ? "भुगतान से पहले अपनी पूजा और चढ़ावे की समीक्षा करें"
+                : "Review your selection before proceeding to payment"}
+            </p>
           </div>
-          <span className="text-3xl">🪔</span>
+          <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+            Verified
+          </span>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Order Itemized Summary */}
-          <div className="rounded-2xl border border-saffron-200 bg-cream/40 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-saffron-200 pb-3">
-              <div>
-                <h3 className="font-display text-base font-bold text-ink">
-                  {poojaTitle}
-                </h3>
-                <span className="text-xs font-semibold text-saffron-800">
-                  {tierLabel}
-                </span>
-              </div>
+        {/* 1. Puja Section */}
+        <div className="rounded-xl bg-cream/40 p-3.5 border border-saffron-100">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-saffron-700 block">
+                {locale === "hi" ? "पूजा सेवा" : "Puja"}
+              </span>
+              <h4 className="text-sm font-bold text-ink">{poojaTitle}</h4>
+              <p className="text-[11px] text-ink-soft mt-0.5">
+                {getTierLabel()} • {date || "Auspicious Date"} • {time || "06:30 PM IST"}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="font-display text-sm font-extrabold text-saffron-900">
+                {formatINR(packagePrice)}
+              </span>
               <button
                 type="button"
                 onClick={() => onEditStep(1)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-saffron-700 hover:text-saffron-900"
+                className="block text-[10px] text-saffron-700 hover:underline mt-0.5 ml-auto"
               >
-                <Edit3 className="h-3 w-3" /> {t("booking.summary.edit")}
+                Edit
               </button>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between text-ink-soft">
-                <span>{t("booking.summary.muhuratDate")}:</span>
-                <span className="font-bold text-ink">
-                  {date ? formatBookingDate(date) : "Today / Auspicious"} {time ? `• ${time}` : ""}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-ink-soft">
-                <span>{t("booking.summary.packageDakshina")}:</span>
-                <span className="font-bold text-ink">{formatINR(packagePrice)}</span>
-              </div>
-
-              {addonItems.length > 0 && (
-                <div className="border-t border-dashed border-saffron-200 pt-2 space-y-1.5">
-                  <div className="flex items-center justify-between font-bold text-saffron-900">
-                    <span>{t("booking.summary.chadhavaDakshina")} ({addonItems.reduce((acc, a) => acc + a.quantity, 0)}):</span>
-                    <span>+{formatINR(addonTotal)}</span>
-                  </div>
-                  {addonItems.map((a) => (
-                    <div key={a.id} className="flex justify-between text-ink-soft pl-2">
-                      <span>{a.name} × {a.quantity}</span>
-                      <span className="font-medium text-ink">{formatINR(a.price * a.quantity)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between border-t border-saffron-300 pt-3 text-sm font-bold text-ink">
-                <div>
-                  <span className="block text-base font-display">{t("booking.summary.totalDakshina")}</span>
-                  <span className="block text-[10px] font-normal text-ink-soft">
-                    {totalIncludesNote}
-                  </span>
-                </div>
-                <span className="font-display text-2xl font-extrabold text-saffron-900">
-                  {formatINR(total)}
-                </span>
-              </div>
             </div>
           </div>
+        </div>
 
-          {/* Devotee Sankalp Summary */}
-          <div className="rounded-2xl border border-saffron-200 bg-cream/40 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-saffron-200 pb-3">
-              <h3 className="font-display text-base font-bold text-ink flex items-center gap-1.5">
-                <span>🕉️</span> {t("booking.summary.devoteeDetailsTitle")}
-              </h3>
+        {/* 2. Chadhava Section */}
+        {chadhavaItems.length > 0 && (
+          <div className="rounded-xl bg-cream/40 p-3.5 border border-saffron-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-saffron-800 flex items-center gap-1">
+                <span>🌸</span> {locale === "hi" ? "चढ़ावा" : "Chadhava"}
+              </span>
               <button
                 type="button"
-                onClick={() => onEditStep(2)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-saffron-700 hover:text-saffron-900"
+                onClick={() => onEditStep(3)}
+                className="text-[10px] text-saffron-700 hover:underline"
               >
-                <Edit3 className="h-3 w-3" /> {t("booking.summary.edit")}
+                Edit
               </button>
             </div>
 
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-ink-soft">{t("booking.devotee.primaryName")}:</span>
-                <span className="font-bold text-ink">{form.name || "—"}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-ink-soft">{t("booking.devotee.gotra")}:</span>
-                <span className="font-bold text-ink">{form.gotra || "Kashyap"}</span>
-              </div>
-
-              {selectedTier === "couple" && form.partnerName && (
-                <div className="flex justify-between">
-                  <span className="text-ink-soft">{t("booking.devotee.partnerName")}:</span>
-                  <span className="font-bold text-ink">{form.partnerName}</span>
+            <div className="space-y-1.5 pt-1">
+              {chadhavaItems.map((item) => (
+                <div key={item.id} className="flex justify-between items-center text-xs text-ink">
+                  <span>
+                    {item.name} <span className="text-ink-soft font-mono">× {item.quantity}</span>
+                  </span>
+                  <span className="font-semibold text-saffron-900">
+                    {formatINR(item.price * item.quantity)}
+                  </span>
                 </div>
-              )}
-
-              {selectedTier === "family" && form.familyMembers.length > 0 && (
-                <div className="space-y-1">
-                  <span className="text-ink-soft">{t("booking.devotee.familyMembers")}:</span>
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {form.familyMembers.map((m, i) => (
-                      <span
-                        key={i}
-                        className="rounded-lg bg-white border border-saffron-200 px-2 py-0.5 text-[11px] font-semibold text-ink"
-                      >
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between border-t border-saffron-200/80 pt-2">
-                <span className="text-ink-soft">{t("booking.devotee.phone")}:</span>
-                <span className="font-bold text-ink">{form.phone || "—"}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-ink-soft">{t("booking.devotee.city")}:</span>
-                <span className="font-bold text-ink">{form.city || "—"}</span>
-              </div>
-
-              {form.reason && (
-                <div className="border-t border-saffron-200/80 pt-2">
-                  <span className="text-ink-soft block mb-0.5">{t("booking.devotee.sankalpReason")}:</span>
-                  <p className="font-medium text-ink bg-white/80 p-2 rounded-lg border border-saffron-100 text-[11px]">
-                    "{form.reason}"
-                  </p>
-                </div>
-              )}
+              ))}
             </div>
+          </div>
+        )}
+
+        {/* 3. Other Add-ons Section */}
+        {otherAddonItems.length > 0 && (
+          <div className="rounded-xl bg-cream/40 p-3.5 border border-saffron-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+                <span>🍯</span> {locale === "hi" ? "अन्य सेवा" : "Other Add-ons"}
+              </span>
+              <button
+                type="button"
+                onClick={() => onEditStep(4)}
+                className="text-[10px] text-saffron-700 hover:underline"
+              >
+                Edit
+              </button>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              {otherAddonItems.map((item) => (
+                <div key={item.id} className="flex justify-between items-center text-xs text-ink">
+                  <span>
+                    {item.name} <span className="text-ink-soft font-mono">× {item.quantity}</span>
+                  </span>
+                  <span className="font-semibold text-amber-900">
+                    {formatINR(item.price * item.quantity)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Devotee Details Summary */}
+        <div className="flex items-center justify-between rounded-xl bg-saffron-50/50 p-3 border border-saffron-100 text-xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft block">
+              {locale === "hi" ? "यजमान" : "Devotee"}
+            </span>
+            <span className="font-bold text-ink">
+              {form.name || "Devotee"} ({form.gotra || "Kashyap"})
+            </span>
+            <span className="text-ink-soft text-[11px] block mt-0.5">
+              +91 {form.phone || "—"} • {form.city || "—"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onEditStep(2)}
+            className="flex items-center gap-1 text-[11px] font-bold text-saffron-700 hover:underline"
+          >
+            <Edit3 className="h-3 w-3" />
+            <span>Edit</span>
+          </button>
+        </div>
+
+        {/* 5. Financial Totals Breakdown */}
+        <div className="border-t border-saffron-200/80 pt-3 space-y-1.5 text-xs">
+          <div className="flex justify-between text-ink-soft">
+            <span>{locale === "hi" ? "उप-योग" : "Subtotal"}</span>
+            <span className="font-semibold text-ink">{formatINR(subtotal)}</span>
+          </div>
+
+          <div className="flex justify-between text-ink-soft">
+            <span>{locale === "hi" ? "शुल्क व कर" : "Taxes / Charges"}</span>
+            <span className="text-emerald-700 font-semibold">{locale === "hi" ? "सम्मिलित" : "Included"}</span>
+          </div>
+
+          <div className="flex justify-between items-baseline border-t border-saffron-200 pt-2.5">
+            <span className="text-sm font-extrabold uppercase text-ink">
+              {locale === "hi" ? "कुल देय राशि" : "TOTAL PAYABLE"}
+            </span>
+            <span className="font-display text-xl font-extrabold text-saffron-900">
+              {formatINR(total)}
+            </span>
           </div>
         </div>
 
         {formError && (
-          <div className="mt-5 rounded-2xl bg-red-50 p-3.5 text-xs font-bold text-red-600 border border-red-200">
+          <div className="rounded-xl bg-red-50 p-2.5 text-xs text-red-700 border border-red-200 font-medium">
             ⚠️ {formError}
           </div>
         )}
 
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-saffron-100 pt-5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800">
-            <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0" />
-            <span>{t("checkout.secureNote")}</span>
+        {/* Payment Options Preview & Proceed Button */}
+        <div className="border-t border-saffron-100 pt-4 space-y-3">
+          <div className="flex items-center justify-between text-[11px] text-ink-soft px-1">
+            <span className="flex items-center gap-1 font-semibold text-ink">
+              <CreditCard className="h-3.5 w-3.5 text-saffron-600" />
+              <span>Payment Options:</span>
+            </span>
+            <span>UPI • Cards • NetBanking • Razorpay</span>
           </div>
 
           <button
             type="button"
             onClick={onProceed}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-saffron-500 via-amber-500 to-saffron-600 px-8 py-3.5 text-base font-extrabold text-white shadow-lg shadow-saffron-500/25 hover:scale-[1.02] active:scale-95 transition-all"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 via-amber-500 to-saffron-600 py-3 px-6 text-sm font-extrabold text-white shadow-md hover:scale-[1.01] active:scale-98 transition-all"
           >
             <Lock className="h-4 w-4" />
-            <span>{t("booking.sticky.payDakshina")} ({formatINR(total)})</span>
+            <span>Proceed to Payment ({formatINR(total)})</span>
           </button>
-        </div>
-      </div>
 
-      {/* Trust & Reassurance Badges */}
-      <div className="grid gap-3.5 sm:grid-cols-3">
-        {trustBadges.map((badge, i) => (
-          <div key={i} className="flex items-start gap-3 rounded-2xl border border-saffron-100 bg-white p-4 shadow-xs">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${badge.bg}`}>
-              {badge.icon}
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-ink">{badge.title}</h4>
-              <p className="mt-0.5 text-[11px] text-ink-soft leading-tight">
-                {badge.desc}
-              </p>
-            </div>
-          </div>
-        ))}
+          <p className="text-center text-[10px] text-ink-soft flex items-center justify-center gap-1">
+            <ShieldCheck className="h-3 w-3 text-emerald-600" />
+            <span>100% Secure 256-bit encrypted checkout via Razorpay</span>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -63,20 +63,28 @@ export default function BookingStickyBar({
           >
             {currentStep === 1 ? (
               <>
-                <span>{t("booking.sticky.nextToDetails")}</span>
+                <span>Next: Devotee Details</span>
                 <ChevronRight className="h-4 w-4 stroke-[3]" />
               </>
             ) : currentStep === 2 ? (
               <>
-                <span>{t("booking.sticky.nextToReview")}</span>
+                <span>Next: Select Chadhava</span>
+                <ChevronRight className="h-4 w-4 stroke-[3]" />
+              </>
+            ) : currentStep === 3 ? (
+              <>
+                <span>Next: Other Add-ons</span>
+                <ChevronRight className="h-4 w-4 stroke-[3]" />
+              </>
+            ) : currentStep === 4 ? (
+              <>
+                <span>Next: Final Order Summary</span>
                 <ChevronRight className="h-4 w-4 stroke-[3]" />
               </>
             ) : (
               <>
                 <Lock className="h-4 w-4" />
-                <span>
-                  {t("booking.sticky.payDakshina")} ({formatINR(total)})
-                </span>
+                <span>Proceed to Payment ({formatINR(total)})</span>
               </>
             )}
           </button>

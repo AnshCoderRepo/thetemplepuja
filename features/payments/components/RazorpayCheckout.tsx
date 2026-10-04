@@ -27,6 +27,7 @@ export interface RazorpayCheckoutProps {
   poojaPrice: number;
   poojaTitle: string;
   poojaSlug?: string;
+  packageTier?: string;
   addons?: { id: string; name: string; price: number; quantity: number; emoji?: string }[];
   couponMap: Record<string, Coupon>;
   devoteeName?: string;
@@ -51,6 +52,7 @@ export default function RazorpayCheckout({
   poojaPrice,
   poojaTitle,
   poojaSlug,
+  packageTier,
   addons,
   couponMap,
   devoteeName,
@@ -151,6 +153,7 @@ export default function RazorpayCheckout({
     void (async () => {
       const start = await createRazorpayOrderRemote({
         poojaSlug,
+        packageTier,
         addons: addons?.map((a) => ({ id: a.id, quantity: a.quantity })),
         couponCode: applied?.code ?? null,
         phone: phone ?? "",

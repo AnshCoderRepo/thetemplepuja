@@ -11,6 +11,8 @@ export const STORAGE_KEYS = {
   CATALOG_POOJAS: "ttp_catalog_poojas_v1",
   /** Catalog override — events. */
   CATALOG_EVENTS: "ttp_catalog_events_v1",
+  /** Catalog override — festivals. */
+  CATALOG_FESTIVALS: "ttp_catalog_festivals_v1",
   /** Catalog override — coupons. */
   CATALOG_COUPONS: "ttp_catalog_coupons_v1",
   /** Catalog override — pooja dates. */

@@ -193,7 +193,7 @@ export const translations = {
     // ─── Booking Flow ───
     "booking.modalTitle": "Sacred Pooja & Sankalp Booking",
     "booking.modalSubtitle": "Certified Acharyas • Authentic Vidhi • HD Sankalp Video",
-    "booking.vedicSankalpBadge": "3-Step Vedic Sankalp",
+    "booking.vedicSankalpBadge": "Vedic Sankalp Seva",
     "booking.step1.title": "Package & Offerings",
     "booking.step1.subtitle": "Select Tier & Chadhava",
     "booking.step2.title": "Devotee Details",
@@ -511,7 +511,7 @@ export const translations = {
     // ─── Booking Flow ───
     "booking.modalTitle": "पवित्र पूजा एवं संकल्प बुकिंग",
     "booking.modalSubtitle": "प्रमाणित आचार्य • प्रामाणिक वैदिक विधि • संकल्प वीडियो",
-    "booking.vedicSankalpBadge": "3-चरण वैदिक संकल्प",
+    "booking.vedicSankalpBadge": "वैदिक संकल्प सेवा",
     "booking.step1.title": "सहभागिता एवं चढ़ावा",
     "booking.step1.subtitle": "संकल्प पैकेज व विशेष अर्पण",
     "booking.step2.title": "यजमान संकल्प विवरण",
@@ -829,7 +829,7 @@ export const translations = {
     // ─── Booking Flow ───
     "booking.modalTitle": "పవిత్ర పూజ మరియు సంకల్ప బుకింగ్",
     "booking.modalSubtitle": "సర్టిఫైడ్ వేద పండితులు • ప్రామాణిక విధి • HD సంకల్ప వీడియో",
-    "booking.vedicSankalpBadge": "3-దశల వైదిక సంకల్పం",
+    "booking.vedicSankalpBadge": "వైదిక సంకల్ప సేవ",
     "booking.step1.title": "ప్యాకేజీ & సమర్పణలు",
     "booking.step1.subtitle": "సంకల్ప ప్యాకేజీ మరియు చడవా",
     "booking.step2.title": "భక్తుల వివరాలు",
@@ -1147,7 +1147,7 @@ export const translations = {
     // ─── Booking Flow ───
     "booking.modalTitle": "புனித பூஜை மற்றும் சங்கல்ப முன்பதிவு",
     "booking.modalSubtitle": "சான்றளிக்கப்பட்ட வேத பண்டிதர்கள் • தூய வேத முறை • HD சங்கல்ப வீடியோ",
-    "booking.vedicSankalpBadge": "3-படி வேத சங்கல்பம்",
+    "booking.vedicSankalpBadge": "வேத சங்கல்ப சேவை",
     "booking.step1.title": "தொகுப்பு & காணிக்கை",
     "booking.step1.subtitle": "சங்கல்ப தொகுப்பு & சமர்ப்பணங்கள்",
     "booking.step2.title": "பக்தர் விவரங்கள்",

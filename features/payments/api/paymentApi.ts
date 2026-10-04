@@ -2,6 +2,7 @@ import type { RazorpayOrderStart } from "../types/payment.types";
 
 export async function createRazorpayOrderRemote(input: {
   poojaSlug: string;
+  packageTier?: string;
   addons?: { id: string; quantity: number }[];
   couponCode: string | null;
   phone: string;
