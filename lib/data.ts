@@ -2,7 +2,7 @@ import { SITE_CONFIG, getWhatsAppUrl } from "./config";
 
 export const stats = [
   { value: "10,847+", label: "Total Bookings", icon: "🪔" },
-  { value: "50+", label: "Pooja Types", icon: "🕉️" },
+  { value: "50+", label: "Temples", icon: "🕉️" },
   { value: "200+", label: "Certified Pandits", icon: "🙏" },
   { value: "24/7", label: "Support", icon: "✨" },
 ];

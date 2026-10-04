@@ -14,7 +14,7 @@ export default function Hero() {
     },
     {
       value: "50+",
-      label: "Pooja Types",
+      label: "Temples",
       icon: "🕉️",
     },
     {

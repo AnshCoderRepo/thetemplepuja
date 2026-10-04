@@ -32,17 +32,15 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled
           ? "bg-cream/95 shadow-soft backdrop-blur-md"
           : "bg-transparent"
-      }`}
+        }`}
     >
       {/* Top Maroon Announcement Bar */}
       <div
-        className={`hidden overflow-hidden transition-all duration-300 md:block ${
-          scrolled ? "max-h-0 opacity-0" : "max-h-12 opacity-100"
-        }`}
+        className={`hidden overflow-hidden transition-all duration-300 md:block ${scrolled ? "max-h-0 opacity-0" : "max-h-12 opacity-100"
+          }`}
       >
         <div className="bg-gradient-to-r from-maroon-800 via-maroon-700 to-maroon-800">
           <div className="container-px flex items-center justify-between py-2 text-xs text-amber-100">
@@ -63,16 +61,27 @@ export default function Header() {
       </div>
 
       {/* Main Navbar */}
-      <nav className="container-px flex items-center justify-between py-4">
-        <Link href="#home" className="group flex items-center">
-          <Image
-            src="/logo.jpeg"
-            alt={SITE_CONFIG.brandName}
-            width={160}
-            height={48}
-            className="h-12 w-auto rounded-lg bg-white object-contain p-1 shadow-soft transition-transform duration-300 group-hover:scale-105"
-            priority
-          />
+      <nav className="container-px flex items-center justify-between gap-3 py-2.5 sm:py-3.5 md:py-4">
+        <Link
+          href="#home"
+          className="group flex items-center shrink-0 min-w-0"
+          aria-label={SITE_CONFIG.brandName}
+        >
+          <div className="relative flex items-center shrink-0">
+            <Image
+              src="/logo.jpeg"
+              alt={SITE_CONFIG.brandName}
+              width={300}
+              height={90}
+              className="h-10 w-auto sm:h-11 md:h-12 lg:h-14 max-w-[145px] sm:max-w-[175px] md:max-w-[205px] lg:max-w-[230px] rounded-lg bg-white object-contain p-1 sm:p-1.5 shadow-soft transition-transform duration-300 group-hover:scale-105 shrink-0 select-none"
+              style={{
+                height: "clamp(2.5rem, 4vw + 1.25rem, 3.75rem)",
+                maxWidth: "clamp(145px, 18vw + 80px, 230px)",
+                width: "auto",
+              }}
+              priority
+            />
+          </div>
         </Link>
 
         {/* Desktop Navigation Links */}
@@ -88,8 +97,8 @@ export default function Header() {
           ))}
         </div>
 
-        {/* Desktop Actions */}
-        <div className="flex items-center gap-2.5">
+        {/* Desktop Actions & Mobile Menu Button */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           <div className="hidden sm:flex">
             <LanguageToggle />
           </div>
@@ -113,13 +122,13 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((o) => !o)}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-saffron-200 bg-white text-ink transition-colors hover:bg-saffron-50 lg:hidden"
+            className="flex h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-full border border-saffron-200 bg-white text-ink transition-colors hover:bg-saffron-50 lg:hidden shrink-0"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             ) : (
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
             )}
           </button>
         </div>
@@ -127,9 +136,8 @@ export default function Header() {
 
       {/* Mobile Drawer */}
       <div
-        className={`overflow-hidden bg-cream/95 backdrop-blur-md transition-all duration-300 lg:hidden ${
-          mobileMenuOpen ? "max-h-96 border-b border-saffron-200" : "max-h-0"
-        }`}
+        className={`overflow-hidden bg-cream/95 backdrop-blur-md transition-all duration-300 lg:hidden ${mobileMenuOpen ? "max-h-96 border-b border-saffron-200" : "max-h-0"
+          }`}
       >
         <div className="container-px flex flex-col gap-1 py-4">
           {navLinks.map((link) => (
