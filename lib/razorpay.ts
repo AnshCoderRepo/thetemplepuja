@@ -66,6 +66,8 @@ export interface ValidatedAddon {
   price: number;
   quantity: number;
   emoji?: string;
+  category?: string;
+  itemType?: "chadhava" | "addon";
 }
 
 /** Generate a unique, professional backend receipt number e.g. RCPT-20261001-000123 */
@@ -78,24 +80,34 @@ export function generateReceiptNumber(seed?: string): string {
   return `RCPT-${datePart}-${suffix}`;
 }
 
-/** Compute what a devotee must pay for a pooja and add-ons, server-side:
- * base price + validated add-ons minus a validated coupon's discount. */
+/** Compute what a devotee must pay for a pooja, package tier, and add-ons, server-side:
+ * base price (scaled by package tier if provided) + validated add-ons minus a validated coupon's discount. */
 export function computeOrderAmount(input: {
   pooja: Pooja;
+  packageTier?: string;
   addons?: SelectedAddonInput[];
-  couponCode: string | null;
-  couponMap: Record<string, Coupon>;
-  phone: string;
-  confirmedCount: number;
+  couponCode?: string | null;
+  couponMap?: Record<string, Coupon>;
+  phone?: string;
+  confirmedCount?: number;
 }): {
   amount: number;
   subtotal: number;
   addonTotal: number;
+  addons: ValidatedAddon[];
   validatedAddons: ValidatedAddon[];
   discount: number;
   couponProblem: string | null;
 } {
-  const basePrice = input.pooja.price;
+  let basePrice = input.pooja.price;
+  if (input.packageTier === "couple") {
+    const raw = Math.round(basePrice * 1.8);
+    basePrice = Math.round(raw / 100) * 100 + 1;
+  } else if (input.packageTier === "family") {
+    const raw = Math.round(basePrice * 2.5);
+    basePrice = Math.round(raw / 100) * 100 + 1;
+  }
+
   let addonTotal = 0;
   const validatedAddons: ValidatedAddon[] = [];
 
@@ -113,6 +125,15 @@ export function computeOrderAmount(input: {
           price: found.price,
           quantity: qty,
           emoji: found.emoji,
+          category: found.category,
+          itemType:
+            found.type ??
+            (found.category === "Prasad Seva" ||
+            found.category === "Temple Donation" ||
+            found.category === "Anna Daan" ||
+            found.category === "Sacred Relic"
+              ? "addon"
+              : "chadhava"),
         });
       }
     }
@@ -121,16 +142,16 @@ export function computeOrderAmount(input: {
   const subtotal = basePrice + addonTotal;
   let discount = 0;
   let problem: string | null = null;
-  if (input.couponCode) {
+  if (input.couponCode && input.couponMap) {
     problem = couponProblem(
       input.couponCode,
       {
-        phone: input.phone,
+        phone: input.phone || "",
         price: basePrice,
         poojaTitle: input.pooja.title,
       },
       input.couponMap,
-      input.confirmedCount
+      input.confirmedCount ?? 0
     );
     if (!problem) {
       discount = couponDiscount(input.couponCode, basePrice, input.couponMap);
@@ -142,6 +163,7 @@ export function computeOrderAmount(input: {
     amount,
     subtotal,
     addonTotal,
+    addons: validatedAddons,
     validatedAddons,
     discount,
     couponProblem: problem,

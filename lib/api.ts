@@ -5,11 +5,20 @@
 import {
   getCatalogCoupons,
   getCatalogEventSpecs,
+  getCatalogFestivals,
   getCatalogPoojaDates,
   getCatalogPoojas,
   getCatalogTemples,
 } from "./catalog";
-import { withEventBookedSeats, type Coupon, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec } from "./data";
+import {
+  withEventBookedSeats,
+  type Coupon,
+  type FestivalEvent,
+  type Pooja,
+  type PoojaDate,
+  type Temple,
+  type UpcomingEventSpec,
+} from "./data";
 import {
   cancelBooking,
   deleteUser,
@@ -30,6 +39,7 @@ import { normalizePhone } from "./validation";
 export interface ResolvedCatalog {
   poojas: Pooja[];
   events: UpcomingEventSpec[];
+  festivals: FestivalEvent[];
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
@@ -88,6 +98,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
           return {
             poojas: body.poojas,
             events: body.events,
+            festivals: body.festivals ?? getCatalogFestivals(),
             coupons: body.coupons,
             poojaDates: body.poojaDates ?? [],
             temples: body.temples ?? getCatalogTemples(),
@@ -104,6 +115,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
             getCatalogEventSpecs(),
             getUsers().flatMap((u) => u.bookings)
           ),
+          festivals: getCatalogFestivals(),
           coupons: getCatalogCoupons(),
           poojaDates: getCatalogPoojaDates(),
           temples: getCatalogTemples(),
@@ -120,8 +132,6 @@ export async function refreshCatalog(): Promise<ResolvedCatalog> {
   return fetchCatalog();
 }
 
-
-
 async function post(path: string, body: unknown, token?: string | null) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -136,7 +146,13 @@ async function post(path: string, body: unknown, token?: string | null) {
 
 // ===================== CATALOG (admin) =====================
 
-export type CatalogSection = "poojas" | "events" | "coupons" | "poojaDates" | "temples";
+export type CatalogSection =
+  | "poojas"
+  | "events"
+  | "festivals"
+  | "coupons"
+  | "poojaDates"
+  | "temples";
 
 export async function saveCatalogSection(
   section: CatalogSection,
@@ -270,6 +286,7 @@ export interface RazorpayOrderStart {
  * the checkout can fall back to its simulated payment. */
 export async function createRazorpayOrderRemote(input: {
   poojaSlug: string;
+  packageTier?: string;
   addons?: { id: string; quantity: number }[];
   couponCode: string | null;
   phone: string;

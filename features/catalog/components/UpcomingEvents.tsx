@@ -18,6 +18,25 @@ import {
 } from "@/components/ui/coverflow-carousel";
 import { useCatalog } from "../hooks/useCatalog";
 
+function getSacredImageForEvent(slug: string, title: string): string {
+  const s = `${slug} ${title}`.toLowerCase();
+  if (s.includes("durga") || s.includes("navratri") || s.includes("saptashati")) {
+    return "/festivals/durga-puja.jpg";
+  }
+  if (s.includes("diwali") || s.includes("deepawali") || s.includes("lakshmi")) {
+    return "/festivals/diwali.jpg";
+  }
+  if (
+    s.includes("shiva") ||
+    s.includes("rudrabhishek") ||
+    s.includes("shivratri") ||
+    s.includes("mrityunjaya")
+  ) {
+    return "/festivals/shivratri.jpg";
+  }
+  return "/festivals/ganesha-altar.jpg";
+}
+
 export default function UpcomingEvents() {
   const [today, setToday] = useState<Date | null>(null);
   const { poojas: catalogPoojas, loaded } = useCatalog();
@@ -40,7 +59,9 @@ export default function UpcomingEvents() {
     const full = isEventFull(event);
 
     return {
-      src: "https://images.unsplash.com/photo-1609766857041-ed402ea8069a?q=80&w=900&auto=format&fit=crop",
+      src:
+        matchedPooja?.imageUrl ||
+        getSacredImageForEvent(event.slug, event.title),
       alt: localizedTitle,
       emoji: event.emoji,
       gradient: event.gradient,

@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   activePoojas,
   coupons,
+  defaultFestivals,
   eventBookedSeats,
+  getFestivalStatus,
   getPooja,
   getUpcomingEvents,
+  getUpcomingFestivals,
   isEventFull,
   isPoojaActive,
   poojas,
@@ -289,5 +292,118 @@ describe("upcoming events", () => {
       spec("future", 5),
     ]);
     expect(events.map((e) => e.slug)).toEqual(["today", "future"]);
+  });
+});
+
+describe("dynamic festival system", () => {
+  const baseDate = new Date("2026-10-04T10:00:00Z");
+
+  it("calculates live status when current date is within festival start and end dates", () => {
+    const fest = {
+      id: "test-live",
+      name: "Test Festival",
+      heroTitle: "Test Title",
+      heroSubtitle: "Test Subtitle",
+      startDate: "2026-10-01",
+      endDate: "2026-10-10",
+      relatedPoojaSlugs: ["durga-saptashati-path"],
+    };
+
+    const status = getFestivalStatus(fest, baseDate);
+    expect(status.isLive).toBe(true);
+    expect(status.isUpcoming).toBe(false);
+    expect(status.isEnded).toBe(false);
+    expect(status.countdownText).toContain("Live Festival");
+  });
+
+  it("calculates upcoming status and remaining days when start date is in future", () => {
+    const fest = {
+      id: "test-upcoming",
+      name: "Navratri 2026",
+      heroTitle: "Navratri Special",
+      heroSubtitle: "Celebrate Navratri",
+      startDate: "2026-10-11",
+      endDate: "2026-10-19",
+      relatedPoojaSlugs: ["durga-saptashati-path"],
+    };
+
+    const status = getFestivalStatus(fest, baseDate);
+    expect(status.isLive).toBe(false);
+    expect(status.isUpcoming).toBe(true);
+    expect(status.isEnded).toBe(false);
+    expect(status.daysUntilStart).toBe(7);
+    expect(status.countdownText).toBe("Navratri 2026 begins in 7 days");
+  });
+
+  it("marks festival as ended and excludes from getUpcomingFestivals when end date has passed", () => {
+    const fest = {
+      id: "test-ended",
+      name: "Past Festival",
+      heroTitle: "Past Title",
+      heroSubtitle: "Past Subtitle",
+      startDate: "2026-09-01",
+      endDate: "2026-09-10",
+      relatedPoojaSlugs: [],
+    };
+
+    const status = getFestivalStatus(fest, baseDate);
+    expect(status.isEnded).toBe(true);
+
+    const upcoming = getUpcomingFestivals(baseDate, [fest]);
+    expect(upcoming).toHaveLength(0);
+  });
+
+  it("sorts upcoming festivals by priority first, then start date", () => {
+    const f1 = {
+      id: "f1",
+      name: "F1 (Low Priority, Sooner)",
+      heroTitle: "F1",
+      heroSubtitle: "F1",
+      startDate: "2026-10-08",
+      endDate: "2026-10-15",
+      priority: 2,
+      relatedPoojaSlugs: [],
+    };
+    const f2 = {
+      id: "f2",
+      name: "F2 (High Priority, Later)",
+      heroTitle: "F2",
+      heroSubtitle: "F2",
+      startDate: "2026-10-12",
+      endDate: "2026-10-20",
+      priority: 1,
+      relatedPoojaSlugs: [],
+    };
+
+    const upcoming = getUpcomingFestivals(baseDate, [f1, f2]);
+    expect(upcoming[0].id).toBe("f2");
+    expect(upcoming[1].id).toBe("f1");
+  });
+
+  it("filters out inactive festivals", () => {
+    const fActive = {
+      id: "active-f",
+      name: "Active Festival",
+      heroTitle: "Active",
+      heroSubtitle: "Active",
+      startDate: "2026-10-10",
+      endDate: "2026-10-18",
+      active: true,
+      relatedPoojaSlugs: [],
+    };
+    const fInactive = {
+      id: "inactive-f",
+      name: "Inactive Festival",
+      heroTitle: "Inactive",
+      heroSubtitle: "Inactive",
+      startDate: "2026-10-10",
+      endDate: "2026-10-18",
+      active: false,
+      relatedPoojaSlugs: [],
+    };
+
+    const upcoming = getUpcomingFestivals(baseDate, [fActive, fInactive]);
+    expect(upcoming).toHaveLength(1);
+    expect(upcoming[0].id).toBe("active-f");
   });
 });

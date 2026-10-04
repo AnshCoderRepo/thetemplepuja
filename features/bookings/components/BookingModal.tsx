@@ -45,8 +45,8 @@ export default function BookingModal() {
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
       />
 
-      {/* Modal Dialog Container */}
-      <div className="relative z-10 flex h-full max-h-[92vh] w-full max-w-4xl flex-col rounded-3xl border border-saffron-200/80 bg-[#FFFDF9] shadow-[0_20px_60px_rgba(30,10,5,0.3)] overflow-hidden">
+      {/* Modal Dialog Container - Small, elegant popup */}
+      <div className="relative z-10 flex h-auto max-h-[90vh] w-full max-w-md sm:max-w-lg flex-col rounded-3xl border border-saffron-200/80 bg-[#FFFDF9] shadow-[0_20px_60px_rgba(30,10,5,0.3)] overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-saffron-100 bg-white/95 px-5 py-3.5 sm:px-6 shadow-xs backdrop-blur shrink-0">
           <div className="flex items-center gap-2.5">

@@ -52,7 +52,7 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
       {/* Receipt header */}
       <div className="relative bg-gradient-to-br from-saffron-500 to-maroon-600 px-8 py-8 text-center text-white print:bg-white print:text-ink print:border-b-2 print:border-saffron-600">
         <div className="absolute inset-0 opacity-15 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px] print:hidden" />
-        <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white p-1 shadow-soft">
+        <span className="relative inline-flex h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-white p-1 shadow-soft shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.jpeg"
@@ -175,21 +175,78 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
         </div>
 
         {/* Itemized Chadhavas / Addons */}
-        {booking.addons && booking.addons.length > 0 && (
-          <div className="rounded-2xl border border-saffron-100 bg-cream/30 p-5 space-y-2 text-xs">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-saffron-800">
-              Offerings & Chadhavas Itemization
-            </p>
-            <div className="space-y-1.5 pt-1">
-              {booking.addons.map((addon) => (
-                <div key={addon.id} className="flex justify-between items-center text-ink border-b border-dashed border-saffron-100 pb-1.5 last:border-0 last:pb-0">
-                  <span>{addon.emoji || "🌸"} {addon.name} <span className="text-ink-soft font-mono">x{addon.quantity}</span></span>
-                  <span className="font-semibold">{formatINR(addon.price * addon.quantity)}</span>
+        {booking.addons && booking.addons.length > 0 && (() => {
+          const chadhavaList = booking.addons.filter(
+            (a) =>
+              a.itemType === "chadhava" ||
+              (!a.itemType &&
+                a.category !== "Prasad Seva" &&
+                a.category !== "Temple Donation" &&
+                a.category !== "Anna Daan" &&
+                a.category !== "Sacred Relic")
+          );
+          const otherAddonList = booking.addons.filter(
+            (a) =>
+              a.itemType === "addon" ||
+              (!a.itemType &&
+                (a.category === "Prasad Seva" ||
+                  a.category === "Temple Donation" ||
+                  a.category === "Anna Daan" ||
+                  a.category === "Sacred Relic"))
+          );
+
+          return (
+            <div className="rounded-2xl border border-saffron-100 bg-cream/30 p-5 space-y-3 text-xs">
+              {chadhavaList.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-saffron-800 flex items-center gap-1">
+                    <span>🌸</span> Sacred Chadhavas
+                  </p>
+                  {chadhavaList.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="flex justify-between items-center text-ink border-b border-dashed border-saffron-100 pb-1.5 last:border-0 last:pb-0"
+                    >
+                      <span>
+                        {addon.emoji || "🌸"} {addon.name}{" "}
+                        <span className="text-ink-soft font-mono">
+                          x{addon.quantity}
+                        </span>
+                      </span>
+                      <span className="font-semibold">
+                        {formatINR(addon.price * addon.quantity)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {otherAddonList.length > 0 && (
+                <div className="space-y-1.5 pt-1 border-t border-saffron-200/60">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+                    <span>🍯</span> Other Add-ons & Seva
+                  </p>
+                  {otherAddonList.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="flex justify-between items-center text-ink border-b border-dashed border-saffron-100 pb-1.5 last:border-0 last:pb-0"
+                    >
+                      <span>
+                        {addon.emoji || "🍯"} {addon.name}{" "}
+                        <span className="text-ink-soft font-mono">
+                          x{addon.quantity}
+                        </span>
+                      </span>
+                      <span className="font-semibold">
+                        {formatINR(addon.price * addon.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Financial Breakdown Table */}
         <div className="rounded-2xl border border-saffron-100 bg-cream/70 p-5">

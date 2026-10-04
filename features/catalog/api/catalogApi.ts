@@ -1,6 +1,7 @@
 import {
   getCatalogCoupons,
   getCatalogEventSpecs,
+  getCatalogFestivals,
   getCatalogPoojaDates,
   getCatalogPoojas,
   getCatalogTemples,
@@ -53,6 +54,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
           return {
             poojas: body.poojas,
             events: body.events,
+            festivals: body.festivals ?? getCatalogFestivals(),
             coupons: body.coupons,
             poojaDates: body.poojaDates ?? [],
             temples: body.temples ?? getCatalogTemples(),
@@ -66,6 +68,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
             getCatalogEventSpecs(),
             getUsers().flatMap((u) => u.bookings)
           ),
+          festivals: getCatalogFestivals(),
           coupons: getCatalogCoupons(),
           poojaDates: getCatalogPoojaDates(),
           temples: getCatalogTemples(),

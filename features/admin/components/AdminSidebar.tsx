@@ -12,6 +12,7 @@ import {
   LogOut,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
   Users,
 } from "lucide-react";
 import type { AdminTab, NavItem } from "../types/admin.types";
@@ -19,6 +20,7 @@ import type { AdminTab, NavItem } from "../types/admin.types";
 export const NAV_ITEMS: NavItem[] = [
   { id: "analytics", label: "Analytics Dashboard", icon: BarChart3, group: "Overview" },
   { id: "poojas", label: "Puja Catalog", icon: Flame, group: "Management" },
+  { id: "festivals", label: "Festivals & Events", icon: Sparkles, group: "Management" },
   { id: "temples", label: "Temples", icon: Building2, group: "Management" },
   { id: "bookings", label: "Successful Bookings", icon: ShieldCheck, group: "Orders & Sevas" },
   { id: "orders", label: "All Orders & Payments", icon: ShoppingBag, group: "Orders & Sevas" },

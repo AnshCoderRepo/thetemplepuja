@@ -6,11 +6,13 @@ import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import {
   coupons as staticCoupons,
+  defaultFestivals as staticFestivals,
   defaultPoojaDates,
   defaultTemples as staticTemples,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEvents,
   type Coupon,
+  type FestivalEvent,
   type Pooja,
   type PoojaDate,
   type Temple,
@@ -124,12 +126,19 @@ async function withFallback<T>(
 
 // ===================== CATALOG =====================
 
-export type CatalogOverrideSection = "poojas" | "events" | "coupons" | "poojaDates" | "temples";
+export type CatalogOverrideSection =
+  | "poojas"
+  | "events"
+  | "festivals"
+  | "coupons"
+  | "poojaDates"
+  | "temples";
 
 /** Overrides merged over the static defaults — what consumers should render. */
 export async function getResolvedCatalog(): Promise<{
   poojas: Pooja[];
   events: UpcomingEventSpec[];
+  festivals: FestivalEvent[];
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
@@ -138,6 +147,7 @@ export async function getResolvedCatalog(): Promise<{
   return {
     poojas: o.poojas ?? staticPoojas,
     events: o.events ?? staticEvents,
+    festivals: o.festivals ?? staticFestivals,
     coupons: o.coupons ?? staticCoupons,
     poojaDates: o.poojaDates ?? defaultPoojaDates,
     temples: o.temples ?? staticTemples,
@@ -147,6 +157,7 @@ export async function getResolvedCatalog(): Promise<{
 export async function saveCatalogOverrides(overrides: {
   poojas?: Pooja[];
   events?: UpcomingEventSpec[];
+  festivals?: FestivalEvent[];
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
   temples?: Temple[];

@@ -1,9 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Eye,
+  EyeOff,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+  Layers,
+  Image as ImageIcon,
+} from "lucide-react";
 import { fetchCatalog, resetCatalogSection, saveCatalogSection } from "@/lib/api";
-import { isEventActive, seatsLabel, type UpcomingEventSpec } from "@/lib/data";
+import {
+  getFestivalStatus,
+  isEventActive,
+  isFestivalActive,
+  seatsLabel,
+  type FestivalEvent,
+  type Pooja,
+  type UpcomingEventSpec,
+} from "@/lib/data";
 import {
   Field,
   GradientPicker,
@@ -14,7 +34,47 @@ import {
   Toggle,
 } from "./manager-ui";
 
-interface Draft {
+interface FestivalDraft {
+  id: string;
+  name: string;
+  badge: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  startDate: string;
+  endDate: string;
+  daysFromToday: string;
+  durationDays: string;
+  heroImage: string;
+  relatedPoojaSlugs: string[];
+  ctaText: string;
+  ctaLink: string;
+  secondaryCtaText: string;
+  secondaryCtaLink: string;
+  priority: string;
+  active: boolean;
+}
+
+const emptyFestivalDraft: FestivalDraft = {
+  id: "",
+  name: "",
+  badge: "🪔 UPCOMING FESTIVAL",
+  heroTitle: "",
+  heroSubtitle: "",
+  startDate: "",
+  endDate: "",
+  daysFromToday: "7",
+  durationDays: "9",
+  heroImage: "/festivals/durga-puja.jpg",
+  relatedPoojaSlugs: [],
+  ctaText: "Book Festival Puja",
+  ctaLink: "#poojas",
+  secondaryCtaText: "Explore All Pujas",
+  secondaryCtaLink: "#poojas",
+  priority: "1",
+  active: true,
+};
+
+interface EventDraft {
   title: string;
   slug: string;
   daysFromToday: string;
@@ -27,7 +87,7 @@ interface Draft {
   gradient: string;
 }
 
-const emptyDraft: Draft = {
+const emptyEventDraft: EventDraft = {
   title: "",
   slug: "",
   daysFromToday: "7",
@@ -47,87 +107,229 @@ export default function EventsManager({
   token: string;
   onAuthError: () => void;
 }) {
-  const [list, setList] = useState<UpcomingEventSpec[]>([]);
-  const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState<"festivals" | "events">("festivals");
+
+  // Festivals state
+  const [festivals, setFestivals] = useState<FestivalEvent[]>([]);
+  const [festivalDraft, setFestivalDraft] = useState<FestivalDraft>(emptyFestivalDraft);
+  const [editingFestival, setEditingFestival] = useState<string | null>(null);
+  const [addingFestival, setAddingFestival] = useState(false);
+
+  // Scheduled Events state
+  const [events, setEvents] = useState<UpcomingEventSpec[]>([]);
+  const [eventDraft, setEventDraft] = useState<EventDraft>(emptyEventDraft);
+  const [editingEvent, setEditingEvent] = useState<string | null>(null);
+  const [addingEvent, setAddingEvent] = useState(false);
+
+  // Catalog poojas for multi-select
+  const [poojas, setPoojas] = useState<Pooja[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let live = true;
     fetchCatalog().then((c) => {
-      if (live) setList(c.events);
+      if (live) {
+        setFestivals(c.festivals || []);
+        setEvents(c.events || []);
+        setPoojas(c.poojas || []);
+      }
     });
     return () => {
       live = false;
     };
   }, []);
 
-  const validate = (): string | null => {
-    if (!draft.title.trim() || !draft.slug.trim()) {
-      return "Title and slug are required.";
+  // ---------------- FESTIVALS MANAGEMENT ----------------
+  const validateFestival = (): string | null => {
+    if (!festivalDraft.name.trim() || !festivalDraft.id.trim()) {
+      return "Festival name and ID are required.";
     }
-    if (!/^[a-z0-9-]+$/.test(draft.slug.trim())) {
-      return "Slug must be lowercase letters, numbers and dashes only.";
+    if (!/^[a-z0-9-]+$/.test(festivalDraft.id.trim())) {
+      return "Festival ID must be lowercase letters, numbers and dashes only.";
     }
-    const days = Number(draft.daysFromToday);
-    if (Number.isNaN(days) || days < 0) {
-      return "Days from today must be 0 or more.";
+    if (!festivalDraft.heroTitle.trim() || !festivalDraft.heroSubtitle.trim()) {
+      return "Hero title and subtitle are required.";
     }
-    if (!draft.time.trim() || !draft.price.trim()) {
-      return "Time and price are required.";
-    }
-    const cap = Number(draft.capacity);
-    if (draft.capacity.trim() && (!Number.isInteger(cap) || cap < 1)) {
-      return "Capacity must be a whole number of 1 or more (leave blank for unlimited).";
-    }
-    if (list.some((e) => e.slug === draft.slug.trim() && e.slug !== editing)) {
-      return "Another event already uses this slug.";
+    if (
+      festivals.some(
+        (f) => f.id === festivalDraft.id.trim() && f.id !== editingFestival
+      )
+    ) {
+      return "Another festival already uses this ID.";
     }
     return null;
   };
 
-  const toSpec = (): UpcomingEventSpec => ({
-    title: draft.title.trim(),
-    slug: draft.slug.trim(),
-    daysFromToday: Number(draft.daysFromToday),
-    time: draft.time.trim(),
-    seats: draft.seats.trim() || "Open",
-    capacity: draft.capacity.trim() ? Number(draft.capacity.trim()) : undefined,
-    live: draft.live,
-    price: draft.price.trim(),
-    emoji: draft.emoji.trim() || "🪔",
-    gradient: draft.gradient,
+  const toFestivalSpec = (): FestivalEvent => ({
+    id: festivalDraft.id.trim(),
+    name: festivalDraft.name.trim(),
+    badge: festivalDraft.badge.trim() || "🪔 UPCOMING FESTIVAL",
+    heroTitle: festivalDraft.heroTitle.trim(),
+    heroSubtitle: festivalDraft.heroSubtitle.trim(),
+    startDate: festivalDraft.startDate.trim() || undefined,
+    endDate: festivalDraft.endDate.trim() || undefined,
+    daysFromToday: festivalDraft.daysFromToday.trim()
+      ? Number(festivalDraft.daysFromToday.trim())
+      : 7,
+    durationDays: festivalDraft.durationDays.trim()
+      ? Number(festivalDraft.durationDays.trim())
+      : 9,
+    heroImage: festivalDraft.heroImage.trim() || undefined,
+    relatedPoojaSlugs: festivalDraft.relatedPoojaSlugs,
+    ctaText: festivalDraft.ctaText.trim() || "Book Festival Puja",
+    ctaLink: festivalDraft.ctaLink.trim() || "#poojas",
+    secondaryCtaText: festivalDraft.secondaryCtaText.trim() || "Explore All Pujas",
+    secondaryCtaLink: festivalDraft.secondaryCtaLink.trim() || "#poojas",
+    priority: festivalDraft.priority.trim() ? Number(festivalDraft.priority.trim()) : 1,
+    active: festivalDraft.active,
   });
 
-  const save = async () => {
-    const problem = validate();
+  const saveFestival = async () => {
+    const problem = validateFestival();
     if (problem) {
       setError(problem);
       return;
     }
     setError("");
-    const spec = toSpec();
-    const next = editing
-      ? list.map((e) => (e.slug === editing ? spec : e))
-      : [...list, spec];
+    const spec = toFestivalSpec();
+    const next = editingFestival
+      ? festivals.map((f) => (f.id === editingFestival ? spec : f))
+      : [...festivals, spec];
+
+    const res = await saveCatalogSection("festivals", next, token);
+    if (!res.ok) {
+      if (res.status === 401) {
+        onAuthError();
+        return;
+      }
+      setError(res.error ?? "Could not save festival changes.");
+      return;
+    }
+    setFestivals(next);
+    setAddingFestival(false);
+    setEditingFestival(null);
+    setFestivalDraft(emptyFestivalDraft);
+  };
+
+  const toggleFestivalActive = async (f: FestivalEvent) => {
+    const next = festivals.map((x) =>
+      x.id === f.id ? { ...x, active: !isFestivalActive(x) } : x
+    );
+    const res = await saveCatalogSection("festivals", next, token);
+    if (!res.ok) {
+      if (res.status === 401) {
+        onAuthError();
+        return;
+      }
+      setError(res.error ?? "Could not update festival.");
+      return;
+    }
+    setError("");
+    setFestivals(next);
+  };
+
+  const removeFestival = async (id: string) => {
+    if (!window.confirm(`Delete festival "${id}"?`)) return;
+    const next = festivals.filter((f) => f.id !== id);
+    const res = await saveCatalogSection("festivals", next, token);
+    if (!res.ok) {
+      if (res.status === 401) {
+        onAuthError();
+        return;
+      }
+      setError(res.error ?? "Could not delete festival.");
+      return;
+    }
+    setFestivals(next);
+  };
+
+  const resetFestivals = async () => {
+    if (
+      !window.confirm(
+        "Reset the festivals list to the default seed? Any custom changes will be lost."
+      )
+    ) {
+      return;
+    }
+    const res = await resetCatalogSection("festivals", token);
+    if (!res.ok) {
+      if (res.status === 401) {
+        onAuthError();
+        return;
+      }
+      setError(res.error ?? "Could not reset festivals.");
+      return;
+    }
+    const c = await fetchCatalog();
+    setFestivals(c.festivals);
+  };
+
+  // ---------------- SCHEDULED EVENTS MANAGEMENT ----------------
+  const validateEvent = (): string | null => {
+    if (!eventDraft.title.trim() || !eventDraft.slug.trim()) {
+      return "Title and slug are required.";
+    }
+    if (!/^[a-z0-9-]+$/.test(eventDraft.slug.trim())) {
+      return "Slug must be lowercase letters, numbers and dashes only.";
+    }
+    const days = Number(eventDraft.daysFromToday);
+    if (Number.isNaN(days) || days < 0) {
+      return "Days from today must be 0 or more.";
+    }
+    if (!eventDraft.time.trim() || !eventDraft.price.trim()) {
+      return "Time and price are required.";
+    }
+    const cap = Number(eventDraft.capacity);
+    if (eventDraft.capacity.trim() && (!Number.isInteger(cap) || cap < 1)) {
+      return "Capacity must be a whole number of 1 or more (leave blank for unlimited).";
+    }
+    if (events.some((e) => e.slug === eventDraft.slug.trim() && e.slug !== editingEvent)) {
+      return "Another event already uses this slug.";
+    }
+    return null;
+  };
+
+  const toEventSpec = (): UpcomingEventSpec => ({
+    title: eventDraft.title.trim(),
+    slug: eventDraft.slug.trim(),
+    daysFromToday: Number(eventDraft.daysFromToday),
+    time: eventDraft.time.trim(),
+    seats: eventDraft.seats.trim() || "Open",
+    capacity: eventDraft.capacity.trim() ? Number(eventDraft.capacity.trim()) : undefined,
+    live: eventDraft.live,
+    price: eventDraft.price.trim(),
+    emoji: eventDraft.emoji.trim() || "🪔",
+    gradient: eventDraft.gradient,
+  });
+
+  const saveEvent = async () => {
+    const problem = validateEvent();
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setError("");
+    const spec = toEventSpec();
+    const next = editingEvent
+      ? events.map((e) => (e.slug === editingEvent ? spec : e))
+      : [...events, spec];
     const res = await saveCatalogSection("events", next, token);
     if (!res.ok) {
       if (res.status === 401) {
         onAuthError();
         return;
       }
-      setError(res.error ?? "Could not save changes.");
+      setError(res.error ?? "Could not save event changes.");
       return;
     }
-    setList(next);
-    setAdding(false);
-    setEditing(null);
-    setDraft(emptyDraft);
+    setEvents(next);
+    setAddingEvent(false);
+    setEditingEvent(null);
+    setEventDraft(emptyEventDraft);
   };
 
-  const toggleActive = async (e: UpcomingEventSpec) => {
-    const next = list.map((x) =>
+  const toggleEventActive = async (e: UpcomingEventSpec) => {
+    const next = events.map((x) =>
       x.slug === e.slug ? { ...x, active: !isEventActive(x) } : x
     );
     const res = await saveCatalogSection("events", next, token);
@@ -140,12 +342,12 @@ export default function EventsManager({
       return;
     }
     setError("");
-    setList(next);
+    setEvents(next);
   };
 
-  const remove = async (slug: string) => {
+  const removeEvent = async (slug: string) => {
     if (!window.confirm(`Delete event "${slug}" from the schedule?`)) return;
-    const next = list.filter((e) => e.slug !== slug);
+    const next = events.filter((e) => e.slug !== slug);
     const res = await saveCatalogSection("events", next, token);
     if (!res.ok) {
       if (res.status === 401) {
@@ -155,10 +357,10 @@ export default function EventsManager({
       setError(res.error ?? "Could not delete the event.");
       return;
     }
-    setList(next);
+    setEvents(next);
   };
 
-  const reset = async () => {
+  const resetEvents = async () => {
     if (
       !window.confirm(
         "Reset the events schedule to the default list? Any admin changes will be lost."
@@ -176,241 +378,632 @@ export default function EventsManager({
       return;
     }
     const c = await fetchCatalog();
-    setList(c.events);
-  };
-
-  const startEdit = (e: UpcomingEventSpec) => {
-    setEditing(e.slug);
-    setAdding(false);
-    setError("");
-    setDraft({
-      title: e.title,
-      slug: e.slug,
-      daysFromToday: String(e.daysFromToday),
-      time: e.time,
-      seats: e.seats,
-      capacity: e.capacity != null ? String(e.capacity) : "",
-      live: e.live,
-      price: e.price,
-      emoji: e.emoji,
-      gradient: e.gradient,
-    });
-  };
-
-  const cancel = () => {
-    setAdding(false);
-    setEditing(null);
-    setDraft(emptyDraft);
-    setError("");
+    setEvents(c.events);
   };
 
   return (
-    <ManagerCard>
-      <ManagerHeader
-        title="Live Events Schedule"
-        subtitle="These cards appear in the coverflow on the home page. Dates are computed from “days from today” so past events drop off automatically."
-        count={list.length}
-        onAdd={() => {
-          setAdding(true);
-          setEditing(null);
-          setDraft(emptyDraft);
-          setError("");
-        }}
-        onReset={reset}
-      />
+    <div className="space-y-6">
+      {/* Tab Switcher: Festivals & Hero Campaigns vs Scheduled Rituals */}
+      <div className="flex items-center gap-2 border-b border-saffron-200 pb-3">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("festivals");
+            setError("");
+          }}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+            activeTab === "festivals"
+              ? "bg-saffron-600 text-white shadow-soft"
+              : "bg-white text-ink-soft hover:bg-saffron-50 hover:text-saffron-700"
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          Upcoming Festivals & Hero Campaigns ({festivals.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("events");
+            setError("");
+          }}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+            activeTab === "events"
+              ? "bg-saffron-600 text-white shadow-soft"
+              : "bg-white text-ink-soft hover:bg-saffron-50 hover:text-saffron-700"
+          }`}
+        >
+          <Calendar className="h-4 w-4" />
+          Scheduled Live Rituals ({events.length})
+        </button>
+      </div>
 
-      {(adding || editing) && (
-        <div className="mt-6 rounded-2xl border border-saffron-200 bg-cream/60 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-base font-bold text-ink">
-              {editing ? `Edit — ${editing}` : "New Event"}
-            </h3>
-            <button
-              onClick={cancel}
-              className="flex items-center gap-1 text-xs font-semibold text-ink-soft hover:text-maroon-600"
-            >
-              <X className="h-3.5 w-3.5" /> Cancel
-            </button>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Title *">
-              <TextInput
-                value={draft.title}
-                onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                placeholder="Ganesh Utsav Pooja"
-              />
-            </Field>
-            <Field label="Slug *" hint="Must match a pooja slug for the Book Slot link">
-              <TextInput
-                value={draft.slug}
-                onChange={(e) => setDraft((d) => ({ ...d, slug: e.target.value.toLowerCase() }))}
-                placeholder="ganesh-pooja"
-                disabled={Boolean(editing)}
-              />
-            </Field>
-            <Field label="Days from today *" hint="0 = today; past events are hidden automatically">
-              <NumberInput
-                value={draft.daysFromToday}
-                onChange={(e) => setDraft((d) => ({ ...d, daysFromToday: e.target.value }))}
-                min={0}
-              />
-            </Field>
-            <Field label="Time *">
-              <TextInput
-                value={draft.time}
-                onChange={(e) => setDraft((d) => ({ ...d, time: e.target.value }))}
-                placeholder="7:00 PM IST"
-              />
-            </Field>
-            <Field label="Capacity (optional)" hint="Total seats; availability is computed from confirmed bookings, so a cancel frees a seat automatically">
-              <NumberInput
-                value={draft.capacity}
-                onChange={(e) => setDraft((d) => ({ ...d, capacity: e.target.value }))}
-                placeholder="e.g. 20"
-                min={1}
-              />
-            </Field>
-            <Field label="Seats label" hint="Fallback text shown when no capacity is set">
-              <TextInput
-                value={draft.seats}
-                onChange={(e) => setDraft((d) => ({ ...d, seats: e.target.value }))}
-                placeholder="Only 12 seats left"
-              />
-            </Field>
-            <Field label="Price *">
-              <TextInput
-                value={draft.price}
-                onChange={(e) => setDraft((d) => ({ ...d, price: e.target.value }))}
-                placeholder="₹1,001"
-              />
-            </Field>
-            <Field label="Emoji">
-              <TextInput
-                value={draft.emoji}
-                onChange={(e) => setDraft((d) => ({ ...d, emoji: e.target.value }))}
-                placeholder="🐘"
-              />
-            </Field>
-            <div className="flex items-end pb-1">
-              <Toggle
-                checked={draft.live}
-                onChange={(v) => setDraft((d) => ({ ...d, live: v }))}
-                label="🔴 Live badge"
-              />
-            </div>
-            <div className="sm:col-span-2 lg:col-span-3">
-              <Field label="Gradient tile">
-                <GradientPicker
-                  value={draft.gradient}
-                  onChange={(v) => setDraft((d) => ({ ...d, gradient: v }))}
-                />
-              </Field>
-            </div>
-          </div>
-
-          {error && (
-            <p className="mt-4 rounded-xl bg-red-50 px-4 py-2.5 text-xs font-semibold text-red-600">
-              {error}
-            </p>
-          )}
-
-          <button onClick={save} className="btn-primary mt-5">
-            {editing ? "Save Changes" : "Add Event"}
-          </button>
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+          {error}
         </div>
       )}
 
-      <div className="mt-6 space-y-2.5">
-        {list.length === 0 ? (
-          <p className="rounded-xl bg-saffron-50 px-4 py-6 text-center text-sm text-ink-soft">
-            No events scheduled yet — click “+ Add” to create one.
-          </p>
-        ) : (
-          list.map((e) => (
-            <div
-              key={e.slug}
-              className="flex flex-wrap items-center gap-3 rounded-2xl border border-saffron-100 bg-cream/40 px-4 py-3"
-            >
-              <span
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${e.gradient} text-xl shadow-soft`}
-              >
-                {e.emoji}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-sm font-bold text-ink">
-                  {e.title}
-                  {e.live && (
-                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-600">
-                      🔴 Live
-                    </span>
-                  )}
-                </p>
-                <p className="truncate font-mono text-[11px] text-ink-soft">
-                  {e.slug} · in {e.daysFromToday} day{e.daysFromToday === 1 ? "" : "s"} · {e.time} ·{" "}
-                  {seatsLabel(e)}
-                </p>
+      {/* ======================= FESTIVALS TAB ======================= */}
+      {activeTab === "festivals" && (
+        <>
+          <ManagerHeader
+            title="Festivals & Top Hero Campaigns"
+            subtitle="Configure upcoming Hindu festivals and seasonal campaigns displayed in the homepage hero carousel."
+            onAdd={() => {
+              setFestivalDraft(emptyFestivalDraft);
+              setEditingFestival(null);
+              setAddingFestival(true);
+              setError("");
+            }}
+            onReset={resetFestivals}
+            addLabel="Add Festival"
+          />
+
+          {/* Festival Edit/Add Form Modal */}
+          {(addingFestival || editingFestival) && (
+            <div className="rounded-2xl border-2 border-saffron-300 bg-white p-5 shadow-card space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-saffron-100 pb-3">
+                <h3 className="font-display text-base font-bold text-ink">
+                  {editingFestival ? `Edit Festival (${editingFestival})` : "New Festival Campaign"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingFestival(false);
+                    setEditingFestival(null);
+                    setFestivalDraft(emptyFestivalDraft);
+                  }}
+                  className="rounded-lg p-1 text-ink-soft hover:bg-saffron-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <span className="font-display text-sm font-bold text-saffron-600">
-                {e.price}
-              </span>
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                  isEventActive(e)
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-200 text-slate-600"
-                }`}
-              >
-                {isEventActive(e) ? "Active" : "Inactive"}
-              </span>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => toggleActive(e)}
-                  aria-label={`${isEventActive(e) ? "Deactivate" : "Activate"} ${e.title}`}
-                  title={isEventActive(e) ? "Hide from the site" : "Show on the site"}
-                  className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold transition-colors ${
-                    isEventActive(e)
-                      ? "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
-                      : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
-                  }`}
-                >
-                  {isEventActive(e) ? (
-                    <>
-                      <EyeOff className="h-3.5 w-3.5" />
-                      Hide
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-3.5 w-3.5" />
-                      Show
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => startEdit(e)}
-                  aria-label={`Edit ${e.title}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-saffron-200 bg-white text-saffron-700 transition-colors hover:bg-saffron-50"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => remove(e.slug)}
-                  aria-label={`Delete ${e.title}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-white text-red-500 transition-colors hover:bg-red-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Festival Name (e.g. Navratri 2026)">
+                  <TextInput
+                    value={festivalDraft.name}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({
+                        ...d,
+                        name: v,
+                        id: d.id || v.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                      }));
+                    }}
+                    placeholder="Navratri 2026"
+                  />
+                </Field>
+
+                <Field label="Unique ID / Slug">
+                  <TextInput
+                    value={festivalDraft.id}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, id: v }));
+                    }}
+                    placeholder="navratri-2026"
+                    disabled={Boolean(editingFestival)}
+                  />
+                </Field>
+
+                <Field label="Hero Badge (e.g. 🪔 UPCOMING FESTIVAL)">
+                  <TextInput
+                    value={festivalDraft.badge}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, badge: v }));
+                    }}
+                    placeholder="🪔 UPCOMING FESTIVAL"
+                  />
+                </Field>
+
+                <Field label="Display Priority (1 = Highest)">
+                  <NumberInput
+                    value={festivalDraft.priority}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, priority: v }));
+                    }}
+                    placeholder="1"
+                    min={1}
+                  />
+                </Field>
+
+                <Field label="Hero Title" className="md:col-span-2">
+                  <TextInput
+                    value={festivalDraft.heroTitle}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, heroTitle: v }));
+                    }}
+                    placeholder="Celebrate Navratri with Divine Pujas"
+                  />
+                </Field>
+
+                <Field label="Hero Subtitle / Description" className="md:col-span-2">
+                  <textarea
+                    value={festivalDraft.heroSubtitle}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, heroSubtitle: v }));
+                    }}
+                    rows={2}
+                    className="w-full rounded-xl border border-saffron-200 p-2.5 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                    placeholder="Book authentic Navratri Pujas from trusted temples and bring divine blessings to your home."
+                  />
+                </Field>
+
+                <Field label="Starts In (Days from Today)">
+                  <NumberInput
+                    value={festivalDraft.daysFromToday}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, daysFromToday: v }));
+                    }}
+                    placeholder="7"
+                    min={0}
+                  />
+                </Field>
+
+                <Field label="Festival Duration (Days)">
+                  <NumberInput
+                    value={festivalDraft.durationDays}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, durationDays: v }));
+                    }}
+                    placeholder="9"
+                    min={1}
+                  />
+                </Field>
+
+                <Field label="Primary CTA Button Text">
+                  <TextInput
+                    value={festivalDraft.ctaText}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, ctaText: v }));
+                    }}
+                    placeholder="Book Navratri Puja"
+                  />
+                </Field>
+
+                <Field label="Primary CTA Destination (e.g. /book/durga-saptashati-path or #poojas)">
+                  <TextInput
+                    value={festivalDraft.ctaLink}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, ctaLink: v }));
+                    }}
+                    placeholder="/book/durga-saptashati-path"
+                  />
+                </Field>
+
+                <Field label="Hero Background Image URL" className="md:col-span-2">
+                  <TextInput
+                    value={festivalDraft.heroImage}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFestivalDraft((d) => ({ ...d, heroImage: v }));
+                    }}
+                    placeholder="https://images.unsplash.com/photo-..."
+                  />
+                </Field>
+
+                {/* Related Pujas Selection */}
+                <Field label="Associated Pujas (Quick booking chips)" className="md:col-span-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 border border-saffron-100 rounded-xl bg-saffron-50/30">
+                    {poojas.map((p) => {
+                      const isSelected = festivalDraft.relatedPoojaSlugs.includes(p.slug);
+                      return (
+                        <button
+                          key={p.slug}
+                          type="button"
+                          onClick={() => {
+                            setFestivalDraft((d) => ({
+                              ...d,
+                              relatedPoojaSlugs: isSelected
+                                ? d.relatedPoojaSlugs.filter((s) => s !== p.slug)
+                                : [...d.relatedPoojaSlugs, p.slug],
+                            }));
+                          }}
+                          className={`flex items-center gap-2 p-2 rounded-lg text-xs text-left transition-all ${
+                            isSelected
+                              ? "border border-saffron-500 bg-saffron-100 font-semibold text-saffron-900"
+                              : "border border-slate-200 bg-white text-ink hover:bg-saffron-50"
+                          }`}
+                        >
+                          <span>{p.emoji}</span>
+                          <span className="truncate flex-1">{p.title}</span>
+                          {isSelected && <span className="text-saffron-600 font-bold">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-saffron-100 pt-3">
+                <Toggle
+                  label="Active in Hero Carousel"
+                  checked={festivalDraft.active}
+                  onChange={(v) => setFestivalDraft((d) => ({ ...d, active: v }))}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingFestival(false);
+                      setEditingFestival(null);
+                      setFestivalDraft(emptyFestivalDraft);
+                    }}
+                    className="btn-outline !py-2 !px-4 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveFestival}
+                    className="btn-primary !py-2 !px-5 text-xs"
+                  >
+                    {editingFestival ? "Save Changes" : "Create Festival"}
+                  </button>
+                </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          )}
 
-      <p className="mt-5 flex items-center gap-1.5 text-[11px] text-ink-soft/70">
-        <Plus className="h-3.5 w-3.5" />
-        Events render on the home page coverflow; the “Book Slot” button links to
-        the matching pooja slug. Saved to the server for every visitor.
-      </p>
-    </ManagerCard>
+          {/* Festivals Grid List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {festivals.map((fest) => {
+              const status = getFestivalStatus(fest);
+              const isActive = isFestivalActive(fest);
+
+              return (
+                <ManagerCard key={fest.id} active={isActive}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-saffron-600 bg-saffron-50 px-2 py-0.5 rounded-full">
+                        Priority #{fest.priority ?? 1}
+                      </span>
+                      <h4 className="font-display text-base font-bold text-ink mt-1">
+                        {fest.name}
+                      </h4>
+                    </div>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        status.isLive
+                          ? "bg-emerald-100 text-emerald-800"
+                          : status.isUpcoming
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {status.isLive ? "🔴 Live Now" : status.countdownText}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-xs font-semibold text-ink line-clamp-1">
+                    {fest.heroTitle}
+                  </p>
+                  <p className="mt-1 text-[11px] text-ink-soft line-clamp-2">
+                    {fest.heroSubtitle}
+                  </p>
+
+                  {/* Associated Pujas Count */}
+                  <div className="mt-3 flex items-center justify-between text-[11px] text-ink-soft border-t border-saffron-50 pt-2">
+                    <span>{fest.relatedPoojaSlugs?.length || 0} Associated Pujas</span>
+                    <span>CTA: {fest.ctaText}</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-3 flex items-center justify-between border-t border-saffron-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleFestivalActive(fest)}
+                      className="flex items-center gap-1 text-xs text-ink-soft hover:text-ink"
+                    >
+                      {isActive ? (
+                        <>
+                          <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Visible</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-3.5 w-3.5 text-slate-400" />
+                          <span>Hidden</span>
+                        </>
+                      )}
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFestivalDraft({
+                            id: fest.id,
+                            name: fest.name,
+                            badge: fest.badge || "🪔 UPCOMING FESTIVAL",
+                            heroTitle: fest.heroTitle,
+                            heroSubtitle: fest.heroSubtitle,
+                            startDate: fest.startDate || "",
+                            endDate: fest.endDate || "",
+                            daysFromToday: String(fest.daysFromToday ?? 7),
+                            durationDays: String(fest.durationDays ?? 9),
+                            heroImage: fest.heroImage || "",
+                            relatedPoojaSlugs: fest.relatedPoojaSlugs || [],
+                            ctaText: fest.ctaText || "Book Festival Puja",
+                            ctaLink: fest.ctaLink || "#poojas",
+                            secondaryCtaText: fest.secondaryCtaText || "Explore All Pujas",
+                            secondaryCtaLink: fest.secondaryCtaLink || "#poojas",
+                            priority: String(fest.priority ?? 1),
+                            active: fest.active !== false,
+                          });
+                          setEditingFestival(fest.id);
+                          setAddingFestival(false);
+                          setError("");
+                        }}
+                        className="rounded-lg p-1.5 text-ink-soft hover:bg-saffron-100 hover:text-saffron-700"
+                        title="Edit Festival"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => removeFestival(fest.id)}
+                        className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50"
+                        title="Delete Festival"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </ManagerCard>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ======================= SCHEDULED EVENTS TAB ======================= */}
+      {activeTab === "events" && (
+        <>
+          <ManagerHeader
+            title="Live Scheduled Rituals"
+            subtitle="Manage timed auspicious muhurat events displayed in the carousel feed."
+            onAdd={() => {
+              setEventDraft(emptyEventDraft);
+              setEditingEvent(null);
+              setAddingEvent(true);
+              setError("");
+            }}
+            onReset={resetEvents}
+            addLabel="Add Ritual Event"
+          />
+
+          {(addingEvent || editingEvent) && (
+            <div className="rounded-2xl border-2 border-saffron-300 bg-white p-5 shadow-card space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-saffron-100 pb-3">
+                <h3 className="font-display text-base font-bold text-ink">
+                  {editingEvent ? `Edit Event (${editingEvent})` : "New Live Ritual"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingEvent(false);
+                    setEditingEvent(null);
+                    setEventDraft(emptyEventDraft);
+                  }}
+                  className="rounded-lg p-1 text-ink-soft hover:bg-saffron-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Event Title">
+                  <TextInput
+                    value={eventDraft.title}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEventDraft((d) => ({
+                        ...d,
+                        title: v,
+                        slug: d.slug || v.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                      }));
+                    }}
+                    placeholder="Hanuman Pooja"
+                  />
+                </Field>
+
+                <Field label="Pooja Slug">
+                  <TextInput
+                    value={eventDraft.slug}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEventDraft((d) => ({ ...d, slug: v }));
+                    }}
+                    placeholder="hanuman-pooja"
+                    disabled={Boolean(editingEvent)}
+                  />
+                </Field>
+
+                <Field label="Days from Today">
+                  <NumberInput
+                    value={eventDraft.daysFromToday}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEventDraft((d) => ({ ...d, daysFromToday: v }));
+                    }}
+                    placeholder="7"
+                    min={0}
+                  />
+                </Field>
+
+                <Field label="Time (IST)">
+                  <TextInput
+                    value={eventDraft.time}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEventDraft((d) => ({ ...d, time: v }));
+                    }}
+                    placeholder="7:00 PM IST"
+                  />
+                </Field>
+
+                <Field label="Dakshina / Price">
+                  <TextInput
+                    value={eventDraft.price}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEventDraft((d) => ({ ...d, price: v }));
+                    }}
+                    placeholder="₹1,001"
+                  />
+                </Field>
+
+                <Field label="Seats Capacity">
+                  <NumberInput
+                    value={eventDraft.capacity}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEventDraft((d) => ({ ...d, capacity: v }));
+                    }}
+                    placeholder="25"
+                    min={1}
+                  />
+                </Field>
+
+                <Field label="Emoji">
+                  <TextInput
+                    value={eventDraft.emoji}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEventDraft((d) => ({ ...d, emoji: v }));
+                    }}
+                    placeholder="🪔"
+                  />
+                </Field>
+
+                <Field label="Gradient Accent">
+                  <GradientPicker
+                    value={eventDraft.gradient}
+                    onChange={(v) => setEventDraft((d) => ({ ...d, gradient: v }))}
+                  />
+                </Field>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-saffron-100 pt-3">
+                <Toggle
+                  label="Live Stream Available"
+                  checked={eventDraft.live}
+                  onChange={(v) => setEventDraft((d) => ({ ...d, live: v }))}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingEvent(false);
+                      setEditingEvent(null);
+                      setEventDraft(emptyEventDraft);
+                    }}
+                    className="btn-outline !py-2 !px-4 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEvent}
+                    className="btn-primary !py-2 !px-5 text-xs"
+                  >
+                    {editingEvent ? "Save Changes" : "Create Event"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {events.map((e) => {
+              const isActive = isEventActive(e);
+              return (
+                <ManagerCard key={e.slug} active={isActive}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{e.emoji}</span>
+                      <h4 className="font-display text-sm font-bold text-ink">{e.title}</h4>
+                    </div>
+                    <span className="text-xs font-bold text-saffron-700">{e.price}</span>
+                  </div>
+
+                  <div className="mt-2 space-y-1 text-xs text-ink-soft">
+                    <p>In {e.daysFromToday} days • {e.time}</p>
+                    <p>{seatsLabel(e)}</p>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-saffron-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleEventActive(e)}
+                      className="flex items-center gap-1 text-xs text-ink-soft hover:text-ink"
+                    >
+                      {isActive ? (
+                        <>
+                          <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Visible</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-3.5 w-3.5 text-slate-400" />
+                          <span>Hidden</span>
+                        </>
+                      )}
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEventDraft({
+                            title: e.title,
+                            slug: e.slug,
+                            daysFromToday: String(e.daysFromToday),
+                            time: e.time,
+                            seats: e.seats,
+                            capacity: e.capacity ? String(e.capacity) : "",
+                            live: e.live,
+                            price: e.price,
+                            emoji: e.emoji,
+                            gradient: e.gradient,
+                          });
+                          setEditingEvent(e.slug);
+                          setAddingEvent(false);
+                          setError("");
+                        }}
+                        className="rounded-lg p-1.5 text-ink-soft hover:bg-saffron-100 hover:text-saffron-700"
+                        title="Edit Event"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => removeEvent(e.slug)}
+                        className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50"
+                        title="Delete Event"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </ManagerCard>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
