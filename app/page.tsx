@@ -1,12 +1,7 @@
-import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import PoojaCatalog from "@/components/PoojaCatalog";
-import UpcomingEvents from "@/components/UpcomingEvents";
-import WhyChooseUs from "@/components/WhyChooseUs";
-import Testimonials from "@/components/Testimonials";
-import FAQ from "@/components/FAQ";
-import Footer from "@/components/Footer";
-import JsonLd from "@/components/JsonLd";
+import { Header, Footer } from "@/components/layout";
+import { JsonLd } from "@/components/common";
+import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
+import { PoojaCatalog, UpcomingEvents } from "@/features/catalog";
 import { faqs } from "@/lib/data";
 import { faqPageLd, organizationLd, websiteLd } from "@/lib/seo";
 

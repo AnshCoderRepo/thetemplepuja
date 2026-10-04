@@ -3,32 +3,33 @@
 import Link from "next/link";
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import BookPageHeader from "@/components/BookPageHeader";
-import PoojaCatalog from "@/components/PoojaCatalog";
-import BookingFlow from "@/components/BookingFlow";
-import { useCatalog } from "@/components/useCatalog";
-import { useI18n } from "@/components/I18nProvider";
+import { BookPageHeader } from "@/components/layout";
+import { PoojaCatalog, useCatalog } from "@/features/catalog";
+import { BookingFlow } from "@/features/bookings";
+import { useI18n } from "@/components/providers";
 import {
   isPoojaActive,
   getLocalizedPoojaTitle,
+  getLocalizedPoojaDescription,
   getLocalizedPoojaNativeBadge,
   getLocalizedPoojaDuration,
   getLocalizedPoojaBestMuhurat,
 } from "@/lib/data";
-import { formatINR } from "@/lib/format";
 
 function ServiceInner({ service }: { service: string }) {
   const search = useSearchParams();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   // Resolve from the backend catalog (falls back to the static list).
   const { poojas, loaded } = useCatalog();
   const pooja = loaded ? (poojas.find((p) => p.slug === service) ?? null) : undefined;
 
+  const locTitle = pooja ? getLocalizedPoojaTitle(pooja, locale) : "";
+
   useEffect(() => {
-    document.title = pooja
-      ? `Book ${pooja.title} Online | templepujasewa`
+    document.title = locTitle
+      ? `${locTitle} | templepujasewa`
       : "Book Pooja Online | templepujasewa";
-  }, [pooja]);
+  }, [locTitle]);
 
   if (pooja === undefined) {
     return (
@@ -38,77 +39,70 @@ function ServiceInner({ service }: { service: string }) {
     );
   }
 
-  if (!pooja) {
+  if (!pooja || !isPoojaActive(pooja)) {
     return (
-      <>
-        <BookPageHeader
-          eyebrow="🪔 Pooja Booking"
-          title="Choose Your Sacred Pooja"
-          subtitle={`We couldn't find "${service}". Browse our full collection and pick the ritual that speaks to your heart.`}
-        />
-        <section className="section-pad bg-cream">
-          <PoojaCatalog
-            notice={`"${service}" isn't a valid pooja — here are all our sacred services instead.`}
-          />
-        </section>
-      </>
+      <section className="section-pad bg-cream">
+        <div className="container-px text-center">
+          <span className="text-4xl">🪔</span>
+          <h2 className="mt-4 font-display text-2xl font-bold text-ink">
+            {t("book.noResults")}
+          </h2>
+          <p className="mt-2 text-sm text-ink-soft">
+            {t("book.noResultsDesc")}
+          </p>
+          <Link href="/book" className="btn-primary mt-6">
+            {t("book.allPoojas")}
+          </Link>
+          <div className="mt-12">
+            <PoojaCatalog />
+          </div>
+        </div>
+      </section>
     );
   }
 
-  // An admin-deactivated pooja is hidden from the site — visitors get a gentle
-  // "unavailable" note instead of the booking flow.
-  if (!isPoojaActive(pooja)) {
-    return (
-      <>
-        <BookPageHeader
-          eyebrow="🪔 Pooja Booking"
-          title="Pooja Currently Unavailable"
-          subtitle={`${getLocalizedPoojaTitle(pooja, locale)} is temporarily paused by our team. It will be back soon — meanwhile, browse our other sacred services.`}
-        />
-        <section className="section-pad bg-cream">
-          <div className="mx-auto max-w-md rounded-3xl border border-saffron-100 bg-white p-10 text-center shadow-card">
-            <span className="text-5xl">{pooja.emoji}</span>
-            <h2 className="mt-4 font-display text-xl font-bold text-ink">
-              {getLocalizedPoojaTitle(pooja, locale)} is unavailable right now
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-              This pooja has been temporarily paused and cannot be booked at the
-              moment. Check back soon, or pick another ritual from our catalogue.
-            </p>
-            <Link href="/book" className="btn-primary mt-6">
-              Browse Other Poojas
-            </Link>
-          </div>
-        </section>
-      </>
-    );
-  }
+  const initialDate = search.get("date") ?? undefined;
+  const initialTime = search.get("time") ?? undefined;
+
+  const locBadge = getLocalizedPoojaNativeBadge(pooja, locale);
+  const locDesc = getLocalizedPoojaDescription(pooja, locale);
+  const locDuration = getLocalizedPoojaDuration(pooja, locale);
+  const locMuhurat = getLocalizedPoojaBestMuhurat(pooja, locale);
+
+  const durationPrefix =
+    locale === "hi"
+      ? "अवधि"
+      : locale === "te"
+      ? "వ్యవధి"
+      : locale === "ta"
+      ? "கால அளவு"
+      : "Duration";
+
+  const muhuratPrefix =
+    locale === "hi"
+      ? "शुभ मुहूर्त"
+      : locale === "te"
+      ? "శుభ ముహూర్తం"
+      : locale === "ta"
+      ? "சுப முகூர்த்தம்"
+      : "Best Muhurat";
 
   return (
     <>
       <BookPageHeader
-        eyebrow={`${pooja.emoji} Pooja Booking`}
-        title={
-          <>
-            {getLocalizedPoojaTitle(pooja, locale)}{" "}
-            <span className="align-middle text-2xl font-semibold text-amber-200/90 sm:text-3xl">
-              {getLocalizedPoojaNativeBadge(pooja, locale)}
-            </span>
-          </>
-        }
-        subtitle="Enter devotee details for the sacred sankalp and complete booking."
-        facts={[
-          { icon: "⏱️", label: getLocalizedPoojaDuration(pooja, locale) },
-          { icon: "🪔", label: `Best: ${getLocalizedPoojaBestMuhurat(pooja, locale)}` },
-          { icon: "💎", label: `From ${formatINR(pooja.price)}` },
-          { icon: "⭐", label: "4.9 rated pandits" },
-        ]}
+        eyebrow={locBadge}
+        title={locTitle}
+        subtitle={`${locDesc.slice(0, 110)}... • ${durationPrefix}: ${locDuration} • ${muhuratPrefix}: ${locMuhurat}`}
       />
-      <BookingFlow
-        pooja={pooja}
-        initialDate={search.get("date")}
-        initialTime={search.get("time")}
-      />
+      <section className="section-pad bg-cream">
+        <div className="container-px">
+          <BookingFlow
+            pooja={pooja}
+            initialDate={initialDate ?? null}
+            initialTime={initialTime ?? null}
+          />
+        </div>
+      </section>
     </>
   );
 }
