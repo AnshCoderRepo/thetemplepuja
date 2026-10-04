@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import BookPageHeader from "@/components/BookPageHeader";
-import BookingFlow from "@/components/BookingFlow";
+import { BookPageHeader } from "@/components/layout";
+import { BookingFlow } from "@/features/bookings";
 
 export const metadata: Metadata = {
   title: "Book Pooja Online | The Temple Puja",
@@ -17,22 +17,7 @@ export default async function BookFormPage({ searchParams }: Props) {
 
   return (
     <>
-      <BookPageHeader
-        crumb="Book Pooja"
-        eyebrow="🪔 Pooja Booking"
-        title={
-          <>
-            Book Your <span className="text-amber-200">Sacred Pooja</span>
-          </>
-        }
-        subtitle="Choose your prayer, tell us why you're performing it, and complete secure payment — your booking is confirmed instantly."
-        facts={[
-          { icon: "🪔", label: "12+ Sacred Poojas" },
-          { icon: "🙏", label: "Certified Pandits" },
-          { icon: "💳", label: "Razorpay Secure" },
-          { icon: "🔒", label: "100% SSL Encrypted" },
-        ]}
-      />
+      <BookPageHeader />
       <BookingFlow initialDate={sp.date ?? null} initialTime={sp.time ?? null} />
     </>
   );

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import JsonLd from "@/components/JsonLd";
+import { JsonLd } from "@/components/common";
 import { getCatalogPoojas } from "@/lib/catalog";
 import { isPoojaActive, type Pooja } from "@/lib/data";
 import { serviceLd } from "@/lib/seo";
@@ -23,32 +23,34 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   if (!pooja) {
     return {
-      title: "Book Pooja Online | The Temple Puja",
-      description:
-        "Choose from 50+ poojas — Satyanarayan Katha, Rudrabhishek, Griha Pravesh, Shani Dev Pooja, Navgraha Shanti and more. Book certified pandits online with secure Razorpay payment.",
-      alternates: { canonical: "/book" },
-      robots: { index: false },
+      title: "Pooja Not Found | The Temple Puja",
+      description: "The requested pooja could not be found or is inactive.",
+      robots: { index: false, follow: false },
     };
   }
 
-  const description = `${pooja.description} Book ${pooja.title} online with The Temple Puja — certified pandits, authentic Vedic rituals, sankalp on your behalf, and an HD video recording of every pooja from ₹${pooja.price.toLocaleString("en-IN")}.`;
+  const title = `Book ${pooja.title} Online | The Temple Puja`;
+  const description =
+    pooja.description.length > 160
+      ? `${pooja.description.slice(0, 157)}...`
+      : pooja.description;
 
   return {
-    title: `Book ${pooja.title} Online | The Temple Puja`,
+    title,
     description,
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
-      title: `Book ${pooja.title} Online | The Temple Puja`,
+      title,
       description,
-      type: "website",
       url,
-      siteName: "The Temple Puja",
-      images: [{ url: "/logo.jpeg", alt: "The Temple Puja" }],
+      type: "website",
     },
   };
 }
 
-export default async function BookServicePage({ params }: Params) {
+export default async function ServicePage({ params }: Params) {
   const { service } = await params;
   const pooja = resolvePooja(service);
 

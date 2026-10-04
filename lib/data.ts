@@ -465,10 +465,18 @@ export interface ChadhavaOffering {
   id: string;
   name: string;
   hindiName?: string;
+  teluguName?: string;
+  tamilName?: string;
   description: string;
+  hindiDescription?: string;
+  teluguDescription?: string;
+  tamilDescription?: string;
   price: number;
   emoji: string;
   category?: string;
+  hindiCategory?: string;
+  teluguCategory?: string;
+  tamilCategory?: string;
   image?: string;
 }
 
@@ -477,60 +485,129 @@ export const defaultChadhavaOfferings: ChadhavaOffering[] = [
     id: "flower-chadhava",
     name: "Pushpa Mala & Flower Chadhava",
     hindiName: "पुष्प माला एवं पुष्प अर्पण",
+    teluguName: "పుష్పమాల & పూల సమర్పణ",
+    tamilName: "மலர் மாலை & பூ சமர்ப்பணம்",
     description: "Sacred fresh garland and fragrant flower basket offered at deity feet during sankalp.",
+    hindiDescription: "संकल्प के समय देव चरणों में अर्पित की जाने वाली ताज़ी पुष्प माला एवं सुगंधित पुष्प टोकरी।",
+    teluguDescription: "సంకల్ప సమయంలో దేవుని పాదాల వద్ద సమర్పించబడే పవిత్రమైన పూలమాల మరియు సుగంధ పుష్పాలు.",
+    tamilDescription: "சங்கல்பத்தின் போது இறைவனின் திருப்பாதங்களில் சமர்ப்பிக்கப்படும் புனித மலர் மாலை மற்றும் நறுமண மலர்கள்.",
     price: 151,
     emoji: "🌸",
     category: "Pushpa Seva",
+    hindiCategory: "पुष्प सेवा",
+    teluguCategory: "పుష్ప సేవ",
+    tamilCategory: "மலர் சேவை",
   },
   {
     id: "special-prasad",
     name: "Special Temple Prasadam",
     hindiName: "विशेष महाप्रसाद",
+    teluguName: "ప్రత్యేక ఆలయ ప్రసాదం",
+    tamilName: "சிறப்பு கோயில் பிரசாதம்",
     description: "Sanctified dry fruit & sweet prasad energised with mantras and sent with divine blessings.",
+    hindiDescription: "मंत्रों से अभिमंत्रित सूखे मेवे एवं मिष्ठान का दिव्य महाप्रसाद जो आपके घर भेजा जाता है।",
+    teluguDescription: "మంత్రాలతో పవిత్రీకరించబడిన డ్రై ఫ్రూట్ మరియు మధురమైన దివ్య మహాప్రసాదం.",
+    tamilDescription: "மந்திரங்களால் புனிதப்படுத்தப்பட்ட உலர் பழங்கள் மற்றும் இனிப்பு பிரசாதம்.",
     price: 101,
     emoji: "🍯",
     category: "Prasad Seva",
+    hindiCategory: "प्रसाद सेवा",
+    teluguCategory: "ప్రసాద సేవ",
+    tamilCategory: "பிரசாத சேவை",
   },
   {
     id: "rudraksha-offering",
     name: "Blessed Rudraksha Mala Arpan",
     hindiName: "अभिमंत्रित रुद्राक्ष अर्पण",
+    teluguName: "పవిత్ర రుద్రాక్ష మాల సమర్పణ",
+    tamilName: "புனித ருத்ராட்ச மாலை சமர்ப்பணம்",
     description: "5-Mukhi certified Rudraksha touch-energised on the Shiva lingam during abhishek.",
+    hindiDescription: "अभिषेक के समय शिवलिंग पर स्पर्श कर अभिमंत्रित 5-मुखी प्रामाणिक रुद्राक्ष माला।",
+    teluguDescription: "అభిషేక సమయంలో శివలింగాన్ని తాకించి పవిత్రీకరించిన 5-ముఖాల రుద్రాక్ష.",
+    tamilDescription: "அபிஷேகத்தின் போது சிவலிங்கத்தில் வைத்து புனிதப்படுத்தப்பட்ட 5-முக ருத்ராட்சம்.",
     price: 251,
     emoji: "📿",
     category: "Sacred Relic",
+    hindiCategory: "पवित्र उपहार",
+    teluguCategory: "పవిత్ర వస్తువు",
+    tamilCategory: "புனித பொருள்",
   },
   {
     id: "panchamrit-abhishek",
     name: "Panchamrit Abhishek Offering",
     hindiName: "पंचामृत अभिषेक अर्पण",
+    teluguName: "పంచామృత అభిషేక సమర్పణ",
+    tamilName: "பஞ்சாமிர்த அபிஷேக சமர்ப்பணம்",
     description: "Pure cow milk, honey, ghee, curd and sugar offering for divine abhishek bath.",
+    hindiDescription: "शुद्ध गाय का दूध, शहद, घी, दही एवं शक्कर से निर्मित दिव्य पंचामृत अभिषेक अर्पण।",
+    teluguDescription: "ఆవు పాలు, తేనె, నెయ్యి, పెరుగు మరియు చక్కెరతో తయారు చేసిన పవిత్ర పంచామృతం.",
+    tamilDescription: "தூய பசுவின் பால், தேன், நெய், தயிர் மற்றும் சர்க்கரை கலந்த புனித பஞ்சாமிர்தம்.",
     price: 351,
     emoji: "🥛",
     category: "Abhishek Seva",
+    hindiCategory: "अभिषेक सेवा",
+    teluguCategory: "అభిషేక సేవ",
+    tamilCategory: "அபிஷேக சேவை",
   },
   {
     id: "bhojan-brahmins",
     name: "Bhojan Seva for Brahmins",
     hindiName: "ब्राह्मण भोजन सेवा",
+    teluguName: "బ్రాహ్మణ భోజన సేవ",
+    tamilName: "பிராமணர் அன்னதான சேவை",
     description: "Sattvic feast offering served to Vedic brahmins and temple devotees in your gotra's name.",
+    hindiDescription: "आपके गोत्र व नाम से वैदिक ब्राह्मणों एवं मंदिर के भक्तों को कराया जाने वाला सात्विक भोजन।",
+    teluguDescription: "మీ గోత్రం మరియు పేరుతో వేద బ్రాహ్మణులకు సమర్పించబడే సాత్విక భోజన సేవ.",
+    tamilDescription: "உங்கள் கோத்ரம் மற்றும் பெயரில் வேத பிராமணர்களுக்கு வழங்கப்படும் சாத்வீக அன்னதானம்.",
     price: 501,
     emoji: "🍲",
     category: "Anna Daan",
+    hindiCategory: "अन्न दान",
+    teluguCategory: "అన్నదానం",
+    tamilCategory: "அன்னதானம்",
   },
   {
     id: "sindoor-chola",
     name: "Sindoor & Hanuman Chola Seva",
     hindiName: "सिंदूर एवं चोला सेवा",
+    teluguName: "సిందూరం & హనుమాన్ చోళా సేవ",
+    tamilName: "சிந்தூரம் & அனுமன் சோழா சேவை",
     description: "Sacred orange sindoor paste, silver leaf and red chola offered to Bajrangbali for protection.",
+    hindiDescription: "बजरंगबली को रक्षा व संकट निवारण हेतु अर्पित पवित्र सिंदूर, चांदी का वर्क एवं लाल चोला।",
+    teluguDescription: "రక్షణ మరియు విజయాల కోసం బజరంగ్ బలికి సమర్పించే పవిత్ర సిందూరం మరియు చోళా.",
+    tamilDescription: "பாதுகாப்பு மற்றும் நன்மைகளுக்காக அனுமனுக்கு சமர்ப்பிக்கப்படும் சிந்தூரம் மற்றும் ஆடை.",
     price: 201,
     emoji: "🚩",
     category: "Chola Seva",
+    hindiCategory: "चोला सेवा",
+    teluguCategory: "చోళా సేవ",
+    tamilCategory: "ஆடை சேவை",
   },
 ];
 
 export function getChadhavaOffering(id: string): ChadhavaOffering | undefined {
   return defaultChadhavaOfferings.find((c) => c.id === id);
+}
+
+export function getLocalizedOfferingName(offering: ChadhavaOffering, locale?: string): string {
+  if (locale === "hi" && offering.hindiName) return offering.hindiName;
+  if (locale === "te" && offering.teluguName) return offering.teluguName;
+  if (locale === "ta" && offering.tamilName) return offering.tamilName;
+  return offering.name;
+}
+
+export function getLocalizedOfferingDescription(offering: ChadhavaOffering, locale?: string): string {
+  if (locale === "hi" && offering.hindiDescription) return offering.hindiDescription;
+  if (locale === "te" && offering.teluguDescription) return offering.teluguDescription;
+  if (locale === "ta" && offering.tamilDescription) return offering.tamilDescription;
+  return offering.description;
+}
+
+export function getLocalizedOfferingCategory(offering: ChadhavaOffering, locale?: string): string {
+  if (locale === "hi" && offering.hindiCategory) return offering.hindiCategory;
+  if (locale === "te" && offering.teluguCategory) return offering.teluguCategory;
+  if (locale === "ta" && offering.tamilCategory) return offering.tamilCategory;
+  return offering.category || "";
 }
 
 export interface Pooja {
@@ -601,10 +678,10 @@ export function getLocalizedPoojaTitle(p: Pooja, locale?: string): string {
 
 /** Get secondary/native script badge for a pooja based on active locale */
 export function getLocalizedPoojaNativeBadge(p: Pooja, locale?: string): string {
-  if (locale === "hi") return p.hindiTitle;
-  if (locale === "te") return p.teluguTitle || p.hindiTitle;
-  if (locale === "ta") return p.tamilTitle || p.hindiTitle;
-  return p.hindiTitle;
+  if (locale === "hi") return p.hindiTitle || p.title;
+  if (locale === "te") return p.teluguTitle || p.title;
+  if (locale === "ta") return p.tamilTitle || p.title;
+  return p.title;
 }
 
 /** Get localized description for a pooja based on active locale */

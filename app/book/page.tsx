@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import BookPageHeader from "@/components/BookPageHeader";
-import JsonLd from "@/components/JsonLd";
-import PoojaCatalog from "@/components/PoojaCatalog";
+import { BookPageHeader } from "@/components/layout";
+import { JsonLd } from "@/components/common";
+import { PoojaCatalog } from "@/features/catalog";
 import { activePoojas, poojas } from "@/lib/data";
 import { itemListLd } from "@/lib/seo";
 
@@ -15,21 +15,7 @@ export default function BookPage() {
   return (
     <>
       <JsonLd data={itemListLd(activePoojas(poojas))} />
-      <BookPageHeader
-        eyebrow="🪔 Pooja Booking"
-        title={
-          <>
-            Choose Your <span className="text-amber-200">Sacred Pooja</span>
-          </>
-        }
-        subtitle="Select the ritual that speaks to your heart — every pooja is performed by certified pandits following ancient scriptures, with video recording and sankalp on your behalf."
-        facts={[
-          { icon: "🕉️", label: "50+ Poojas" },
-          { icon: "🙏", label: "200+ Certified Pandits" },
-          { icon: "💳", label: "Razorpay Secure" },
-          { icon: "🔒", label: "100% SSL Encrypted" },
-        ]}
-      />
+      <BookPageHeader />
       <section className="section-pad bg-cream">
         <PoojaCatalog />
       </section>

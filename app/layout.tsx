@@ -22,10 +22,10 @@ const devanagari = Noto_Sans_Devanagari({
 });
 
 import { SITE_URL } from "@/lib/seo";
-import ScrollToTop from "@/components/ScrollToTop";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import Providers from "@/components/Providers";
+import { ScrollToTop, ErrorBoundary } from "@/components/common";
+import { FloatingWhatsApp } from "@/features/contact";
+import { BookingModal } from "@/features/bookings";
+import Providers from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -59,9 +59,12 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${sans.variable} ${devanagari.variable}`}>
       <body className="font-sans">
         <Providers>
-          <ErrorBoundary>{children}</ErrorBoundary>
-          <FloatingWhatsApp />
-          <ScrollToTop />
+          <ErrorBoundary>
+            {children}
+            <BookingModal />
+            <ScrollToTop />
+            <FloatingWhatsApp />
+          </ErrorBoundary>
         </Providers>
       </body>
     </html>
