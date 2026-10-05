@@ -15,6 +15,33 @@ export interface PoojaPackageOption {
   features: string[];
 }
 
+export const COMMON_GOTRAS = [
+  "Kashyap",
+  "Bharadwaj",
+  "Vashishta",
+  "Vishwamitra",
+  "Gautam",
+  "Jamadagni",
+  "Atri",
+  "Agastya",
+  "Angirasa",
+  "Parashara",
+  "Shandilya",
+  "Kaushik",
+  "Garg",
+  "Harita",
+  "Vatsa",
+  "Upamanyu",
+  "Mudgala",
+  "Kaundinya",
+] as const;
+
+export interface DevoteeMember {
+  id?: string;
+  name: string;
+  gotra: string;
+}
+
 export interface ConfirmedBooking {
   id: string;
   receiptNumber?: string;
@@ -28,11 +55,14 @@ export interface ConfirmedBooking {
   time: string;
   panditName: string | null;
   name: string;
+  gotra?: string;
   poojaTitle: string;
   reason: string;
   packageTier?: PackageTier;
   partnerName?: string;
-  familyMembers?: string[];
+  partnerGotra?: string;
+  devotees?: DevoteeMember[];
+  familyMembers?: DevoteeMember[] | string[];
   address?: string;
   credentials: { username: string; password: string; email: string };
 }
@@ -46,7 +76,8 @@ export interface BookingFormData {
   reason: string;
   packageTier: PackageTier;
   partnerName?: string;
-  familyMembers: string[];
+  partnerGotra?: string;
+  familyMembers: string[] | DevoteeMember[];
   address?: string;
 }
 

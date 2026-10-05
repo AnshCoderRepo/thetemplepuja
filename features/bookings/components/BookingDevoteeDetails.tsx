@@ -3,7 +3,7 @@
 import { Heart, Plus, Trash2, Users } from "lucide-react";
 import { type Pooja } from "@/lib/data";
 import { useI18n } from "@/components/providers";
-import type { BookingFormData } from "../types/booking.types";
+import type { BookingFormData, DevoteeMember } from "../types/booking.types";
 
 const inputCls =
   "w-full rounded-xl border border-saffron-200 bg-cream/30 px-3.5 py-2.5 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/50 focus:border-saffron-500 focus:bg-white focus:ring-1 focus:ring-saffron-200";
@@ -40,16 +40,41 @@ export default function BookingDevoteeDetails({
   };
 
   const handleAddFamilyMember = () => {
-    if (form.familyMembers.length >= 5) return;
-    onFormChange((prev) => ({
-      ...prev,
-      familyMembers: [...prev.familyMembers, ""],
-    }));
+    onFormChange((prev) => {
+      if (
+        prev.familyMembers.length > 0 &&
+        typeof prev.familyMembers[0] === "object" &&
+        prev.familyMembers[0] !== null
+      ) {
+        return {
+          ...prev,
+          familyMembers: [
+            ...(prev.familyMembers as DevoteeMember[]),
+            { name: "", gotra: prev.gotra || "Kashyap" },
+          ],
+        };
+      }
+      return {
+        ...prev,
+        familyMembers: [...(prev.familyMembers as string[]), ""],
+      };
+    });
   };
 
   const handleUpdateFamilyMember = (index: number, val: string) => {
     onFormChange((prev) => {
-      const updated = [...prev.familyMembers];
+      if (
+        prev.familyMembers.length > 0 &&
+        typeof prev.familyMembers[0] === "object" &&
+        prev.familyMembers[0] !== null
+      ) {
+        const updated = [...(prev.familyMembers as DevoteeMember[])];
+        if (updated[index]) {
+          updated[index] = { ...updated[index], name: val };
+        }
+        return { ...prev, familyMembers: updated };
+      }
+      const updated = [...(prev.familyMembers as string[])];
       updated[index] = val;
       return { ...prev, familyMembers: updated };
     });
@@ -57,7 +82,15 @@ export default function BookingDevoteeDetails({
 
   const handleRemoveFamilyMember = (index: number) => {
     onFormChange((prev) => {
-      const updated = prev.familyMembers.filter((_, i) => i !== index);
+      if (
+        prev.familyMembers.length > 0 &&
+        typeof prev.familyMembers[0] === "object" &&
+        prev.familyMembers[0] !== null
+      ) {
+        const updated = (prev.familyMembers as DevoteeMember[]).filter((_, i) => i !== index);
+        return { ...prev, familyMembers: updated };
+      }
+      const updated = (prev.familyMembers as string[]).filter((_, i) => i !== index);
       return { ...prev, familyMembers: updated };
     });
   };
@@ -207,48 +240,49 @@ export default function BookingDevoteeDetails({
             <label className="flex items-center gap-1.5 text-xs font-bold text-ink">
               <Users className="h-3.5 w-3.5 text-saffron-700" />
               <span>
-                {locale === "hi" ? "परिवार के सदस्य (अधिकतम 5)" : "Family Member Names (Up to 5)"}
+                {locale === "hi" ? "परिवार के सदस्य" : "Family Member Names"}
               </span>
             </label>
             <span className="text-[10px] text-ink-soft font-semibold">
-              {form.familyMembers.length}/5
+              {form.familyMembers.length} {form.familyMembers.length === 1 ? "Member" : "Members"}
             </span>
           </div>
 
           <div className="space-y-1.5">
-            {form.familyMembers.map((member, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-saffron-100 text-xs font-bold text-saffron-800">
-                  {idx + 1}
-                </span>
-                <input
-                  type="text"
-                  value={member}
-                  onChange={(e) => handleUpdateFamilyMember(idx, e.target.value)}
-                  placeholder={`Member #${idx + 1}`}
-                  className={inputCls}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFamilyMember(idx)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
-                  aria-label="Remove member"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+            {(form.familyMembers as (string | DevoteeMember)[]).map((member, idx) => {
+              const memberName = typeof member === "string" ? member : member.name;
+              return (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-saffron-100 text-xs font-bold text-saffron-800">
+                    {idx + 1}
+                  </span>
+                  <input
+                    type="text"
+                    value={memberName}
+                    onChange={(e) => handleUpdateFamilyMember(idx, e.target.value)}
+                    placeholder={`Member #${idx + 1}`}
+                    className={inputCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFamilyMember(idx)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+                    aria-label="Remove member"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
 
-            {form.familyMembers.length < 5 && (
-              <button
-                type="button"
-                onClick={handleAddFamilyMember}
-                className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-saffron-700 hover:text-saffron-900"
-              >
-                <Plus className="h-3 w-3" />
-                <span>Add Another Name</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleAddFamilyMember}
+              className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-saffron-700 hover:text-saffron-900"
+            >
+              <Plus className="h-3 w-3" />
+              <span>Add Another Member</span>
+            </button>
           </div>
         </div>
       )}

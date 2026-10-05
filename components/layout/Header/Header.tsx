@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Phone } from "lucide-react";
-import { SITE_CONFIG } from "@/lib/config";
 import Navbar from "../Navbar/Navbar";
 
 export default function Header() {
@@ -37,13 +35,9 @@ export default function Header() {
               <span className="opacity-40">|</span>
               <span className="tracking-wide">Digital Spiritual Platform</span>
             </p>
-            <a
-              href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
-              className="flex items-center gap-1.5 transition-colors hover:text-white"
-            >
-              <Phone className="h-3.5 w-3.5" />
-              {SITE_CONFIG.contact.phoneDisplay}
-            </a>
+            <p className="flex items-center gap-2 text-amber-200/90 font-medium">
+              <span>🙏 100% Certified Vedic Pandits & Authentic Temples</span>
+            </p>
           </div>
         </div>
       </div>

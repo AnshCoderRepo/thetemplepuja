@@ -33,9 +33,14 @@ function AccordionItem({
       aria-expanded={isActive}
       aria-label={item.title}
       className={`
-        relative shrink-0 cursor-pointer overflow-hidden rounded-2xl
+        relative cursor-pointer overflow-hidden rounded-2xl sm:rounded-3xl
         transition-all duration-500 ease-in-out text-left select-none
-        ${isActive ? "h-[420px] w-[min(400px,88vw)] shadow-lg ring-2 ring-saffron-400/40" : "h-[420px] w-[60px] opacity-90 hover:opacity-100"}
+        h-[420px] sm:h-[450px] lg:h-[480px]
+        ${
+          isActive
+            ? "w-[min(380px,82vw)] md:w-auto md:flex-[4] lg:flex-[4.5] shrink-0 md:shrink shadow-xl ring-2 ring-saffron-400/60"
+            : "w-[58px] sm:w-[68px] md:w-auto md:flex-1 shrink-0 md:shrink opacity-90 hover:opacity-100 hover:ring-1 hover:ring-saffron-300/40"
+        }
       `}
     >
       {/* Background image */}
@@ -48,11 +53,11 @@ function AccordionItem({
       />
 
       {/* Dark gradient overlay — stronger at bottom for text legibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/15" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
 
       {/* ── INACTIVE: vertical rotated title ── */}
       <span
-        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90 whitespace-nowrap text-sm font-medium text-white/90 transition-opacity duration-200 pointer-events-none ${
+        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90 whitespace-nowrap text-xs md:text-sm font-semibold tracking-wide text-white/90 drop-shadow transition-opacity duration-200 pointer-events-none ${
           isActive ? "opacity-0" : "opacity-100"
         }`}
       >
@@ -61,20 +66,20 @@ function AccordionItem({
 
       {/* ── ACTIVE: question + answer inside the card ── */}
       <div
-        className={`absolute inset-x-0 bottom-0 flex max-h-full flex-col overflow-y-auto p-5 text-left transition-opacity duration-300 ${
+        className={`absolute inset-x-0 bottom-0 flex max-h-full flex-col overflow-y-auto p-5 sm:p-6 lg:p-7 text-left transition-opacity duration-300 ${
           isActive
-            ? "opacity-100 delay-300"
+            ? "opacity-100 delay-200"
             : "opacity-0 delay-0 pointer-events-none"
         }`}
       >
         {/* Question */}
-        <p className="text-[15px] font-bold leading-snug text-white drop-shadow-sm">
+        <p className="text-base sm:text-lg lg:text-xl font-bold leading-snug text-white drop-shadow-md">
           {item.title}
         </p>
         {/* Divider */}
-        <div className="mt-2 h-0.5 w-10 shrink-0 bg-saffron-400" />
+        <div className="mt-2.5 h-1 w-12 shrink-0 rounded-full bg-saffron-400" />
         {/* Answer */}
-        <p className="mt-2.5 text-[13px] leading-relaxed text-white/90">
+        <p className="mt-3 text-xs sm:text-sm lg:text-[15px] leading-relaxed text-white/95 drop-shadow">
           {item.answer}
         </p>
       </div>
@@ -106,7 +111,7 @@ export default function InteractiveImageAccordion({
       window.matchMedia("(hover: none), (pointer: coarse)").matches
   );
 
-  // Auto-reset back to default card after 4.5 seconds of viewing an active card
+  // Auto-reset back to default card after 5.5 seconds of viewing an active card
   useEffect(() => {
     if (autoResetTimerRef.current) {
       clearTimeout(autoResetTimerRef.current);
@@ -116,7 +121,7 @@ export default function InteractiveImageAccordion({
     if (activeIndex !== defaultActive) {
       autoResetTimerRef.current = setTimeout(() => {
         setActiveIndex(defaultActive);
-      }, 4500);
+      }, 5500);
     }
 
     return () => {
@@ -141,35 +146,40 @@ export default function InteractiveImageAccordion({
     const container = containerRef.current;
     if (!tile || !container) return;
 
-    const tileLeft = tile.offsetLeft;
-    const tileWidth = tile.offsetWidth;
-    const containerWidth = container.offsetWidth;
-    const scrollTarget = tileLeft - (containerWidth / 2) + (tileWidth / 2);
+    // Only scroll horizontally if container is overflowing (mobile/tablet)
+    if (container.scrollWidth > container.clientWidth) {
+      const tileLeft = tile.offsetLeft;
+      const tileWidth = tile.offsetWidth;
+      const containerWidth = container.offsetWidth;
+      const scrollTarget = tileLeft - (containerWidth / 2) + (tileWidth / 2);
 
-    container.scrollTo({
-      left: Math.max(0, scrollTarget),
-      behavior: "smooth",
-    });
+      container.scrollTo({
+        left: Math.max(0, scrollTarget),
+        behavior: "smooth",
+      });
+    }
   }, [activeIndex]);
 
   return (
-    <div
-      ref={containerRef}
-      className="flex flex-row items-stretch justify-start lg:justify-center gap-3 overflow-x-auto p-2 scroll-smooth no-scrollbar"
-    >
-      {items.map((item, index) => (
-        <AccordionItem
-          key={item.id}
-          item={item}
-          isActive={index === activeIndex}
-          onActivate={() => handleTileActivate(index)}
-          onClick={() => handleTileClick(index)}
-          suppressHover={isCoarsePointer}
-          tileRef={(node) => {
-            tileRefs.current[index] = node;
-          }}
-        />
-      ))}
+    <div className="w-full">
+      <div
+        ref={containerRef}
+        className="flex flex-row items-stretch w-full gap-2.5 sm:gap-3 lg:gap-4 overflow-x-auto md:overflow-visible p-1 sm:p-2 scroll-smooth no-scrollbar"
+      >
+        {items.map((item, index) => (
+          <AccordionItem
+            key={item.id}
+            item={item}
+            isActive={index === activeIndex}
+            onActivate={() => handleTileActivate(index)}
+            onClick={() => handleTileClick(index)}
+            suppressHover={isCoarsePointer}
+            tileRef={(node) => {
+              tileRefs.current[index] = node;
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

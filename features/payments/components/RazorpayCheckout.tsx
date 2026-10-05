@@ -322,7 +322,7 @@ export default function RazorpayCheckout({
       onClick={phase === "form" ? onClose : undefined}
     >
       <div
-        className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="relative z-10 m-auto my-auto w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -14,6 +14,7 @@ import {
   getLocalizedFestivalSubtitle,
   getLocalizedFestivalTitle,
   getLocalizedPoojaTitle,
+  getPoojaSchedule,
   type FestivalEvent,
   type Pooja,
 } from "@/lib/data";
@@ -81,6 +82,11 @@ export default function Hero() {
         .map((slug) => poojas.find((p) => p.slug === slug))
         .filter((p): p is Pooja => Boolean(p))
     : [];
+
+  const heroPoojas: Pooja[] =
+    relatedPoojas.length > 0 ? relatedPoojas : poojas.slice(0, 3);
+  const featuredPooja = relatedPoojas[0] || poojas[0];
+  const featuredSchedule = featuredPooja ? getPoojaSchedule(featuredPooja) : null;
 
   const handlePrimaryCta = () => {
     if (activeFestival) {
@@ -235,28 +241,50 @@ export default function Hero() {
             </div>
 
             {/* Associated Pujas Quick Preview Chips */}
-            {relatedPoojas.length > 0 && (
-              <div className="mt-6 w-full max-w-2xl">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-saffron-300/80 mb-2">
-                  Special Pujas For {activeFestival?.name || "This Festival"}:
+            {heroPoojas.length > 0 && (
+              <div className="mt-6 w-full max-w-3xl">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-saffron-300/90 mb-2.5 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-saffron-400" />
+                  <span>{activeFestival ? `Sacred Pujas For ${activeFestival.name}` : "Featured Sacred Rituals"}:</span>
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {relatedPoojas.map((pooja) => (
-                    <button
-                      key={pooja.slug}
-                      type="button"
-                      onClick={() => router.push(`/book/${pooja.slug}`)}
-                      className="group inline-flex items-center gap-2 rounded-lg border border-saffron-400/20 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-200 backdrop-blur transition-all hover:border-saffron-400/60 hover:bg-saffron-950/50 hover:text-white"
-                    >
-                      <span className="text-sm">{pooja.emoji}</span>
-                      <span className="font-medium">
-                        {getLocalizedPoojaTitle(pooja, locale)}
-                      </span>
-                      <span className="rounded bg-saffron-500/20 px-1.5 py-0.5 text-[10px] font-bold text-saffron-300 group-hover:bg-saffron-500 group-hover:text-white transition-colors">
-                        ₹{pooja.price.toLocaleString("en-IN")}
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2.5">
+                  {heroPoojas.map((pooja) => {
+                    const schedule = getPoojaSchedule(pooja);
+                    return (
+                      <button
+                        key={pooja.slug}
+                        type="button"
+                        onClick={() => router.push(`/book/${pooja.slug}`)}
+                        className="group flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 rounded-xl border border-saffron-400/25 bg-slate-900/85 px-3.5 py-2 text-xs text-slate-200 backdrop-blur-md transition-all duration-300 hover:border-saffron-400/70 hover:bg-saffron-950/70 hover:shadow-glow text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-base">{pooja.emoji}</span>
+                          <span className="font-bold text-white group-hover:text-amber-200 transition-colors">
+                            {getLocalizedPoojaTitle(pooja, locale)}
+                          </span>
+                          <span className="rounded-md bg-saffron-500/20 px-1.5 py-0.5 text-[10px] font-bold text-saffron-300 group-hover:bg-saffron-500 group-hover:text-white transition-colors">
+                            ₹{pooja.price.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+
+                        {/* Scheduled Date and Time */}
+                        <div
+                          suppressHydrationWarning
+                          className="flex items-center gap-2 text-[11px] text-amber-200/90 font-medium sm:border-l sm:border-white/15 sm:pl-3"
+                        >
+                          <span className="flex items-center gap-1 text-amber-300 font-semibold">
+                            <Calendar className="h-3 w-3 shrink-0" />
+                            <span suppressHydrationWarning>{schedule.date}</span>
+                          </span>
+                          <span className="text-white/30">•</span>
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <Clock className="h-3 w-3 shrink-0 text-amber-300" />
+                            <span suppressHydrationWarning>{schedule.time}</span>
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -264,26 +292,48 @@ export default function Hero() {
 
           {/* Right Column: Decorative Sacred Altar & Multi-Slide Indicator */}
           <div className="hidden lg:flex lg:col-span-4 flex-col items-center justify-center relative">
-            <div className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-4 shadow-2xl backdrop-blur-md">
+            <div
+              onClick={handlePrimaryCta}
+              className="relative w-full max-w-sm rounded-3xl border border-white/15 bg-gradient-to-b from-white/10 to-white/5 p-4 shadow-2xl backdrop-blur-md cursor-pointer group transition-all duration-300 hover:border-saffron-400/50 hover:shadow-glow"
+            >
               <div className="relative h-64 w-full overflow-hidden rounded-2xl">
                 <Image
                   src={heroBackground}
                   alt={displayTitle}
                   fill
-                  className="object-cover transition-transform duration-500 hover:scale-105"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-3 right-3 text-left">
-                  <span className="text-[11px] font-semibold uppercase text-saffron-300 tracking-wider">
-                    {activeFestival ? activeFestival.name : "Vedic Seva"}
-                  </span>
-                  <h3 className="font-display text-base font-bold text-white line-clamp-1">
-                    {displayTitle}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute bottom-3.5 left-3.5 right-3.5 text-left space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase text-saffron-300 tracking-wider">
+                      {activeFestival ? activeFestival.name : "Featured Pooja"}
+                    </span>
+                    {featuredPooja && (
+                      <span className="rounded-full bg-saffron-500/80 px-2 py-0.5 text-[10px] font-extrabold text-white">
+                        ₹{featuredPooja.price.toLocaleString("en-IN")}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-display text-base font-bold text-white line-clamp-1 group-hover:text-amber-200 transition-colors">
+                    {featuredPooja ? getLocalizedPoojaTitle(featuredPooja, locale) : displayTitle}
                   </h3>
-                  {activeFestival?.status && (
-                    <p className="text-[11px] text-slate-300 mt-0.5">
-                      {activeFestival.status.formattedDateRange}
-                    </p>
+
+                  {/* Scheduled Date & Time on Featured Hero Card */}
+                  {featuredSchedule && (
+                    <div
+                      suppressHydrationWarning
+                      className="flex items-center justify-between gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 text-xs backdrop-blur border border-white/10"
+                    >
+                      <span className="flex items-center gap-1 font-semibold text-amber-200">
+                        <Calendar className="h-3 w-3 text-amber-400 shrink-0" />
+                        <span suppressHydrationWarning>{featuredSchedule.date}</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-slate-300">
+                        <Clock className="h-3 w-3 text-amber-400 shrink-0" />
+                        <span suppressHydrationWarning>{featuredSchedule.time}</span>
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

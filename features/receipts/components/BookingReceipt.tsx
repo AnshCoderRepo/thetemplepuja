@@ -164,14 +164,46 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
               <dd className="font-semibold text-ink mt-0.5">+91 {holder.phone}</dd>
             </div>
             <div>
-              <dt className="text-ink-soft font-medium">Gotra</dt>
-              <dd className="font-semibold text-ink mt-0.5">{holder.gotra || "Kashyap"}</dd>
+              <dt className="text-ink-soft font-medium">Primary Gotra</dt>
+              <dd className="font-semibold text-ink mt-0.5">{holder.gotra || booking.gotra || "Kashyap"}</dd>
             </div>
             <div>
-              <dt className="text-ink-soft font-medium">City / Location</dt>
-              <dd className="font-semibold text-ink mt-0.5">{holder.city || "India"}</dd>
+              <dt className="text-ink-soft font-medium">Plan Option</dt>
+              <dd className="font-semibold text-ink mt-0.5 capitalize">
+                {booking.packageTier === "single"
+                  ? "Single Plan (1 Devotee)"
+                  : booking.packageTier === "couple"
+                  ? "Couple Plan (2 Devotees)"
+                  : booking.packageTier === "family"
+                  ? `Family Plan (${booking.devotees?.length || "Family"} Members)`
+                  : "Standard Plan"}
+              </dd>
             </div>
           </dl>
+
+          {/* Full Devotees List for Couple / Family */}
+          {booking.devotees && booking.devotees.length > 1 && (
+            <div className="mt-4 pt-3 border-t border-dashed border-saffron-100">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-saffron-800 block mb-2">
+                All Devotees for Vedic Sankalp ({booking.devotees.length}):
+              </span>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {booking.devotees.map((d, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-lg bg-cream/50 px-3 py-1.5 text-xs border border-saffron-100"
+                  >
+                    <span className="font-bold text-ink">
+                      {i + 1}. {d.name}
+                    </span>
+                    <span className="rounded bg-saffron-100 px-2 py-0.5 text-[10px] font-semibold text-saffron-900">
+                      Gotra: {d.gotra || "Kashyap"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Itemized Chadhavas / Addons */}

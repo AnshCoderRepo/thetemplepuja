@@ -1,7 +1,7 @@
 import { Header, Footer } from "@/components/layout";
 import { JsonLd } from "@/components/common";
 import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
-import { PoojaCatalog, UpcomingEvents } from "@/features/catalog";
+import { PoojaCatalog } from "@/features/catalog";
 import { faqs } from "@/lib/data";
 import { faqPageLd, organizationLd, websiteLd } from "@/lib/seo";
 
@@ -15,8 +15,8 @@ export default function Home() {
       <main>
         <Hero />
         
-        {/* All Sacred Poojas Catalog on Landing Page */}
-        <section id="poojas" className="pt-12 pb-6 bg-cream">
+        {/* Sacred Poojas Catalog on Landing Page (Shows top 10 with View All link) */}
+        <section id="poojas" className="pt-12 pb-12 bg-cream">
           <div className="container-px mb-8 text-center">
             <span className="eyebrow">
               <span className="text-saffron-500">🪔</span>
@@ -29,10 +29,9 @@ export default function Home() {
               Browse authentic Vedic poojas performed on auspicious dates by certified pandits. Book online in minutes.
             </p>
           </div>
-          <PoojaCatalog />
+          <PoojaCatalog limit={8} showViewAll={true} viewAllHref="/book" />
         </section>
 
-        <UpcomingEvents />
         <WhyChooseUs />
         <Testimonials />
         <FAQ />

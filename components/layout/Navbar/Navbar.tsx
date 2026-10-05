@@ -48,6 +48,12 @@ export default function Navbar() {
             <a
               key={link.label}
               href={link.href}
+              onClick={(e) => {
+                if (link.href === "#contact") {
+                  e.preventDefault();
+                  window.dispatchEvent(new CustomEvent("open-chat-widget"));
+                }
+              }}
               className="rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-all hover:bg-saffron-50 hover:text-saffron-700"
             >
               {link.label}
@@ -91,7 +97,13 @@ export default function Navbar() {
             <a
               key={link.label}
               href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                if (link.href === "#contact") {
+                  e.preventDefault();
+                  window.dispatchEvent(new CustomEvent("open-chat-widget"));
+                }
+              }}
               className="rounded-xl px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-saffron-50 hover:text-saffron-700"
             >
               {link.label}

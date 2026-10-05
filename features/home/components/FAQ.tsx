@@ -7,7 +7,6 @@ import InteractiveImageAccordion, {
 import { Reveal, SectionHeading } from "@/components/common";
 import { faqs } from "@/lib/data";
 import { useI18n } from "@/components/providers";
-import { getWhatsAppUrl } from "@/lib/config";
 
 // Atmospheric imagery for the FAQ tiles (verified Unsplash photos).
 const faqImages = [
@@ -38,11 +37,12 @@ export default function FAQ() {
           subtitle={t("faq.subtitle")}
         />
 
-        <div className="mt-8">
+        {/* Full-width Interactive Image Accordion */}
+        <div className="mt-8 sm:mt-12 w-full">
           <InteractiveImageAccordion items={accordionItems} />
         </div>
 
-        {/* WhatsApp support card */}
+        {/* Support card */}
         <Reveal delay={200}>
           <div className="mx-auto mt-12 max-w-xl text-center">
             <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft sm:p-8">
@@ -53,15 +53,14 @@ export default function FAQ() {
               <p className="mt-1 text-sm text-ink-soft">
                 Talk directly with our temple coordinators on WhatsApp. We are here to assist you.
               </p>
-              <a
-                href={getWhatsAppUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-[#20bd5a] transition-all"
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-chat-widget"))}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-[#20bd5a] transition-all cursor-pointer"
               >
                 <MessageCircle className="h-4 w-4" />
-                Chat on WhatsApp
-              </a>
+                Chat with Us
+              </button>
             </div>
           </div>
         </Reveal>
