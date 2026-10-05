@@ -1092,6 +1092,10 @@ export interface Pooja {
   capacity?: number;
   live?: boolean;
   bookedSeats?: number;
+
+  // ── Recency & Creation (optional) ──
+  createdAt?: string;
+  isNew?: boolean;
 }
 
 /** Get localized title for a pooja based on active locale */
@@ -1118,6 +1122,49 @@ export function getLocalizedPoojaDescription(p: Pooja, locale?: string): string 
   return p.description;
 }
 
+/** Get visual banner image URL for a pooja */
+export function getPoojaBannerImage(p: { slug?: string; title?: string; imageUrl?: string }): string {
+  if (p.imageUrl && p.imageUrl.trim()) {
+    return p.imageUrl.trim();
+  }
+  const s = `${p.slug || ""} ${p.title || ""}`.toLowerCase();
+  if (
+    s.includes("durga") ||
+    s.includes("navratri") ||
+    s.includes("saptashati") ||
+    s.includes("devi") ||
+    s.includes("baglamukhi") ||
+    s.includes("kali")
+  ) {
+    return "/festivals/durga-puja.jpg";
+  }
+  if (
+    s.includes("diwali") ||
+    s.includes("deepawali") ||
+    s.includes("lakshmi") ||
+    s.includes("kuber") ||
+    s.includes("satyanarayan") ||
+    s.includes("katha") ||
+    s.includes("ram") ||
+    s.includes("hanuman")
+  ) {
+    return "/festivals/diwali.jpg";
+  }
+  if (
+    s.includes("shiva") ||
+    s.includes("rudra") ||
+    s.includes("rudrabhishek") ||
+    s.includes("shivratri") ||
+    s.includes("mrityunjaya") ||
+    s.includes("kaal-sarp") ||
+    s.includes("mahakaleshwar") ||
+    s.includes("somnath")
+  ) {
+    return "/festivals/shivratri.jpg";
+  }
+  return "/festivals/ganesha-altar.jpg";
+}
+
 /** Get localized benefits for a pooja based on active locale */
 export function getLocalizedPoojaBenefits(p: Pooja, locale?: string): string[] {
   if (locale === "hi" && p.hindiBenefits && p.hindiBenefits.length > 0) return p.hindiBenefits;
@@ -1142,14 +1189,141 @@ export function getLocalizedPoojaDuration(p: Pooja, locale?: string): string {
   return p.duration;
 }
 
+/**
+ * Resolves the scheduled auspicious Date and Time for a pooja.
+ * Guaranteed to return an authentic, formatted date and time for all poojas,
+ * whether they have explicit dates or are newly added.
+ */
+export function getPoojaSchedule(
+  p: Pooja,
+  today: Date = new Date()
+): {
+  date: string;
+  time: string;
+  dateISO: string;
+  fullSchedule: string;
+} {
+  // 1. Time resolution
+  const spec = upcomingEventSpecs.find((s) => s.slug === p.slug);
+  let time = (p.eventTime || spec?.time || "").trim();
+  if (!time) {
+    if (p.bestMuhurat?.toLowerCase().includes("morning")) {
+      time = "08:00 AM IST";
+    } else if (
+      p.bestMuhurat?.toLowerCase().includes("evening") ||
+      p.bestMuhurat?.toLowerCase().includes("pradosh") ||
+      p.bestMuhurat?.toLowerCase().includes("shani")
+    ) {
+      time = "06:30 PM IST";
+    } else {
+      time = "07:00 AM IST";
+    }
+  }
+
+  // 2. Date resolution
+  if (p.startDate && p.startDate.trim()) {
+    const trimmed = p.startDate.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const parsed = new Date(trimmed + "T00:00:00");
+      if (!isNaN(parsed.getTime())) {
+        const formatted = eventDateFmt.format(parsed);
+        return {
+          date: formatted,
+          time,
+          dateISO: trimmed,
+          fullSchedule: `${formatted} • ${time}`,
+        };
+      }
+    }
+    return {
+      date: trimmed,
+      time,
+      dateISO: trimmed,
+      fullSchedule: `${trimmed} • ${time}`,
+    };
+  }
+
+  const days =
+    p.daysFromToday !== undefined
+      ? p.daysFromToday
+      : spec?.daysFromToday !== undefined
+      ? spec.daysFromToday
+      : (Math.abs(
+          p.slug
+            .split("")
+            .reduce((acc, char) => acc + char.charCodeAt(0), 0)
+        ) % 14) + 4;
+
+  const scheduledDate = addDays(today, days);
+  const formattedDate = eventDateFmt.format(scheduledDate);
+  const dateISO = toISODate(scheduledDate);
+
+  return {
+    date: formattedDate,
+    time,
+    dateISO,
+    fullSchedule: `${formattedDate} • ${time}`,
+  };
+}
+
+export const DEFAULT_POOJA_SLUGS: readonly string[] = [
+  "satyanarayan-katha",
+  "rudrabhishek",
+  "griha-pravesh",
+  "shani-dev-pooja",
+  "navgraha-shanti",
+  "hanuman-pooja",
+  "lakshmi-pooja",
+  "maha-mrityunjaya-jap",
+  "saraswati-pooja",
+  "durga-saptashati-path",
+  "vishwakarma-pooja",
+  "kuber-pooja",
+];
+
+/**
+ * Sorts poojas so that the most recently added poojas always appear first.
+ * Respects explicit `createdAt` timestamps, `isNew` flags, and prioritizes
+ * any newly added poojas (e.g. ~35 upcoming poojas) ahead of older entries.
+ */
+export function sortPoojasByRecent(list: Pooja[]): Pooja[] {
+  return [...list].sort((a, b) => {
+    // 1. Explicit isNew flag
+    if (a.isNew && !b.isNew) return -1;
+    if (!a.isNew && b.isNew) return 1;
+
+    // 2. Explicit createdAt timestamps (ISO format)
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    if (a.createdAt && !b.createdAt) return -1;
+    if (!a.createdAt && b.createdAt) return 1;
+
+    // 3. New poojas added beyond the initial 12 baseline appear first
+    const aIsDefault = DEFAULT_POOJA_SLUGS.includes(a.slug);
+    const bIsDefault = DEFAULT_POOJA_SLUGS.includes(b.slug);
+
+    if (!aIsDefault && bIsDefault) return -1; // a is newly added -> goes first
+    if (aIsDefault && !bIsDefault) return 1;  // b is newly added -> goes first
+
+    if (!aIsDefault && !bIsDefault) {
+      // Both are newly added: reverse index order (last appended is newest)
+      return list.indexOf(b) - list.indexOf(a);
+    }
+
+    // Both are defaults: preserve original baseline order
+    return DEFAULT_POOJA_SLUGS.indexOf(a.slug) - DEFAULT_POOJA_SLUGS.indexOf(b.slug);
+  });
+}
+
 /** True unless the admin explicitly deactivated the pooja. */
 export function isPoojaActive(p: Pooja): boolean {
   return p.active !== false;
 }
 
-/** The poojas visitors should see — inactive ones are filtered out. */
+/** The poojas visitors should see — inactive ones are filtered out, with the most recent poojas first. */
 export function activePoojas(list: Pooja[]): Pooja[] {
-  return list.filter(isPoojaActive);
+  return sortPoojasByRecent(list.filter(isPoojaActive));
 }
 
 export const poojas: Pooja[] = [
@@ -1163,6 +1337,8 @@ export const poojas: Pooja[] = [
     gradient: "from-amber-400 to-orange-600",
     price: 1101,
     duration: "2–3 hours",
+    daysFromToday: 10,
+    eventTime: "6:30 PM IST",
     bestMuhurat: "Purnima & Sankranti",
     category: "Family & Home",
     type: "temple",
@@ -1191,6 +1367,8 @@ export const poojas: Pooja[] = [
     gradient: "from-indigo-500 to-purple-600",
     price: 2501,
     duration: "1.5–2 hours",
+    daysFromToday: 12,
+    eventTime: "5:00 AM IST",
     bestMuhurat: "Monday & Pradosh",
     category: "Dosha Nivaran",
     type: "temple",
@@ -1219,6 +1397,8 @@ export const poojas: Pooja[] = [
     gradient: "from-emerald-500 to-teal-600",
     price: 3501,
     duration: "2–3 hours",
+    daysFromToday: 13,
+    eventTime: "10:00 AM IST",
     bestMuhurat: "Vastu muhurat",
     category: "Family & Home",
     type: "home",
@@ -1247,6 +1427,8 @@ export const poojas: Pooja[] = [
     gradient: "from-slate-600 to-gray-900",
     price: 1001,
     duration: "1.5 hours",
+    daysFromToday: 14,
+    eventTime: "9:00 PM IST",
     bestMuhurat: "Saturday",
     category: "Dosha Nivaran",
     type: "temple",
@@ -1275,6 +1457,8 @@ export const poojas: Pooja[] = [
     gradient: "from-fuchsia-500 to-pink-600",
     price: 5001,
     duration: "3–4 hours",
+    daysFromToday: 18,
+    eventTime: "8:00 AM IST",
     bestMuhurat: "Graha shanti muhurat",
     category: "Rashifal Pooja",
     type: "temple",
@@ -1303,6 +1487,8 @@ export const poojas: Pooja[] = [
     gradient: "from-orange-400 to-rose-500",
     price: 501,
     duration: "1 hour",
+    daysFromToday: 8,
+    eventTime: "7:00 PM IST",
     bestMuhurat: "Tuesday & Saturday",
     category: "Health & Healing",
     type: "temple",
@@ -1331,6 +1517,8 @@ export const poojas: Pooja[] = [
     gradient: "from-yellow-400 to-amber-600",
     price: 1101,
     duration: "1.5 hours",
+    daysFromToday: 9,
+    eventTime: "6:00 PM IST",
     bestMuhurat: "Friday & Diwali",
     category: "Wealth & Prosperity",
     type: "temple",
@@ -1359,6 +1547,8 @@ export const poojas: Pooja[] = [
     gradient: "from-sky-500 to-blue-700",
     price: 2101,
     duration: "2 hours",
+    daysFromToday: 11,
+    eventTime: "6:00 AM IST",
     bestMuhurat: "Mahashivratri",
     category: "Health & Healing",
     type: "temple",
@@ -1387,6 +1577,8 @@ export const poojas: Pooja[] = [
     gradient: "from-rose-400 to-pink-600",
     price: 1501,
     duration: "1.5 hours",
+    daysFromToday: 15,
+    eventTime: "8:30 AM IST",
     bestMuhurat: "Vasant Panchami",
     category: "Festival Special",
     type: "temple",
@@ -1415,6 +1607,8 @@ export const poojas: Pooja[] = [
     gradient: "from-red-500 to-rose-700",
     price: 2501,
     duration: "7 days (1 hour/day)",
+    daysFromToday: 16,
+    eventTime: "7:30 AM IST",
     bestMuhurat: "Navratri",
     category: "Festival Special",
     type: "temple",
@@ -1443,6 +1637,8 @@ export const poojas: Pooja[] = [
     gradient: "from-amber-500 to-yellow-600",
     price: 1001,
     duration: "1 hour",
+    daysFromToday: 17,
+    eventTime: "9:30 AM IST",
     bestMuhurat: "Vishwakarma Day",
     category: "Wealth & Prosperity",
     type: "temple",
@@ -1471,6 +1667,8 @@ export const poojas: Pooja[] = [
     gradient: "from-emerald-400 to-green-600",
     price: 1101,
     duration: "1.5 hours",
+    daysFromToday: 19,
+    eventTime: "7:00 PM IST",
     bestMuhurat: "Dhanteras",
     category: "Wealth & Prosperity",
     type: "temple",

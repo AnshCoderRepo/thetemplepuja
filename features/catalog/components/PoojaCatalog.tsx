@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/common";
 import {
   activePoojas,
@@ -14,9 +16,17 @@ import PoojaFilters from "./PoojaFilters";
 
 export interface PoojaCatalogProps {
   notice?: string;
+  limit?: number;
+  showViewAll?: boolean;
+  viewAllHref?: string;
 }
 
-export default function PoojaCatalog({ notice }: PoojaCatalogProps) {
+export default function PoojaCatalog({
+  notice,
+  limit,
+  showViewAll = false,
+  viewAllHref = "/book",
+}: PoojaCatalogProps) {
   const { poojas } = useCatalog();
   const { locale } = useI18n();
   const list = activePoojas(poojas);
@@ -54,6 +64,8 @@ export default function PoojaCatalog({ notice }: PoojaCatalogProps) {
     });
   }, [list, search, selectedCategory, locale]);
 
+  const displayedPoojas = limit ? filteredPoojas.slice(0, limit) : filteredPoojas;
+
   return (
     <div className="container-px">
       {notice && (
@@ -69,7 +81,7 @@ export default function PoojaCatalog({ notice }: PoojaCatalogProps) {
         onCategoryChange={setSelectedCategory}
         categories={categories}
         totalCount={list.length}
-        filteredCount={filteredPoojas.length}
+        filteredCount={displayedPoojas.length}
       />
 
       {filteredPoojas.length === 0 ? (
@@ -93,13 +105,34 @@ export default function PoojaCatalog({ notice }: PoojaCatalogProps) {
           </button>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredPoojas.map((pooja, index) => (
-            <Reveal key={pooja.slug} delay={Math.min(index * 50, 300)}>
-              <PoojaCard pooja={pooja} />
-            </Reveal>
-          ))}
-        </div>
+        <>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {displayedPoojas.map((pooja, index) => (
+              <Reveal key={pooja.slug} delay={Math.min(index * 50, 300)}>
+                <PoojaCard pooja={pooja} />
+              </Reveal>
+            ))}
+          </div>
+
+          {showViewAll && (
+            <div className="mt-12 flex flex-col items-center justify-center text-center">
+              <Link
+                href={viewAllHref}
+                id="view-all-poojas-btn"
+                className="group inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-saffron-500 via-saffron-600 to-amber-600 px-8 py-4 text-base font-bold text-white shadow-soft transition-all duration-300 hover:scale-[1.02] hover:shadow-glow active:scale-[0.98]"
+              >
+                <span>View All Sacred Poojas</span>
+                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold backdrop-blur">
+                  {list.length > 10 ? `${list.length}+` : "35+"} Poojas
+                </span>
+                <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+              <p className="mt-2.5 text-xs text-ink-soft">
+                Explore our complete sacred collection of dosha nivaran, prosperity & festival rituals
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

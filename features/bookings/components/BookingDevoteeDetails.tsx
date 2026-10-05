@@ -40,10 +40,9 @@ export default function BookingDevoteeDetails({
   };
 
   const handleAddFamilyMember = () => {
-    if (form.familyMembers.length >= 5) return;
     onFormChange((prev) => ({
       ...prev,
-      familyMembers: [...prev.familyMembers, ""],
+      familyMembers: [...(prev.familyMembers as string[]), ""],
     }));
   };
 
@@ -207,16 +206,16 @@ export default function BookingDevoteeDetails({
             <label className="flex items-center gap-1.5 text-xs font-bold text-ink">
               <Users className="h-3.5 w-3.5 text-saffron-700" />
               <span>
-                {locale === "hi" ? "परिवार के सदस्य (अधिकतम 5)" : "Family Member Names (Up to 5)"}
+                {locale === "hi" ? "परिवार के सदस्य" : "Family Member Names"}
               </span>
             </label>
             <span className="text-[10px] text-ink-soft font-semibold">
-              {form.familyMembers.length}/5
+              {form.familyMembers.length} {form.familyMembers.length === 1 ? "Member" : "Members"}
             </span>
           </div>
 
           <div className="space-y-1.5">
-            {form.familyMembers.map((member, idx) => (
+            {(form.familyMembers as string[]).map((member, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-saffron-100 text-xs font-bold text-saffron-800">
                   {idx + 1}
@@ -239,16 +238,14 @@ export default function BookingDevoteeDetails({
               </div>
             ))}
 
-            {form.familyMembers.length < 5 && (
-              <button
-                type="button"
-                onClick={handleAddFamilyMember}
-                className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-saffron-700 hover:text-saffron-900"
-              >
-                <Plus className="h-3 w-3" />
-                <span>Add Another Name</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleAddFamilyMember}
+              className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-saffron-700 hover:text-saffron-900"
+            >
+              <Plus className="h-3 w-3" />
+              <span>Add Another Member</span>
+            </button>
           </div>
         </div>
       )}

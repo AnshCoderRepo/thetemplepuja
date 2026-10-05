@@ -32,6 +32,13 @@ export default function BookingConfirmation({
     setTimeout(() => setCopiedId(false), 2000);
   };
 
+  const devoteeSummary =
+    confirmed.devotees && confirmed.devotees.length > 1
+      ? confirmed.devotees
+          .map((d) => `${d.name} (${d.gotra || "Kashyap"})`)
+          .join(", ")
+      : `${confirmed.name}${confirmed.gotra ? ` (${confirmed.gotra})` : ""}`;
+
   const waText = encodeURIComponent(
     `Namaste! I have booked ${confirmed.poojaTitle} on templepujasewa.\n\n` +
       `Booking ID: ${confirmed.id}\n` +
@@ -39,6 +46,7 @@ export default function BookingConfirmation({
       `Date: ${confirmed.date}\n` +
       `Time: ${confirmed.time}\n` +
       `Pandit: ${confirmed.panditName ?? "Assigned by templepujasewa"}\n` +
+      `Devotee(s): ${devoteeSummary}\n` +
       `Reason: ${confirmed.reason}\n` +
       (confirmed.addons && confirmed.addons.length > 0
         ? `Chadhavas: ${confirmed.addons.map((a) => `${a.name} x${a.quantity}`).join(", ")}\n`
@@ -122,7 +130,11 @@ export default function BookingConfirmation({
                 label: t("booking.confirm.labelPandit"),
                 value: confirmed.panditName ?? t("booking.confirm.assignedByTemple"),
               },
-              { icon: "🕉️", label: t("booking.confirm.labelDevotee"), value: confirmed.name },
+              {
+                icon: "🕉️",
+                label: t("booking.confirm.labelDevotee"),
+                value: `${confirmed.name}${confirmed.gotra ? ` (${confirmed.gotra})` : ""}`,
+              },
               {
                 icon: "🪔",
                 label: t("booking.confirm.labelIntention"),
@@ -141,6 +153,38 @@ export default function BookingConfirmation({
               </div>
             ))}
           </dl>
+
+          {/* Devotees List for Couple / Family */}
+          {confirmed.devotees && confirmed.devotees.length > 1 && (
+            <div className="rounded-2xl border border-saffron-100 bg-saffron-50/50 p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-saffron-800">
+                  🕉️ Vedic Sankalp Devotees ({confirmed.devotees.length})
+                </p>
+                <span className="rounded-full bg-saffron-100 px-2 py-0.5 text-[10px] font-bold text-saffron-900">
+                  {confirmed.packageTier === "couple" ? "Couple Plan" : "Family Plan"}
+                </span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {confirmed.devotees.map((devotee, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between rounded-xl bg-white p-2.5 text-xs border border-saffron-100 shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-saffron-100 text-[10px] font-bold text-saffron-800">
+                        {idx + 1}
+                      </span>
+                      <span className="font-bold text-ink">{devotee.name}</span>
+                    </div>
+                    <span className="rounded bg-saffron-50 px-2 py-0.5 text-[10px] font-bold text-saffron-800 border border-saffron-200/60">
+                      Gotra: {devotee.gotra || "Kashyap"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {confirmed.addons && confirmed.addons.length > 0 && (
             <div className="rounded-2xl border border-saffron-100 bg-saffron-50/50 p-4 space-y-2">

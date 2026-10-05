@@ -56,8 +56,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${devanagari.variable}`}>
-      <body className="font-sans">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${display.variable} ${sans.variable} ${devanagari.variable}`}
+    >
+      <body className="font-sans" suppressHydrationWarning>
         <Providers>
           <ErrorBoundary>
             {children}

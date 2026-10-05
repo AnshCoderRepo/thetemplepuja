@@ -10,7 +10,6 @@ export default function Footer() {
   const navLinks = [
     { label: t("nav.home"), href: "#home" },
     { label: t("nav.bookPooja"), href: "#poojas" },
-    { label: t("nav.events"), href: "#events" },
     { label: t("nav.whyUs"), href: "#why-us" },
     { label: t("nav.reviews"), href: "#testimonials" },
     { label: t("nav.faq"), href: "#faq" },
@@ -99,14 +98,13 @@ export default function Footer() {
             <p className="text-xs text-cream/70 leading-relaxed mb-4">
               Speak with our spiritual advisors anytime on WhatsApp for personalized muhurat advice.
             </p>
-            <a
-              href={getWhatsAppUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("open-chat-widget"))}
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
             >
-              <span>💬 WhatsApp Support</span>
-            </a>
+              <span>💬 Chat with Us</span>
+            </button>
           </div>
         </div>
 

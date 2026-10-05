@@ -69,6 +69,12 @@ export interface BookingRecord {
   /** YYYY-MM-DD muhurat this devotee was sent a WhatsApp reminder for. Set
    * once, so a daily reminder job never double-sends for the same date. */
   reminderSentForDate?: string;
+  packageTier?: string;
+  gotra?: string;
+  partnerName?: string;
+  partnerGotra?: string;
+  devotees?: { name: string; gotra: string }[];
+  familyMembers?: { name: string; gotra: string }[] | string[];
 }
 
 export interface UserProfile {
