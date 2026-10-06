@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BadgeCheck, Check, Copy, Printer, UserRound } from "lucide-react";
+import { BadgeCheck, Check, Copy, ExternalLink, Play, Printer, UserRound, Video } from "lucide-react";
 import type { BookingRecord } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
 import type { BookingHolder } from "../types/receipt.types";
@@ -279,6 +279,51 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
             </div>
           );
         })()}
+
+        {/* Sacred Puja Video Recording (if available) */}
+        {booking.videos && booking.videos.length > 0 && (
+          <div className="rounded-2xl border border-saffron-200 bg-gradient-to-r from-saffron-50 via-amber-50 to-saffron-50 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-saffron-900 flex items-center gap-1.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-saffron-500 text-white shadow-xs">
+                  <Video className="h-3.5 w-3.5" />
+                </span>
+                Sacred Puja Video Recording & Darshan
+              </span>
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                ✓ Available
+              </span>
+            </div>
+            <div className="space-y-2">
+              {booking.videos.map((vid) => (
+                <div
+                  key={vid.id}
+                  className="rounded-xl border border-saffron-200 bg-white p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-ink flex items-center gap-1.5">
+                      📹 {vid.title}
+                    </p>
+                    {vid.description && (
+                      <p className="text-[11px] text-ink-soft mt-0.5 leading-relaxed">
+                        {vid.description}
+                      </p>
+                    )}
+                  </div>
+                  <a
+                    href={vid.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="no-print inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 py-2 text-xs font-bold text-white shadow-soft hover:from-saffron-600 hover:to-saffron-700 transition-all"
+                  >
+                    <Play className="h-3 w-3 fill-current" />
+                    Watch Video Recording ↗
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Financial Breakdown Table */}
         <div className="rounded-2xl border border-saffron-100 bg-cream/70 p-5">

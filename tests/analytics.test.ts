@@ -125,4 +125,59 @@ describe("computeAnalytics", () => {
     expect(stats.totalDiscountsGiven).toBe(150); // 100 + 50
     expect(stats.couponBookingsCount).toBe(2);
   });
+
+  it("accurately tracks pending and failed booking pipeline metrics", () => {
+    const usersWithPipeline: UserProfile[] = [
+      ...mockUsers,
+      {
+        id: "U3",
+        name: "Aman Gupta",
+        gotra: "Kashyap",
+        email: "aman@example.com",
+        phone: "9988776655",
+        city: "Mumbai",
+        createdAt: "2026-09-28T10:00:00.000Z",
+        bookings: [
+          {
+            bookingId: "BKG005",
+            poojaSlug: "satyanarayan-katha",
+            poojaTitle: "Satyanarayan Katha",
+            date: "Sun, 04 Oct",
+            time: "7:00 PM IST",
+            panditName: "Pt. Sharma",
+            amount: 1101,
+            discount: 0,
+            couponCode: null,
+            addonCount: 0,
+            createdAt: "2026-09-28T10:05:00.000Z",
+            status: "pending",
+          },
+          {
+            bookingId: "BKG006",
+            poojaSlug: "rudrabhishek",
+            poojaTitle: "Maha Rudrabhishek",
+            date: "Mon, 05 Oct",
+            time: "6:00 AM IST",
+            panditName: "Pt. Shastri",
+            amount: 2101,
+            discount: 0,
+            couponCode: null,
+            addonCount: 0,
+            createdAt: "2026-09-28T11:00:00.000Z",
+            status: "failed",
+            failureReason: "Payment cancelled by devotee",
+          },
+        ],
+      },
+    ];
+
+    const stats = computeAnalytics(usersWithPipeline, 30);
+    expect(stats.totalBookings).toBe(6);
+    expect(stats.activeBookings).toBe(2);
+    expect(stats.pendingBookings).toBe(1);
+    expect(stats.pendingRevenue).toBe(1101);
+    expect(stats.failedBookings).toBe(1);
+    expect(stats.failedRevenue).toBe(2101);
+    expect(stats.conversionRate).toBe(33); // 2 / 6 * 100 = 33%
+  });
 });

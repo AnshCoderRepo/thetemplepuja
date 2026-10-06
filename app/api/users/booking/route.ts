@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { upsertUserBooking } from "@/lib/server-store";
+import {
+  findUserByPhone,
+  generateRandomPassword,
+  hashPassword,
+  upsertUserBooking,
+} from "@/lib/server-store";
 import type { BookingInput } from "@/lib/storage";
 import { notifyBookingConfirmed, receiptUrlFor } from "@/lib/whatsapp";
 import {
@@ -40,16 +45,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Rate-limit bookings per phone number (default: 5 per hour).
-  const rateLimit = bookingRateLimiter.consume(normalizedPhone);
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      {
-        error: "Too many booking attempts. Please try again later.",
-        retryAfterSec: rateLimit.retryAfterSec,
-      },
-      { status: 429 }
-    );
+  const targetStatus = booking.status || "confirmed";
+
+  // Rate-limit initial booking creation attempts per phone number (default: 5 per hour).
+  // Status transitions (pending -> confirmed / failed) on an existing booking do not consume extra tokens.
+  if (targetStatus === "pending") {
+    const rateLimit = bookingRateLimiter.consume(normalizedPhone);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: "Too many booking attempts. Please try again later.",
+          retryAfterSec: rateLimit.retryAfterSec,
+        },
+        { status: 429 }
+      );
+    }
   }
 
   // Generate unique official receipt number for this transaction
@@ -62,56 +72,85 @@ export async function POST(req: NextRequest) {
     booking.addonCount = booking.addons.reduce((sum, item) => sum + (item.quantity || 1), 0);
   }
 
-  // Real-payment flow: when Razorpay is configured, a booking is only accepted
-  // with a payment proof whose signature verifies and whose order amount
-  // matches the price the client was charged.
-  if (razorpayConfigured()) {
-    const payment = body.payment ?? {};
-    const orderId =
-      typeof payment.razorpayOrderId === "string" ? payment.razorpayOrderId : "";
-    const paymentId =
-      typeof payment.razorpayPaymentId === "string"
-        ? payment.razorpayPaymentId
-        : "";
-    const signature =
-      typeof payment.razorpaySignature === "string"
-        ? payment.razorpaySignature
-        : "";
+  let devoteePassword = body.generatedPassword || body.password;
+  let passwordHash: string | undefined;
 
-    if (!orderId || !paymentId || !signature) {
-      return NextResponse.json(
-        { error: "Payment is required to confirm this booking." },
-        { status: 400 }
-      );
-    }
-    if (!verifyPaymentSignature({ orderId, paymentId, signature })) {
-      return NextResponse.json(
-        { error: "Payment verification failed. Please try again." },
-        { status: 402 }
-      );
-    }
-    // Belt-and-braces: the paid order's amount must match the booking amount.
-    try {
-      const order = await getRazorpayOrder(orderId);
-      if (order.amount !== Math.round(booking.amount * 100)) {
+  if (targetStatus === "pending") {
+    // Booking initiated — pending payment
+    booking.status = "pending";
+  } else if (targetStatus === "failed") {
+    // Booking failed — payment was rejected, expired, or cancelled
+    booking.status = "failed";
+  } else {
+    // Real-payment flow: when Razorpay is configured, a booking is only accepted
+    // with a payment proof whose signature verifies and whose order amount
+    // matches the price the client was charged.
+    if (razorpayConfigured()) {
+      const payment = body.payment ?? {
+        razorpayOrderId: booking.razorpayOrderId,
+        razorpayPaymentId: booking.razorpayPaymentId,
+        razorpaySignature: booking.razorpaySignature,
+      };
+      const orderId =
+        typeof payment.razorpayOrderId === "string" ? payment.razorpayOrderId : "";
+      const paymentId =
+        typeof payment.razorpayPaymentId === "string"
+          ? payment.razorpayPaymentId
+          : "";
+      const signature =
+        typeof payment.razorpaySignature === "string"
+          ? payment.razorpaySignature
+          : "";
+
+      if (!orderId || !paymentId || !signature) {
         return NextResponse.json(
-          { error: "Payment amount does not match this booking." },
+          { error: "Payment is required to confirm this booking." },
+          { status: 400 }
+        );
+      }
+      if (!verifyPaymentSignature({ orderId, paymentId, signature })) {
+        return NextResponse.json(
+          { error: "Payment verification failed. Please try again." },
           { status: 402 }
         );
       }
-    } catch {
-      return NextResponse.json(
-        { error: "We couldn't verify your payment. Please contact support." },
-        { status: 502 }
-      );
-    }
+      // Belt-and-braces: the paid order's amount must match the booking amount.
+      try {
+        const order = await getRazorpayOrder(orderId);
+        if (order.amount !== Math.round(booking.amount * 100)) {
+          return NextResponse.json(
+            { error: "Payment amount does not match this booking." },
+            { status: 402 }
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          { error: "We couldn't verify your payment. Please contact support." },
+          { status: 502 }
+        );
+      }
 
-    // Stamp the verified payment proof on the booking (server-authoritative —
-    // never trust these fields from the client).
-    booking.razorpayOrderId = orderId;
-    booking.razorpayPaymentId = paymentId;
-    booking.razorpaySignature = signature;
-    booking.paidAt = new Date().toISOString();
+      // Stamp the verified payment proof on the booking (server-authoritative —
+      // never trust these fields from the client).
+      booking.razorpayOrderId = orderId;
+      booking.razorpayPaymentId = paymentId;
+      booking.razorpaySignature = signature;
+      booking.paidAt = new Date().toISOString();
+    }
+    booking.status = "confirmed";
+
+    // Create / ensure user profile has a random password if none set
+    const existingUser = await findUserByPhone(normalizedPhone);
+    if (!existingUser?.passwordHash && !existingUser?.email?.startsWith("pw:")) {
+      if (!devoteePassword) {
+        devoteePassword = generateRandomPassword(8);
+      }
+      passwordHash = await hashPassword(devoteePassword);
+    } else if (devoteePassword && body.generatedPassword) {
+      passwordHash = await hashPassword(devoteePassword);
+    } else if (existingUser?.generatedPassword) {
+      devoteePassword = existingUser.generatedPassword;
+    }
   }
 
   const user = await upsertUserBooking({
@@ -121,28 +160,47 @@ export async function POST(req: NextRequest) {
     city: typeof body.city === "string" ? body.city : "",
     email: typeof body.email === "string" ? body.email : "",
     booking,
+    passwordHash,
+    generatedPassword: devoteePassword,
   });
 
-  // Alert the admin and send the devotee their confirmation on WhatsApp
-  // (fire-and-forget; a no-op without Twilio config and never blocks the
-  // booking response).
-  notifyBookingConfirmed({
-    bookingId: booking.bookingId,
-    poojaTitle: booking.poojaTitle,
-    name: body.name.trim(),
-    phone: normalizedPhone,
-    date: booking.date,
-    time: booking.time,
-    amount: booking.amount,
-    discount: booking.discount ?? 0,
-    couponCode: booking.couponCode ?? null,
-    reason: booking.reason,
-    receiptUrl: receiptUrlFor(
-      req.headers.get("host"),
-      booking.bookingId,
-      normalizedPhone
-    ),
-  });
+  // Alert the admin and send the devotee their confirmation on WhatsApp only on confirmed bookings
+  if (booking.status === "confirmed") {
+    const host = req.headers.get("host");
+    const siteUrl = process.env.SITE_URL || (host ? `http://${host}` : "http://localhost:3000");
+    const passToSend = devoteePassword || user.generatedPassword;
 
-  return NextResponse.json({ ok: true, user, booking });
+    notifyBookingConfirmed({
+      bookingId: booking.bookingId,
+      poojaTitle: booking.poojaTitle,
+      name: body.name.trim(),
+      phone: normalizedPhone,
+      date: booking.date,
+      time: booking.time,
+      amount: booking.amount,
+      discount: booking.discount ?? 0,
+      couponCode: booking.couponCode ?? null,
+      reason: booking.reason,
+      receiptUrl: receiptUrlFor(
+        host,
+        booking.bookingId,
+        normalizedPhone
+      ),
+      credentials: {
+        username: normalizedPhone,
+        password: passToSend,
+        loginUrl: `${siteUrl}/login`,
+      },
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    user,
+    booking,
+    credentials: {
+      username: normalizedPhone,
+      password: devoteePassword || user.generatedPassword,
+    },
+  });
 }

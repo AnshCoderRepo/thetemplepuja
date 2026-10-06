@@ -16,7 +16,7 @@ import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import DatesManager from "@/components/admin/DatesManager";
 import CouponsManager from "@/components/admin/CouponsManager";
 import AccountManager from "@/components/admin/AccountManager";
-import CustomerProfileModal from "@/components/admin/CustomerProfileModal";
+import CustomerProfileModal, { type ProfileTab } from "@/components/admin/CustomerProfileModal";
 
 interface AdminDashboardProps {
   tab: AdminTab;
@@ -54,6 +54,7 @@ export default function AdminDashboard({
   onRefresh,
 }: AdminDashboardProps) {
   const [selectedDevotee, setSelectedDevotee] = useState<UserProfile | null>(null);
+  const [selectedDevoteeTab, setSelectedDevoteeTab] = useState<ProfileTab>("overview");
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex">
@@ -119,17 +120,30 @@ export default function AdminDashboard({
           )}
 
           {tab === "bookings" && (
-            <BookingsTable users={users} onRefund={onRefund} />
+            <BookingsTable
+              users={users}
+              onRefund={onRefund}
+              token={token || ""}
+              onRefresh={onRefresh}
+            />
           )}
 
           {tab === "orders" && (
-            <OrdersManager users={users} onRefund={onRefund} />
+            <OrdersManager
+              users={users}
+              onRefund={onRefund}
+              token={token || ""}
+              onRefresh={onRefresh}
+            />
           )}
 
           {tab === "devotees" && (
             <AdminDevoteesTab
               users={users}
-              onSelectDevotee={setSelectedDevotee}
+              onSelectDevotee={(u, tab = "overview") => {
+                setSelectedDevotee(u);
+                setSelectedDevoteeTab(tab);
+              }}
               onResetPassword={onResetPassword}
               onDeleteUser={onDeleteUser}
             />
@@ -153,8 +167,12 @@ export default function AdminDashboard({
         <CustomerProfileModal
           user={selectedDevotee}
           token={token || ""}
+          initialTab={selectedDevoteeTab}
           onClose={() => setSelectedDevotee(null)}
-          onUserUpdated={() => onRefresh()}
+          onUserUpdated={(updatedUser) => {
+            setSelectedDevotee(updatedUser);
+            onRefresh();
+          }}
           onRefund={onRefund}
           onDelete={onDeleteUser}
           onResetPassword={async (phone, newPass) => {

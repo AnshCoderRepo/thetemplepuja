@@ -5,12 +5,14 @@ import { Suspense, useEffect } from "react";
 import {
   Calendar,
   Clock,
+  ExternalLink,
   MapPin,
   Sparkles,
   CheckCircle2,
   ChevronRight,
   ArrowRight,
   ShieldCheck,
+  Video,
 } from "lucide-react";
 import { useBookingModal, useI18n } from "@/components/providers";
 import { PoojaCatalog, useCatalog } from "@/features/catalog";
@@ -162,6 +164,50 @@ function ServiceInner({ service }: { service: string }) {
                 )}
               </div>
             </div>
+
+            {/* Live Ceremony Stream or Calming Pre-Live Notice */}
+            {pooja.online !== false && (
+              pooja.liveStreamUrl ? (
+                <a
+                  href={pooja.liveStreamUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-bold shadow-lg shadow-red-600/20 hover:scale-[1.01] hover:from-red-500 hover:to-rose-500 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-3.5 w-3.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-white"></span>
+                    </span>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-rose-200 font-bold">
+                        Live Ceremony Broadcast
+                      </div>
+                      <div className="text-sm font-extrabold flex items-center gap-1.5">
+                        Watch Live Pooja Ceremony <ExternalLink className="h-3.5 w-3.5" />
+                      </div>
+                    </div>
+                  </div>
+                  <span className="rounded-xl bg-white/20 px-3 py-1.5 text-xs font-bold backdrop-blur group-hover:bg-white/30 transition-colors">
+                    Join Live ↗
+                  </span>
+                </a>
+              ) : (
+                <div className="rounded-2xl border border-amber-200/90 bg-gradient-to-r from-amber-50/95 via-saffron-50/60 to-amber-50/90 p-4 text-xs text-amber-950 flex items-start gap-3 shadow-soft">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 text-lg shadow-xs">
+                    🪔
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-amber-950 text-sm">
+                      We will be live at the time of puja. So stay relaxed.
+                    </p>
+                    <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                      The live ceremony link will be enabled here and shared directly with you on WhatsApp prior to the scheduled muhurat.
+                    </p>
+                  </div>
+                </div>
+              )
+            )}
 
             {/* Sacred Guarantee Points Below Banner */}
             <div className="rounded-2xl border border-saffron-200/80 bg-white p-4 shadow-soft space-y-2.5">

@@ -12,14 +12,29 @@ import {
   Filter,
   MapPin,
   Phone,
+  Play,
   Printer,
   Search,
   ShieldCheck,
+  Trash2,
   User,
+  Video,
   X,
 } from "lucide-react";
-import type { BookingRecord, UserProfile } from "@/lib/storage";
+import type { BookingRecord, CustomerMediaRecord, UserProfile } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
+
+function getYouTubeEmbedUrl(url: string): string | null {
+  try {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11
+      ? `https://www.youtube.com/embed/${match[2]}?autoplay=1`
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 interface FlatBooking {
   booking: BookingRecord;
@@ -29,9 +44,13 @@ interface FlatBooking {
 export default function BookingsTable({
   users,
   onRefund,
+  token,
+  onRefresh,
 }: {
   users: UserProfile[];
   onRefund: (userId: string, bookingId: string) => void;
+  token?: string;
+  onRefresh?: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -39,6 +58,101 @@ export default function BookingsTable({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
+
+  // Video Management State
+  const [videoModalBooking, setVideoModalBooking] = useState<FlatBooking | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
+  const [videoDesc, setVideoDesc] = useState("");
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoMsg, setVideoMsg] = useState("");
+  const [videoErr, setVideoErr] = useState("");
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+
+  const openVideoModal = (flat: FlatBooking) => {
+    setVideoModalBooking(flat);
+    setVideoTitle(`${flat.booking.poojaTitle} Sacred Puja Video & Darshan`);
+    setVideoUrl("");
+    setVideoDesc("");
+    setVideoMsg("");
+    setVideoErr("");
+    setPreviewVideoUrl(null);
+  };
+
+  const handleAddVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoModalBooking) return;
+    setVideoMsg("");
+    setVideoErr("");
+
+    if (!videoUrl.trim() || !videoTitle.trim()) {
+      setVideoErr("Please provide both video URL and title.");
+      return;
+    }
+
+    setVideoLoading(true);
+    try {
+      const res = await fetch("/api/devotee/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: videoModalBooking.user.id,
+          phone: videoModalBooking.user.phone,
+          bookingId: videoModalBooking.booking.bookingId,
+          media: {
+            title: videoTitle.trim(),
+            url: videoUrl.trim(),
+            description: videoDesc.trim() || undefined,
+            poojaTitle: videoModalBooking.booking.poojaTitle,
+            bookingId: videoModalBooking.booking.bookingId,
+          },
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setVideoLoading(false);
+
+      if (res.ok && data.ok) {
+        setVideoMsg("Puja video link attached to devotee account successfully!");
+        setVideoUrl("");
+        setVideoDesc("");
+        onRefresh?.();
+        setTimeout(() => {
+          setVideoModalBooking(null);
+          setVideoMsg("");
+        }, 1200);
+      } else {
+        setVideoErr(data.error || "Failed to attach video.");
+      }
+    } catch {
+      setVideoLoading(false);
+      setVideoErr("Network error while attaching video.");
+    }
+  };
+
+  const handleDeleteVideo = async (mediaId: string) => {
+    if (!videoModalBooking) return;
+    if (!confirm("Are you sure you want to remove this video recording from the devotee's account?")) return;
+    try {
+      const res = await fetch("/api/devotee/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          userId: videoModalBooking.user.id,
+          phone: videoModalBooking.user.phone,
+          mediaId,
+        }),
+      });
+      if (res.ok) {
+        onRefresh?.();
+        if (videoModalBooking.booking.videos) {
+          videoModalBooking.booking.videos = videoModalBooking.booking.videos.filter((v) => v.id !== mediaId);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   // Flatten strictly confirmed/rescheduled bookings
   const successfulBookings = useMemo(() => {
@@ -304,14 +418,31 @@ export default function BookingsTable({
                           {booking.status === "rescheduled" ? "Rescheduled" : "Confirmed"}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap space-x-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openVideoModal({ booking, user })}
+                          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                            (booking.videos && booking.videos.length > 0)
+                              ? "border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                              : "border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                          }`}
+                          title="Attach or manage video recording link for devotee account"
+                        >
+                          <Video className="h-3.5 w-3.5" />
+                          {booking.videos && booking.videos.length > 0 ? (
+                            <span>📹 {booking.videos.length} Video{booking.videos.length > 1 ? "s" : ""}</span>
+                          ) : (
+                            <span>+ Video</span>
+                          )}
+                        </button>
                         <button
                           type="button"
                           onClick={() => setSelectedBooking({ booking, user })}
-                          className="inline-flex items-center gap-1 rounded-lg border border-saffron-200 bg-saffron-50 px-2.5 py-1 text-xs font-semibold text-saffron-700 hover:bg-saffron-100"
+                          className="inline-flex items-center gap-1 rounded-lg border border-saffron-200 bg-saffron-50 px-2.5 py-1 text-xs font-semibold text-saffron-700 hover:bg-saffron-100 cursor-pointer"
                         >
                           <Eye className="h-3.5 w-3.5" />
-                          View Receipt
+                          Receipt
                         </button>
                       </td>
                     </tr>
@@ -454,6 +585,219 @@ export default function BookingsTable({
                 Close Receipt
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Management Modal */}
+      {videoModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div
+            className="fixed inset-0"
+            onClick={() => setVideoModalBooking(null)}
+          />
+          <div className="relative w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl z-10 border border-saffron-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-saffron-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-100 text-saffron-700 font-bold">
+                  <Video className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="font-display font-bold text-ink text-base">
+                    Devotee Puja Video Recording
+                  </h3>
+                  <p className="text-[11px] text-ink-soft">
+                    {videoModalBooking.user.name} ({videoModalBooking.user.phone}) · Ref {videoModalBooking.booking.bookingId}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVideoModalBooking(null)}
+                className="text-ink-soft/60 hover:text-ink transition-colors p-1 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Existing Videos List */}
+            {(() => {
+              const attachedVideos = [
+                ...(videoModalBooking.booking.videos || []),
+                ...(videoModalBooking.user.videos || []).filter(
+                  (v) => v.bookingId === videoModalBooking.booking.bookingId
+                ),
+              ].filter((v, idx, arr) => arr.findIndex((x) => x.id === v.id) === idx);
+
+              if (attachedVideos.length === 0) return null;
+
+              return (
+                <div className="rounded-2xl border border-saffron-200 bg-saffron-50/50 p-3.5 space-y-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-900 block">
+                    Attached Videos in Devotee Account ({attachedVideos.length})
+                  </span>
+                  <div className="space-y-2">
+                    {attachedVideos.map((v) => (
+                      <div
+                        key={v.id}
+                        className="rounded-xl border border-saffron-100 bg-white p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-bold text-ink flex items-center gap-1.5 truncate">
+                            📹 {v.title}
+                          </p>
+                          {v.description && (
+                            <p className="text-[11px] text-ink-soft mt-0.5 truncate">
+                              {v.description}
+                            </p>
+                          )}
+                          <a
+                            href={v.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-saffron-600 hover:underline truncate block mt-0.5"
+                          >
+                            {v.url}
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewVideoUrl(v.url)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-saffron-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-saffron-600 cursor-pointer"
+                          >
+                            <Play className="h-3 w-3 fill-current" /> Preview
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteVideo(v.id)}
+                            className="rounded-lg border border-red-200 bg-red-50 p-1 text-red-600 hover:bg-red-100 cursor-pointer"
+                            title="Remove video"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Video Preview Box */}
+            {previewVideoUrl && (
+              <div className="rounded-2xl overflow-hidden border border-slate-800 bg-black p-2 space-y-2">
+                <div className="flex items-center justify-between text-white text-xs px-2 pt-1">
+                  <span>Video Preview</span>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewVideoUrl(null)}
+                    className="text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    Close Preview
+                  </button>
+                </div>
+                <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
+                  {getYouTubeEmbedUrl(previewVideoUrl) ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(previewVideoUrl)!}
+                      title="Preview"
+                      className="h-full w-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="text-center p-4 text-white text-xs space-y-2">
+                      <p>Direct video link preview:</p>
+                      <a
+                        href={previewVideoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-saffron-500 px-3 py-1.5 font-bold text-white"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" /> Open Link in New Tab
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Form to attach a new video link */}
+            <form onSubmit={handleAddVideo} className="space-y-3.5 pt-1">
+              <span className="text-xs font-bold text-ink block">
+                + Attach New Video Link to Devotee Account
+              </span>
+
+              <div>
+                <label className="block text-[11px] font-bold text-ink mb-1">
+                  Video Link URL (YouTube, Vimeo, Google Drive, Zoom, MP4) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://youtu.be/... or Google Drive video link"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  className="w-full rounded-xl border border-saffron-200 px-3.5 py-2 text-xs text-ink outline-none focus:border-saffron-500 focus:ring-2 focus:ring-saffron-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-ink mb-1">
+                  Video Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={videoTitle}
+                  onChange={(e) => setVideoTitle(e.target.value)}
+                  className="w-full rounded-xl border border-saffron-200 px-3.5 py-2 text-xs text-ink outline-none focus:border-saffron-500 focus:ring-2 focus:ring-saffron-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-ink mb-1">
+                  Puja Sankalp & Blessing Notes for Devotee (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Personalized sankalp performed at morning muhurat with Vedic mantras..."
+                  value={videoDesc}
+                  onChange={(e) => setVideoDesc(e.target.value)}
+                  className="w-full rounded-xl border border-saffron-200 px-3.5 py-2 text-xs text-ink outline-none focus:border-saffron-500 focus:ring-2 focus:ring-saffron-200 resize-none"
+                />
+              </div>
+
+              {videoErr && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-600">
+                  ⚠️ {videoErr}
+                </div>
+              )}
+
+              {videoMsg && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-semibold text-emerald-700">
+                  ✅ {videoMsg}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-saffron-100">
+                <button
+                  type="button"
+                  onClick={() => setVideoModalBooking(null)}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={videoLoading}
+                  className="rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-5 py-2 text-xs font-bold text-white shadow-soft hover:from-saffron-600 hover:to-saffron-700 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {videoLoading ? "Attaching Video..." : "Attach Video to Devotee Account"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

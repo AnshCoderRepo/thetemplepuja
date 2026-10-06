@@ -1072,6 +1072,8 @@ export interface Pooja {
   type?: "temple" | "home";
   /** Format: true if livestreamed/online participation is available */
   online?: boolean;
+  /** Live platform link (e.g. YouTube Live, Zoom, Google Meet) */
+  liveStreamUrl?: string;
   /** Primary scheduled date / start date (e.g. "Oct 4, 2026") */
   startDate?: string;
   /** Image URL / Banner */

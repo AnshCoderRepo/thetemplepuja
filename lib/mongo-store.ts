@@ -62,6 +62,9 @@ interface UserDoc extends Document {
   email: string;
   createdAt: string;
   bookings: BookingRecord[];
+  videos?: any[];
+  passwordHash?: string;
+  generatedPassword?: string;
 }
 
 /** The legacy layout (pre per-document migration): one doc holding the array. */
@@ -88,6 +91,9 @@ function toUser(doc: UserDoc): UserProfile {
     email: doc.email,
     createdAt: doc.createdAt,
     bookings: doc.bookings ?? [],
+    videos: doc.videos,
+    passwordHash: doc.passwordHash,
+    generatedPassword: doc.generatedPassword,
   };
 }
 
@@ -216,18 +222,21 @@ export const mongoStore: PersistenceStore = {
   async saveUser(user): Promise<void> {
     const col = await usersCol();
     await migrateUsers(col);
-    // Upsert the profile itself (idempotent, phone-keyed — a first booking
-    // creates the doc with the caller's id, later bookings keep it).
+    const setFields: Record<string, any> = {
+      name: user.name,
+      gotra: user.gotra,
+      city: user.city,
+      email: user.email,
+      updatedAt: new Date().toISOString(),
+    };
+    if (user.passwordHash) setFields.passwordHash = user.passwordHash;
+    if (user.generatedPassword) setFields.generatedPassword = user.generatedPassword;
+    if (user.videos) setFields.videos = user.videos;
+
     await col.updateOne(
       { phone: user.phone },
       {
-        $set: {
-          name: user.name,
-          gotra: user.gotra,
-          city: user.city,
-          email: user.email,
-          updatedAt: new Date().toISOString(),
-        },
+        $set: setFields,
         $setOnInsert: {
           _id: user.id,
           createdAt: user.createdAt,

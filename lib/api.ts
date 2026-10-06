@@ -504,21 +504,37 @@ export async function syncUserFromServer(phone: string): Promise<void> {
  * "confirmed" booking the admin never saw. Only when the server is
  * unreachable does it fall back to saving locally (offline). Never throws. */
 export async function submitBooking(
-  input: BookingInput
-): Promise<{ ok: boolean; status?: number; user?: UserProfile }> {
+  input: BookingInput & {
+    payment?: {
+      razorpayOrderId?: string;
+      razorpayPaymentId?: string;
+      razorpaySignature?: string;
+    };
+  }
+): Promise<{
+  ok: boolean;
+  status?: number;
+  user?: UserProfile;
+  credentials?: { username: string; password?: string };
+}> {
   try {
     const res = await fetch("/api/users/booking", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
-    const body = (await res.json().catch(() => ({}))) as { user?: UserProfile };
+    const body = (await res.json().catch(() => ({}))) as {
+      user?: UserProfile;
+      credentials?: { username: string; password?: string };
+    };
     if (res.ok && body.user) {
       mergeUserFromServer(body.user);
-      return { ok: true, user: body.user };
+      return { ok: true, user: body.user, credentials: body.credentials };
     }
-    // Server reachable but rejected — don't keep a phantom booking locally.
-    removeBooking(input.phone, input.booking.bookingId);
+    // Server reachable but rejected — don't keep a phantom booking locally if it was being confirmed.
+    if (input.booking.status === "confirmed") {
+      removeBooking(input.phone, input.booking.bookingId);
+    }
     return { ok: false, status: res.status };
   } catch {
     const localUser = upsertBooking(input); // offline — saved locally
@@ -623,3 +639,41 @@ export async function refundBookingRemote(
     return { ok: local.ok }; // offline — applied locally
   }
 }
+
+/** Update devotee profile details (name, phone, email, gotra, city, password). Admin action. */
+export async function updateCustomerProfileRemote(
+  userId: string,
+  updates: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    gotra?: string;
+    city?: string;
+    password?: string;
+  },
+  token: string
+): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/users/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userId, ...updates }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      user?: UserProfile;
+      error?: string;
+    };
+    if (res.ok && body.user) {
+      mergeUserFromServer(body.user);
+      return { ok: true, user: body.user };
+    }
+    return { ok: false, error: body.error || "Failed to update devotee profile." };
+  } catch {
+    return { ok: false, error: "Network error while saving changes." };
+  }
+}
+

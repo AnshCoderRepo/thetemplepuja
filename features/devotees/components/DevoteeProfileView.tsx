@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Play, Video } from "lucide-react";
-import { PoojaExperience } from "@/features/catalog";
 import { cancelBookingRemote, rescheduleBookingRemote } from "@/features/bookings";
 import { fetchUserByPhone } from "../api/devoteeApi";
 import type { BookingRecord, UserProfile } from "@/lib/storage";
@@ -117,38 +116,6 @@ export default function DevoteeProfileView() {
         <div className="h-64 animate-pulse rounded-3xl bg-saffron-100/60" />
       ) : profile ? (
         <>
-          <PoojaExperience
-            title="Your Pooja Experience"
-            date={
-              profile.bookings[profile.bookings.length - 1]?.poojaTitle ??
-              "Live Aarti at the Mandir"
-            }
-            scrollHint="Scroll to reveal your pooja experience"
-          >
-            <div className="mx-auto max-w-3xl text-center">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-amber-200 backdrop-blur">
-                🙏 Your Ritual, Live
-              </span>
-              <h3 className="mt-6 font-display text-3xl font-bold text-white md:text-4xl">
-                This is what your pooja looks like
-              </h3>
-              <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-cream/70 md:text-base">
-                Certified pandits perform every ritual with the same Vedic
-                chants, sacred lamps and devotion you see here. After your
-                pooja is performed, your HD video recording is shared with
-                you on WhatsApp — so you can relive the blessings anytime.
-              </p>
-              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <Link href="/book/form" className="btn-primary">
-                  🪔 Book Another Pooja
-                </Link>
-                <Link href="/book" className="btn-outline">
-                  Browse All Poojas
-                </Link>
-              </div>
-            </div>
-          </PoojaExperience>
-
           <DevoteeProfileCard profile={profile} />
 
           {profile.videos && profile.videos.length > 0 && (
@@ -238,6 +205,7 @@ export default function DevoteeProfileView() {
             onConfirmCancel={handleCancel}
             onDismissCancel={() => setConfirmCancelId(null)}
             inputCls={inputCls}
+            onRefresh={() => refresh(profile.phone)}
           />
 
           <p className="mt-8 rounded-2xl bg-saffron-50 px-5 py-4 text-center text-xs leading-relaxed text-ink-soft">
