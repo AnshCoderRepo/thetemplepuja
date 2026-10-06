@@ -385,6 +385,7 @@ export default function BookingFlow({
     }
 
     const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+    const userEmail = `${cleanPhone}@templepujasewa.com`;
     const primaryName =
       selectedTier === "single"
         ? name.trim()
@@ -392,7 +393,77 @@ export default function BookingFlow({
         ? `${name.trim()} & ${partnerName.trim()}`
         : `${familyMembers[0]?.name.trim() || "Devotee"} & Family (${familyMembers.length} Members)`;
 
+    const primaryGotra =
+      selectedTier === "single"
+        ? gotra.trim() || "Kashyap"
+        : selectedTier === "couple"
+        ? gotra.trim() === partnerGotra.trim()
+          ? gotra.trim()
+          : `${gotra.trim()} / ${partnerGotra.trim()}`
+        : familyMembers[0]?.gotra.trim() || "Kashyap";
+
+    const devoteesList: DevoteeMember[] =
+      selectedTier === "single"
+        ? [{ name: name.trim(), gotra: gotra.trim() || "Kashyap" }]
+        : selectedTier === "couple"
+        ? [
+            { name: name.trim(), gotra: gotra.trim() || "Kashyap" },
+            { name: partnerName.trim(), gotra: partnerGotra.trim() || "Kashyap" },
+          ]
+        : familyMembers.map((m) => ({
+            name: m.name.trim(),
+            gotra: m.gotra.trim() || "Kashyap",
+          }));
+
+    const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
+    const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
+    const temple = getTempleForPooja(selectedPooja, temples);
+
+    // Unique booking ID created upfront so pending -> failed -> confirmed lifecycle is linked
+    const activeBookingId = "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const activeReceiptNum = generateReceiptNumber(activeBookingId);
+
+    const pendingBookingRecord: BookingRecord = {
+      bookingId: activeBookingId,
+      receiptNumber: activeReceiptNum,
+      poojaSlug: selectedPooja?.slug || prayerSlug,
+      poojaTitle: selectedPooja?.title || "Sacred Pooja",
+      templeSlug: temple?.slug || "thetemplepuja",
+      templeName: temple?.name || SITE_CONFIG.brandName,
+      date: finalDate,
+      time: finalTime,
+      panditName: "Acharya Ji (Vedic Purohit)",
+      reason: "General Well-being & Divine Blessings",
+      packageTier: selectedTier,
+      gotra: primaryGotra,
+      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
+      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      devotees: devoteesList,
+      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      amount: finalTotal,
+      discount,
+      couponCode: appliedCoupon?.code ?? null,
+      addonCount: addonItems.length,
+      addons: addonItems,
+      createdAt: new Date().toISOString(),
+      status: "pending",
+    };
+
     setIsProcessingPayment(true);
+
+    // Record pending booking immediately in database and client storage so admin orders/analytics reflects it
+    try {
+      await submitBooking({
+        name: primaryName,
+        phone: cleanPhone,
+        gotra: primaryGotra,
+        city: temple?.city || "India",
+        email: userEmail,
+        booking: pendingBookingRecord,
+      });
+    } catch {
+      // Handled in storage layer fallback
+    }
 
     try {
       const orderResult = await createRazorpayOrderRemote({
@@ -404,13 +475,15 @@ export default function BookingFlow({
       });
 
       if (orderResult.configured && orderResult.orderId && orderResult.keyId) {
+        pendingBookingRecord.razorpayOrderId = orderResult.orderId;
+
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
           setIsProcessingPayment(false);
           setFormError("Razorpay could not load. Please check your internet connection.");
           return;
         }
-        const Rzp = (window as unknown as { Razorpay: new (o: object) => { open: () => void } }).Razorpay;
+        const Rzp = (window as unknown as { Razorpay: new (o: object) => any }).Razorpay;
         if (!Rzp) {
           setIsProcessingPayment(false);
           setFormError("Razorpay could not be initialized. Please try again.");
@@ -430,8 +503,26 @@ export default function BookingFlow({
           },
           theme: { color: "#0b245b" },
           modal: {
-            ondismiss: () => {
+            ondismiss: async () => {
               setIsProcessingPayment(false);
+              setFormError("Payment was cancelled or closed. You can retry paying whenever you are ready.");
+              const dismissedRecord: BookingRecord = {
+                ...pendingBookingRecord,
+                status: "failed",
+                failureReason: "Payment dismissed or cancelled by devotee at gateway",
+              };
+              try {
+                await submitBooking({
+                  name: primaryName,
+                  phone: cleanPhone,
+                  gotra: primaryGotra,
+                  city: temple?.city || "India",
+                  email: userEmail,
+                  booking: dismissedRecord,
+                });
+              } catch {
+                // Handled in storage layer fallback
+              }
             },
           },
           handler: async (response: {
@@ -449,7 +540,7 @@ export default function BookingFlow({
             }
 
             await handlePaymentSuccess(
-              "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+              activeBookingId,
               {
                 razorpayOrderId: orderId,
                 razorpayPaymentId: paymentId,
@@ -468,6 +559,39 @@ export default function BookingFlow({
           },
         });
 
+        // Listen for gateway payment failure events and link to admin dashboard
+        if (typeof rzp.on === "function") {
+          rzp.on("payment.failed", async (response: any) => {
+            setIsProcessingPayment(false);
+            const failureDesc =
+              response?.error?.description ||
+              response?.error?.reason ||
+              "Payment declined or failed at bank/UPI";
+            setFormError(`Payment failed: ${failureDesc}`);
+
+            const failedRecord: BookingRecord = {
+              ...pendingBookingRecord,
+              status: "failed",
+              failureReason: failureDesc,
+              razorpayOrderId: response?.error?.metadata?.order_id || orderResult.orderId,
+              razorpayPaymentId: response?.error?.metadata?.payment_id,
+            };
+
+            try {
+              await submitBooking({
+                name: primaryName,
+                phone: cleanPhone,
+                gotra: primaryGotra,
+                city: temple?.city || "India",
+                email: userEmail,
+                booking: failedRecord,
+              });
+            } catch {
+              // Handled in storage layer fallback
+            }
+          });
+        }
+
         rzp.open();
         return;
       }
@@ -481,7 +605,7 @@ export default function BookingFlow({
       // Demo mode fallback — simulate 1s processing and complete booking
       setTimeout(async () => {
         await handlePaymentSuccess(
-          "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          activeBookingId,
           undefined,
           {
             amount: finalTotal,
@@ -577,15 +701,21 @@ export default function BookingFlow({
     const cleanPhone = phone.replace(/\D/g, "").slice(-10);
     const userEmail = `${cleanPhone}@templepujasewa.com`;
 
+    let finalPassword = generatedPassword;
     try {
-      await submitBooking({
+      const submitRes = await submitBooking({
         name: primaryName,
         phone: cleanPhone,
         gotra: primaryGotra,
         city: temple?.city || "India",
         email: userEmail,
         booking: newBookingRecord,
+        payment,
+        generatedPassword,
       });
+      if (submitRes?.credentials?.password) {
+        finalPassword = submitRes.credentials.password;
+      }
     } catch {
       // Handled in storage layer fallback
     }
@@ -613,7 +743,7 @@ export default function BookingFlow({
       familyMembers: selectedTier === "family" ? devoteesList : undefined,
       credentials: {
         username: cleanPhone,
-        password: generatedPassword,
+        password: finalPassword,
         email: userEmail,
       },
     });

@@ -75,6 +75,21 @@ describe("message builders", () => {
     expect(withCoupon).not.toContain("View your receipt");
   });
 
+  it("devoteeBookingAlertText includes devotee credentials when provided", () => {
+    const withCreds = devoteeBookingAlertText({
+      ...info,
+      credentials: {
+        username: "9876543210",
+        password: "Pass1234Secure",
+        loginUrl: "https://thetemplepuja.com/login",
+      },
+    });
+    expect(withCreds).toContain("Devotee Portal Login Credentials");
+    expect(withCreds).toContain("9876543210");
+    expect(withCreds).toContain("Pass1234Secure");
+    expect(withCreds).toContain("https://thetemplepuja.com/login");
+  });
+
   it("devoteeCancelAlertText mentions the refund and rebooking", () => {
     const t = devoteeCancelAlertText(info);
     expect(t).toContain("cancelled as requested");

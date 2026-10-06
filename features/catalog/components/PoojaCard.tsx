@@ -46,12 +46,19 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
           <span suppressHydrationWarning>{schedule.date}</span>
         </span>
 
-        {/* Newly Added badge */}
-        {isNewlyAdded && (
-          <span className="absolute bottom-3 left-3.5 rounded-full bg-emerald-600/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur shadow-xs">
-            ✨ New
-          </span>
-        )}
+        <div className="absolute bottom-3 left-3.5 flex items-center gap-1.5">
+          {p.online !== false && (
+            <span className="rounded-full bg-rose-600/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur shadow-xs flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+              Live Broadcast
+            </span>
+          )}
+          {isNewlyAdded && (
+            <span className="rounded-full bg-emerald-600/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur shadow-xs">
+              ✨ New
+            </span>
+          )}
+        </div>
 
         <span className="text-5xl transition-transform duration-300 group-hover:scale-110">
           {p.emoji}

@@ -264,6 +264,18 @@ export async function getAllUsers(): Promise<UserProfile[]> {
     await Promise.all(DEMO_USERS.map((u) => withFallback((s) => s.saveUser(u))));
     return DEMO_USERS;
   }
+  // Ensure the dedicated test devotee 7070410031 is seeded if missing (in normal app runtime)
+  const isTestEnv = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
+  if (!isTestEnv) {
+    const hasTestUser = users.some((u) => u.phone === "7070410031");
+    if (!hasTestUser) {
+      const testUser = DEMO_USERS.find((u) => u.phone === "7070410031");
+      if (testUser) {
+        await withFallback((s) => s.saveUser(testUser));
+        users.push(testUser);
+      }
+    }
+  }
   return users;
 }
 
@@ -272,7 +284,65 @@ export async function getAllUsers(): Promise<UserProfile[]> {
 export async function findUserByPhone(
   phone: string
 ): Promise<UserProfile | undefined> {
-  return withFallback((s) => s.findUserByPhone(phone));
+  const found = await withFallback((s) => s.findUserByPhone(phone));
+  const isTestEnv = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
+  if (!found && phone === "7070410031" && !isTestEnv) {
+    const testUser = DEMO_USERS.find((u) => u.phone === "7070410031");
+    if (testUser) {
+      await withFallback((s) => s.saveUser(testUser));
+      return testUser;
+    }
+  }
+  return found;
+}
+
+/** Update a devotee profile (name, phone, email, gotra, city, password). Admin action. */
+export async function updateUserProfile(
+  userIdOrPhone: string,
+  updates: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    gotra?: string;
+    city?: string;
+    password?: string;
+  }
+): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+  const user = await withFallback(async (s) => {
+    const byId = await s.findUserById(userIdOrPhone);
+    if (byId) return byId;
+    return s.findUserByPhone(userIdOrPhone);
+  });
+  if (!user) return { ok: false, error: "Devotee profile not found." };
+
+  if (updates.name && updates.name.trim()) {
+    user.name = updates.name.trim();
+  }
+  if (updates.gotra !== undefined) {
+    user.gotra = updates.gotra.trim();
+  }
+  if (updates.city !== undefined) {
+    user.city = updates.city.trim();
+  }
+  if (updates.email !== undefined) {
+    user.email = updates.email.trim();
+  }
+  if (updates.phone && updates.phone.trim() && updates.phone.trim() !== user.phone) {
+    const newPhone = updates.phone.trim();
+    const existing = await withFallback((s) => s.findUserByPhone(newPhone));
+    if (existing && existing.id !== user.id) {
+      return { ok: false, error: "Another devotee with this mobile number already exists." };
+    }
+    user.phone = newPhone;
+  }
+  if (updates.password && updates.password.trim()) {
+    const pass = updates.password.trim();
+    user.passwordHash = await hashPassword(pass);
+    user.generatedPassword = pass;
+  }
+
+  await withFallback((s) => s.saveUser(user));
+  return { ok: true, user };
 }
 
 /** Public receipt lookup: find one booking anywhere in the store by its
@@ -366,7 +436,17 @@ export async function refundUserBooking(
   return { ok: true, user: users[0] };
 }
 
-// ===================== USER PASSWORD (FORGOT PASSWORD) =====================
+// ===================== USER PASSWORD & CREDENTIALS =====================
+
+/** Generate a readable random password for automatic devotee account creation. */
+export function generateRandomPassword(length = 8): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let pass = "";
+  for (let i = 0; i < length; i++) {
+    pass += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pass;
+}
 
 /** Alias for findUserByPhone — used by forgot-password flow. */
 export async function getUserByPhone(
@@ -375,39 +455,51 @@ export async function getUserByPhone(
   return findUserByPhone(phone);
 }
 
-/** Update a user's password hash. Stores it in the user's email field as
- *  `pw:<hash>` — a lightweight extension that doesn't break existing readers
- *  since the email field is already optional in UserProfile. */
+/** Update a user's password hash and optionally store plain/generated password for reference. */
 export async function updateUserPassword(
   phone: string,
-  passwordHash: string
+  passwordHash: string,
+  plainPassword?: string
 ): Promise<void> {
   const user = await findUserByPhone(phone);
   if (!user) return;
-  // Store the password hash in a dedicated field using a convention:
-  // we prepend the hash with 'pw:' in the email field to keep it
-  // backwards-compatible. The login flow checks for this prefix.
-  user.email = `pw:${passwordHash}`;
+  user.passwordHash = passwordHash;
+  if (plainPassword) {
+    user.generatedPassword = plainPassword;
+  }
+  // Backwards-compatibility with legacy readers that check email
+  if (!user.email || user.email.startsWith("pw:") || user.email.includes("@templepujasewa.com")) {
+    user.email = `pw:${passwordHash}`;
+  }
   await withFallback((s) => s.saveUser(user));
 }
 
-/** Verify a devotee's password against their stored hash. */
+/** Verify a devotee's password against their stored hash (supports both modern field & legacy prefix). */
 export async function verifyUserPassword(
   phone: string,
   password: string
 ): Promise<boolean> {
   const user = await findUserByPhone(phone);
-  if (!user || !user.email || !user.email.startsWith("pw:")) {
-    return false; // no password set — mobile-only login
+  if (!user) return false;
+
+  // 1. Modern dedicated field
+  if (user.passwordHash) {
+    return verifyPassword(password, user.passwordHash);
   }
-  const storedHash = user.email.slice(3); // remove 'pw:' prefix
-  return verifyPassword(password, storedHash);
+
+  // 2. Legacy email field prefix
+  if (user.email && user.email.startsWith("pw:")) {
+    const storedHash = user.email.slice(3); // remove 'pw:' prefix
+    return verifyPassword(password, storedHash);
+  }
+
+  return false; // no password set
 }
 
 /** Check if a user has a password set. */
 export async function userHasPassword(phone: string): Promise<boolean> {
   const user = await findUserByPhone(phone);
-  return Boolean(user?.email?.startsWith("pw:"));
+  return Boolean(user?.passwordHash || user?.email?.startsWith("pw:"));
 }
 
 // ===================== CUSTOMER MEDIA & VIDEOS =====================
@@ -423,7 +515,11 @@ export async function addCustomerMediaRecord(
     bookingId?: string;
   }
 ): Promise<{ ok: boolean; user?: UserProfile }> {
-  const user = await withFallback((s) => s.findUserById(userId));
+  const user = await withFallback(async (s) => {
+    const byId = await s.findUserById(userId);
+    if (byId) return byId;
+    return s.findUserByPhone(userId);
+  });
   if (!user) return { ok: false };
   const record: CustomerMediaRecord = {
     id: "vid_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
@@ -450,7 +546,11 @@ export async function deleteCustomerMediaRecord(
   userId: string,
   mediaId: string
 ): Promise<{ ok: boolean; user?: UserProfile }> {
-  const user = await withFallback((s) => s.findUserById(userId));
+  const user = await withFallback(async (s) => {
+    const byId = await s.findUserById(userId);
+    if (byId) return byId;
+    return s.findUserByPhone(userId);
+  });
   if (!user) return { ok: false };
   user.videos = (user.videos || []).filter((v) => v.id !== mediaId);
   for (const b of user.bookings) {

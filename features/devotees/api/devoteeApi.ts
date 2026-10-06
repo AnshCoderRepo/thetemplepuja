@@ -170,3 +170,6 @@ export async function deleteCustomerMediaRemote(
     return { ok: false, error: "Network error" };
   }
 }
+
+export { updateCustomerProfileRemote } from "@/lib/api";
+

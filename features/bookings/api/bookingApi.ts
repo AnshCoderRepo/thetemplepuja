@@ -10,20 +10,36 @@ import {
 } from "@/lib/storage";
 
 export async function submitBooking(
-  input: BookingInput
-): Promise<{ ok: boolean; status?: number; user?: UserProfile }> {
+  input: BookingInput & {
+    payment?: {
+      razorpayOrderId?: string;
+      razorpayPaymentId?: string;
+      razorpaySignature?: string;
+    };
+  }
+): Promise<{
+  ok: boolean;
+  status?: number;
+  user?: UserProfile;
+  credentials?: { username: string; password?: string };
+}> {
   try {
     const res = await fetch("/api/users/booking", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
-    const body = (await res.json().catch(() => ({}))) as { user?: UserProfile };
+    const body = (await res.json().catch(() => ({}))) as {
+      user?: UserProfile;
+      credentials?: { username: string; password?: string };
+    };
     if (res.ok && body.user) {
       mergeUserFromServer(body.user);
-      return { ok: true, user: body.user };
+      return { ok: true, user: body.user, credentials: body.credentials };
     }
-    removeBooking(input.phone, input.booking.bookingId);
+    if (input.booking.status === "confirmed") {
+      removeBooking(input.phone, input.booking.bookingId);
+    }
     return { ok: false, status: res.status };
   } catch {
     const localUser = upsertBooking(input);

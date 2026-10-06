@@ -51,10 +51,10 @@ function bookingInput(phone = "9876543210", bookingId = "BK1001") {
 describe("devotee store", () => {
   it("seeds the demo devotees when the store is empty", async () => {
     const users = await store.getAllUsers();
-    expect(users).toHaveLength(4);
+    expect(users).toHaveLength(5);
     expect(users[0].name).toBe("Aarav Sharma");
     // Seeded data is persisted — a second read returns it without re-seeding.
-    expect(await store.getAllUsers()).toHaveLength(4);
+    expect(await store.getAllUsers()).toHaveLength(5);
   });
 
   it("does not re-seed once a booking exists", async () => {
@@ -164,5 +164,20 @@ describe("admin actions (server)", () => {
     expect(res.user?.bookings[0].refundedAt).toBeTruthy();
     // Refunded bookings cannot be refunded again
     expect((await store.refundUserBooking(user.id, "BK1")).ok).toBe(false);
+  });
+});
+
+describe("devotee passwords & credentials", () => {
+  it("generates random password and verifies it once hashed", async () => {
+    const rawPass = store.generateRandomPassword(10);
+    expect(rawPass).toHaveLength(10);
+
+    const hash = await store.hashPassword(rawPass);
+    await store.upsertUserBooking(bookingInput("9812345670", "BK1"));
+    await store.updateUserPassword("9812345670", hash, rawPass);
+
+    expect(await store.userHasPassword("9812345670")).toBe(true);
+    expect(await store.verifyUserPassword("9812345670", rawPass)).toBe(true);
+    expect(await store.verifyUserPassword("9812345670", "wrongpass")).toBe(false);
   });
 });

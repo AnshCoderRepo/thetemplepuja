@@ -67,6 +67,9 @@ export function createMemoryStore(): PersistenceStore {
       existing.gotra = user.gotra;
       existing.city = user.city;
       existing.email = user.email;
+      if (user.passwordHash) existing.passwordHash = user.passwordHash;
+      if (user.generatedPassword) existing.generatedPassword = user.generatedPassword;
+      if (user.videos) existing.videos = user.videos;
       return;
     }
     const byId = users.findIndex((u) => u.id === user.id);

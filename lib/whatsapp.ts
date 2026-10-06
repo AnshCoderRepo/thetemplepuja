@@ -37,6 +37,11 @@ export interface BookingAlertInfo {
   reason?: string;
   /** Public receipt link (e.g. https://site/booking/SKABC123?phone=…). */
   receiptUrl?: string;
+  credentials?: {
+    username: string;
+    password?: string;
+    loginUrl?: string;
+  };
 }
 
 function whatsappConfig() {
@@ -108,6 +113,18 @@ export function devoteeBookingAlertText(info: BookingAlertInfo): string {
         )} 🎉`
       : null,
     info.receiptUrl ? `View your receipt: ${info.receiptUrl}` : null,
+    info.credentials?.password
+      ? [
+          "",
+          "🔐 Devotee Portal Login Credentials:",
+          `• Mobile / User ID: ${info.credentials.username}`,
+          `• Generated Password: ${info.credentials.password}`,
+          info.credentials.loginUrl ? `• Login: ${info.credentials.loginUrl}` : null,
+          "(Use these credentials to sign in and view your puja recordings & blessings)",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : null,
     "",
     "Om Shanti 🪔",
     "— templepujasewa",

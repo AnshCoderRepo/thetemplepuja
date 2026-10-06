@@ -118,6 +118,7 @@ export default function AnalyticsDashboard({
       "Discount",
       "Coupon",
       "Status",
+      "Failure Reason",
       "Booking Date",
     ];
     const rows = allBookings.map(({ booking, user }) => [
@@ -131,6 +132,7 @@ export default function AnalyticsDashboard({
       booking.discount || 0,
       `"${booking.couponCode || ""}"`,
       `"${booking.status}"`,
+      `"${booking.failureReason || ""}"`,
       `"${booking.createdAt}"`,
     ]);
     const csvContent =
@@ -336,29 +338,61 @@ export default function AnalyticsDashboard({
         </div>
 
         {/* CONFIRMED BOOKINGS */}
-        <div className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/20 p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-ink-soft tracking-wider uppercase">
+            <span className="text-[11px] font-bold text-emerald-700 tracking-wider uppercase">
               CONFIRMED
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
           <div className="text-2xl font-extrabold text-ink mt-2">{confirmedCount}</div>
-          <div className="text-[10px] text-ink-soft/70 mt-1 truncate">
+          <div className="text-[10px] text-emerald-700 font-semibold mt-1 truncate">
             {stats.conversionRate}% completion rate
           </div>
         </div>
 
-        {/* ADJUSTED / REFUNDED */}
+        {/* PENDING PAYMENT */}
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/30 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-amber-800 tracking-wider uppercase">
+              PENDING
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+              <Clock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-extrabold text-amber-950 mt-2">{stats.pendingBookings}</div>
+          <div className="text-[10px] text-amber-800 font-semibold mt-1 truncate">
+            {formatINR(stats.pendingRevenue)} in pipeline
+          </div>
+        </div>
+
+        {/* PAYMENT FAILED */}
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/30 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-rose-800 tracking-wider uppercase">
+              FAILED
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+              <XCircle className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-extrabold text-rose-950 mt-2">{stats.failedBookings}</div>
+          <div className="text-[10px] text-rose-700 font-semibold mt-1 truncate">
+            {formatINR(stats.failedRevenue)} dropped
+          </div>
+        </div>
+
+        {/* CANCEL / REFUND */}
         <div className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-ink-soft tracking-wider uppercase">
               CANCEL/REFUND
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-              <Clock className="h-4 w-4" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50 text-purple-700">
+              <ShieldAlert className="h-4 w-4" />
             </div>
           </div>
           <div className="text-2xl font-extrabold text-ink mt-2">
@@ -369,51 +403,23 @@ export default function AnalyticsDashboard({
           </div>
         </div>
 
-        {/* TOTAL REVENUE */}
+        {/* REALIZED REVENUE */}
         <div className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-ink-soft tracking-wider uppercase">
-              REVENUE
+              NET REVENUE
             </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <Wallet className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-ink mt-2">
+          <div className="text-2xl font-extrabold text-emerald-900 mt-2">
             {formatINR(stats.totalRevenue)}
           </div>
           <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-1">
             <ArrowUpRight className="h-3 w-3" />
             {stats.revenueGrowthPct >= 0 ? `+${stats.revenueGrowthPct}%` : `${stats.revenueGrowthPct}%`}
           </div>
-        </div>
-
-        {/* ACTIVE PUJAS */}
-        <div className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-ink-soft tracking-wider uppercase">
-              ACTIVE PUJAS
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <Flame className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-ink mt-2">{activePoojaCount}</div>
-          <div className="text-[10px] text-ink-soft/70 mt-1">Catalog services</div>
-        </div>
-
-        {/* TEMPLES */}
-        <div className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-ink-soft tracking-wider uppercase">
-              TEMPLES
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-50 text-pink-600">
-              <MapPin className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-ink mt-2">{activeTempleCount}</div>
-          <div className="text-[10px] text-ink-soft/70 mt-1">Pilgrimage sites</div>
         </div>
       </div>
 
@@ -571,6 +577,157 @@ export default function AnalyticsDashboard({
             </div>
           </div>
 
+          {/* Booking & Payment Conversion Funnel */}
+          <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-100 text-purple-700">
+                    <Activity className="h-3.5 w-3.5" />
+                  </div>
+                  <h3 className="text-sm font-bold text-ink">Booking & Payment Conversion Funnel</h3>
+                </div>
+                <p className="text-xs text-ink-soft mt-0.5">
+                  Live tracking from initiated devotee booking through payment gateway completion
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                  {stats.conversionRate}% Conversion Rate
+                </span>
+              </div>
+            </div>
+
+            {/* Funnel Segmented Progress Bar */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex h-3.5 w-full rounded-full overflow-hidden bg-cream p-0.5 shadow-inner">
+                {allBookings.length > 0 ? (
+                  <>
+                    <div
+                      title={`Confirmed: ${confirmedCount}`}
+                      className="h-full bg-emerald-500 rounded-l-full transition-all duration-500"
+                      style={{
+                        width: `${Math.max(
+                          2,
+                          Math.round((confirmedCount / allBookings.length) * 100)
+                        )}%`,
+                      }}
+                    />
+                    <div
+                      title={`Pending Payment: ${stats.pendingBookings}`}
+                      className="h-full bg-amber-400 transition-all duration-500"
+                      style={{
+                        width: `${
+                          stats.pendingBookings > 0
+                            ? Math.max(
+                                2,
+                                Math.round((stats.pendingBookings / allBookings.length) * 100)
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    />
+                    <div
+                      title={`Payment Failed: ${stats.failedBookings}`}
+                      className="h-full bg-rose-500 transition-all duration-500"
+                      style={{
+                        width: `${
+                          stats.failedBookings > 0
+                            ? Math.max(
+                                2,
+                                Math.round((stats.failedBookings / allBookings.length) * 100)
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    />
+                    <div
+                      title={`Cancelled/Refunded: ${cancelledAndRefunded}`}
+                      className="h-full bg-slate-400 rounded-r-full transition-all duration-500"
+                      style={{
+                        width: `${
+                          cancelledAndRefunded > 0
+                            ? Math.max(
+                                2,
+                                Math.round((cancelledAndRefunded / allBookings.length) * 100)
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div className="h-full w-full bg-slate-200 rounded-full" />
+                )}
+              </div>
+              <div className="flex flex-wrap items-center justify-between text-[11px] text-ink-soft gap-2 pt-1 font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
+                  <span>Confirmed ({confirmedCount})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400 inline-block" />
+                  <span>Pending Payment ({stats.pendingBookings})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500 inline-block" />
+                  <span>Payment Failed ({stats.failedBookings})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-400 inline-block" />
+                  <span>Cancelled/Refunded ({cancelledAndRefunded})</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Funnel Metric Tiles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-100 space-y-1">
+                <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
+                  <span>🟢 Successful & Paid</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="text-xl font-extrabold text-emerald-950">{confirmedCount} Orders</div>
+                <div className="text-[11px] font-semibold text-emerald-700">
+                  {formatINR(stats.totalRevenue)} Realized
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-100 space-y-1">
+                <div className="flex items-center justify-between text-xs font-bold text-amber-800">
+                  <span>⏳ Pending Gateway</span>
+                  <Clock className="h-4 w-4 text-amber-600" />
+                </div>
+                <div className="text-xl font-extrabold text-amber-950">{stats.pendingBookings} In Checkout</div>
+                <div className="text-[11px] font-semibold text-amber-700">
+                  {formatINR(stats.pendingRevenue)} Pipeline Value
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-100 space-y-1">
+                <div className="flex items-center justify-between text-xs font-bold text-rose-800">
+                  <span>❌ Payment Failed</span>
+                  <XCircle className="h-4 w-4 text-rose-600" />
+                </div>
+                <div className="text-xl font-extrabold text-rose-950">{stats.failedBookings} Dropped</div>
+                <div className="text-[11px] font-semibold text-rose-700">
+                  {formatINR(stats.failedRevenue)} Lost / Re-attempt
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span>🔄 Initiated Pipeline</span>
+                  <TrendingUp className="h-4 w-4 text-slate-600" />
+                </div>
+                <div className="text-xl font-extrabold text-slate-900">{allBookings.length} Total</div>
+                <div className="text-[11px] text-slate-600">
+                  {stats.conversionRate}% Devotee Success Rate
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Recent Booking Activity Feed */}
           <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
@@ -619,6 +776,10 @@ export default function AnalyticsDashboard({
                           className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                             booking.status === "confirmed"
                               ? "bg-emerald-100 text-emerald-800"
+                              : booking.status === "pending"
+                              ? "bg-amber-100 text-amber-800"
+                              : booking.status === "failed"
+                              ? "bg-rose-100 text-rose-800"
                               : booking.status === "refunded"
                               ? "bg-purple-100 text-purple-800"
                               : booking.status === "rescheduled"
@@ -626,7 +787,11 @@ export default function AnalyticsDashboard({
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {booking.status}
+                          {booking.status === "pending"
+                            ? "pending payment"
+                            : booking.status === "failed"
+                            ? "payment failed"
+                            : booking.status}
                         </span>
                       </td>
                     </tr>
@@ -958,6 +1123,20 @@ export default function AnalyticsDashboard({
                     bg: "bg-emerald-50",
                   },
                   {
+                    label: "Pending Payment (In Checkout)",
+                    count: stats.pendingBookings,
+                    color: "bg-amber-400",
+                    textColor: "text-amber-800",
+                    bg: "bg-amber-50",
+                  },
+                  {
+                    label: "Payment Failed (Declined / Dropped)",
+                    count: stats.failedBookings,
+                    color: "bg-rose-500",
+                    textColor: "text-rose-800",
+                    bg: "bg-rose-50",
+                  },
+                  {
                     label: "Rescheduled to New Muhurat",
                     count: stats.rescheduledBookings,
                     color: "bg-blue-500",
@@ -1186,10 +1365,22 @@ export default function AnalyticsDashboard({
                             className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold ${
                               b.status === "confirmed"
                                 ? "bg-emerald-100 text-emerald-800"
-                                : "bg-slate-100 text-slate-700"
+                                : b.status === "pending"
+                                ? "bg-amber-100 text-amber-800"
+                                : b.status === "failed"
+                                ? "bg-rose-100 text-rose-800"
+                                : b.status === "refunded"
+                                ? "bg-purple-100 text-purple-800"
+                                : b.status === "rescheduled"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"
                             }`}
                           >
-                            {b.status}
+                            {b.status === "pending"
+                              ? "pending payment"
+                              : b.status === "failed"
+                              ? "payment failed"
+                              : b.status}
                           </span>
                         </div>
                       </div>

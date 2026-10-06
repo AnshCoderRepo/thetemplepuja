@@ -15,22 +15,27 @@ import {
   Filter,
   Flame,
   Globe,
+  Image as ImageIcon,
   Languages,
   Layers,
   LayoutGrid,
+  Link2,
   Loader2,
   MapPin,
   MoreVertical,
   Package,
   Pencil,
   Plus,
+  Radio,
   RefreshCw,
   RotateCcw,
   Search,
   Sparkles,
   Tag,
   Trash2,
+  Upload,
   Users,
+  Video,
   X,
 } from "lucide-react";
 import { fetchCatalog, saveCatalogSection } from "@/lib/api";
@@ -107,6 +112,7 @@ interface PoojaDraft {
   category: string;
   type: "temple" | "home";
   online: boolean;
+  liveStreamUrl: string;
   price: string;
   duration: string;
   bestMuhurat: string;
@@ -143,6 +149,7 @@ const emptyDraft: PoojaDraft = {
   category: "Rashifal Pooja",
   type: "temple",
   online: true,
+  liveStreamUrl: "",
   price: "1101",
   duration: "1.5 hours",
   bestMuhurat: "Shukla Paksha Auspicious Muhurat",
@@ -198,6 +205,24 @@ export default function PoojasManager({
   const [newPackage, setNewPackage] = useState<PoojaPackage>({ name: "", price: 501, description: "" });
   const [translatingTarget, setTranslatingTarget] = useState<"all" | "title" | "description" | "benefits" | null>(null);
   const isTranslating = translatingTarget !== null;
+
+  // Custom Relationships ("Others") state
+  const [customDeities, setCustomDeities] = useState<string[]>([]);
+  const [newCustomDeity, setNewCustomDeity] = useState("");
+  const [isAddingDeity, setIsAddingDeity] = useState(false);
+
+  const [customChadhavas, setCustomChadhavas] = useState<string[]>([]);
+  const [newCustomChadhava, setNewCustomChadhava] = useState("");
+  const [isAddingChadhava, setIsAddingChadhava] = useState(false);
+
+  const [isAddingTemple, setIsAddingTemple] = useState(false);
+  const [newTempleName, setNewTempleName] = useState("");
+  const [newTempleCity, setNewTempleCity] = useState("");
+  const [newTempleState, setNewTempleState] = useState("");
+
+  // Media Banner upload state
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -225,6 +250,131 @@ export default function PoojasManager({
   const showNotification = (msg: string) => {
     setSuccess(msg);
     setTimeout(() => setSuccess(""), 4000);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    setIsUploadingImage(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string;
+      if (!rawDataUrl) {
+        setIsUploadingImage(false);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1200;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const optimizedUrl = canvas.toDataURL("image/jpeg", 0.82);
+          setDraft((prev) => ({ ...prev, imageUrl: optimizedUrl }));
+        } else {
+          setDraft((prev) => ({ ...prev, imageUrl: rawDataUrl }));
+        }
+        setIsUploadingImage(false);
+        showNotification("🖼️ Banner image uploaded successfully from your computer!");
+      };
+      img.onerror = () => {
+        setDraft((prev) => ({ ...prev, imageUrl: rawDataUrl }));
+        setIsUploadingImage(false);
+        showNotification("🖼️ Banner image attached!");
+      };
+      img.src = rawDataUrl;
+    };
+    reader.onerror = () => {
+      setUploadError("Could not read image file. Please try another image.");
+      setIsUploadingImage(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddCustomDeity = () => {
+    const trimmed = newCustomDeity.trim();
+    if (!trimmed) return;
+    if (!customDeities.includes(trimmed)) {
+      setCustomDeities((prev) => [...prev, trimmed]);
+    }
+    if (!draft.deities.includes(trimmed)) {
+      setDraft((prev) => ({ ...prev, deities: [...prev.deities, trimmed] }));
+    }
+    setNewCustomDeity("");
+    setIsAddingDeity(false);
+    showNotification(`✨ Added custom deity: "${trimmed}"`);
+  };
+
+  const handleAddCustomChadhava = () => {
+    const trimmed = newCustomChadhava.trim();
+    if (!trimmed) return;
+    if (!customChadhavas.includes(trimmed)) {
+      setCustomChadhavas((prev) => [...prev, trimmed]);
+    }
+    if (!draft.chadhavaOptions.includes(trimmed)) {
+      setDraft((prev) => ({ ...prev, chadhavaOptions: [...prev.chadhavaOptions, trimmed] }));
+    }
+    setNewCustomChadhava("");
+    setIsAddingChadhava(false);
+    showNotification(`🌸 Added custom chadhava: "${trimmed}"`);
+  };
+
+  const handleAddCustomTemple = async () => {
+    const trimmedName = newTempleName.trim();
+    const trimmedCity = newTempleCity.trim() || "India";
+    const trimmedState = newTempleState.trim() || "India";
+    if (!trimmedName) return;
+
+    const baseSlug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const slug = baseSlug || `temple-${Date.now().toString(36)}`;
+
+    const newTemple: Temple = {
+      slug,
+      name: trimmedName,
+      hindiName: trimmedName,
+      city: trimmedCity,
+      state: trimmedState,
+      address: `${trimmedName}, ${trimmedCity}`,
+      deity: draft.deities[0] || "Lord Shiva",
+      pincode: "110001",
+      description: `Sacred pilgrimage shrine of ${trimmedName} located in ${trimmedCity}.`,
+      timings: "5:30 AM – 9:00 PM",
+      active: true,
+      poojaSlugs: [draft.slug],
+    };
+
+    const nextTemples = [...temples.filter((t) => t.slug !== slug), newTemple];
+    setTemples(nextTemples);
+    if (!draft.templeSlugs.includes(slug)) {
+      setDraft((prev) => ({ ...prev, templeSlugs: [...prev.templeSlugs, slug] }));
+    }
+
+    try {
+      await saveCatalogSection("temples", nextTemples, token);
+    } catch {
+      // Local state is updated
+    }
+
+    setNewTempleName("");
+    setNewTempleCity("");
+    setNewTempleState("");
+    setIsAddingTemple(false);
+    showNotification(`🛕 Added new temple: "${trimmedName}" (${trimmedCity})`);
   };
 
   const translateTitleOnly = async () => {
@@ -416,6 +566,7 @@ export default function PoojasManager({
       category: p.category ?? "Rashifal Pooja",
       type: p.type ?? "temple",
       online: p.online ?? true,
+      liveStreamUrl: p.liveStreamUrl ?? "",
       price: String(p.price),
       duration: p.duration ?? "1.5 hours",
       bestMuhurat: p.bestMuhurat ?? "",
@@ -568,6 +719,7 @@ export default function PoojasManager({
       category: draft.category,
       type: draft.type,
       online: draft.online,
+      liveStreamUrl: draft.liveStreamUrl.trim() || undefined,
       price: Number(draft.price) || 1101,
       duration: draft.duration.trim() || "1.5 hours",
       bestMuhurat: draft.bestMuhurat.trim() || "Auspicious Muhurat",
@@ -1077,15 +1229,112 @@ export default function PoojasManager({
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-ink mb-1">Banner Image URL</label>
-                        <input
-                          type="text"
-                          value={draft.imageUrl}
-                          onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value })}
-                          placeholder="https://images.unsplash.com/..."
-                          className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
-                        />
+                      {/* Banner Image Option: URL or Computer Upload */}
+                      <div className="rounded-2xl border border-saffron-200 bg-cream/20 p-4 space-y-3.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                          <div>
+                            <label className="block text-xs font-bold text-ink">
+                              Puja Banner Image
+                            </label>
+                            <p className="text-[11px] text-ink-soft">
+                              Upload an auspicious photo from your computer or provide a web URL
+                            </p>
+                          </div>
+                          {draft.imageUrl && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full shrink-0">
+                              ✓ Banner Attached
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Upload from Computer & URL Inputs */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Option A: Upload from Computer */}
+                          <div className="flex flex-col justify-center rounded-xl border-2 border-dashed border-saffron-300 bg-white p-3.5 text-center hover:bg-saffron-50/30 transition-colors relative">
+                            <input
+                              type="file"
+                              id="banner-file-input"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              disabled={isUploadingImage}
+                              className="sr-only"
+                            />
+                            <label
+                              htmlFor="banner-file-input"
+                              className="cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                            >
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-saffron-100 text-saffron-700">
+                                {isUploadingImage ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Upload className="h-4 w-4" />
+                                )}
+                              </div>
+                              <span className="text-xs font-bold text-ink">
+                                {isUploadingImage ? "Processing Image..." : "Upload from Computer"}
+                              </span>
+                              <span className="text-[10px] text-ink-soft">
+                                PNG, JPG, WebP (Local file • No API keys needed)
+                              </span>
+                            </label>
+                          </div>
+
+                          {/* Option B: Enter Image URL */}
+                          <div className="flex flex-col justify-center rounded-xl border border-saffron-200 bg-white p-3.5 space-y-1.5">
+                            <label className="text-xs font-bold text-ink flex items-center gap-1.5">
+                              <Link2 className="h-3.5 w-3.5 text-saffron-600" />
+                              Or Paste Web Image URL
+                            </label>
+                            <input
+                              type="url"
+                              value={draft.imageUrl}
+                              onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value })}
+                              placeholder="https://images.unsplash.com/... or CDN link"
+                              className="w-full rounded-lg border border-saffron-200 bg-cream/30 px-3 py-2 text-xs text-ink focus:border-saffron-500 focus:bg-white focus:outline-none font-mono"
+                            />
+                            <span className="text-[10px] text-ink-soft">
+                              Paste any public web image address
+                            </span>
+                          </div>
+                        </div>
+
+                        {uploadError && (
+                          <p className="text-xs font-semibold text-rose-600">{uploadError}</p>
+                        )}
+
+                        {/* Image Preview if available */}
+                        {draft.imageUrl ? (
+                          <div className="relative rounded-2xl overflow-hidden border border-saffron-200 bg-black/5 aspect-[16/7] max-h-48 group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={draft.imageUrl}
+                              alt="Banner Preview"
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end justify-between p-3 text-white">
+                              <span className="text-xs font-bold bg-black/50 backdrop-blur px-2.5 py-1 rounded-lg border border-white/20">
+                                🖼️ Active Banner Preview
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setDraft({ ...draft, imageUrl: "" })}
+                                className="inline-flex items-center gap-1 rounded-lg bg-red-600/90 hover:bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm transition-colors"
+                              >
+                                <Trash2 className="h-3 w-3" /> Remove Image
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl bg-amber-50/80 border border-amber-200/70 p-3 text-[11px] text-amber-950 flex items-start gap-2">
+                            <span className="text-sm">💡</span>
+                            <div className="space-y-0.5">
+                              <p className="font-bold">Storage & API Keys Info:</p>
+                              <p className="text-amber-900/80 leading-relaxed">
+                                Uploading directly from your computer requires <strong>no API keys</strong> — photos are safely embedded into your catalog. If you wish to use remote storage like AWS S3 or Cloudinary, you can paste the hosted URL or configure storage keys in your project.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -1177,17 +1426,58 @@ export default function PoojasManager({
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-saffron-100 bg-cream/40">
-                        <input
-                          type="checkbox"
-                          id="online-toggle"
-                          checked={draft.online}
-                          onChange={(e) => setDraft({ ...draft, online: e.target.checked })}
-                          className="h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-500"
-                        />
-                        <label htmlFor="online-toggle" className="text-xs font-bold text-ink cursor-pointer">
-                          🔴 Online Livestream Participation Available
-                        </label>
+                      <div className="p-4 rounded-2xl border border-saffron-200 bg-cream/30 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              id="online-toggle"
+                              checked={draft.online}
+                              onChange={(e) => setDraft({ ...draft, online: e.target.checked })}
+                              className="h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-500"
+                            />
+                            <label htmlFor="online-toggle" className="text-xs font-bold text-ink cursor-pointer">
+                              🔴 Online Livestream Participation Available
+                            </label>
+                          </div>
+                          <span className="text-[11px] font-semibold text-saffron-800 bg-saffron-100/70 px-2.5 py-0.5 rounded-full">
+                            Live Broadcast
+                          </span>
+                        </div>
+
+                        {draft.online && (
+                          <div className="pt-2.5 border-t border-saffron-200/80 space-y-2">
+                            <label className="block text-xs font-bold text-ink flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Video className="h-3.5 w-3.5 text-rose-600" />
+                                Live Platform Stream Link (YouTube / Zoom / Google Meet)
+                              </span>
+                              <span className="text-[10px] text-ink-soft font-normal">
+                                Optional — Can add now or edit later
+                              </span>
+                            </label>
+                            <input
+                              type="url"
+                              value={draft.liveStreamUrl}
+                              onChange={(e) => setDraft({ ...draft, liveStreamUrl: e.target.value })}
+                              placeholder="e.g. https://youtube.com/live/... or https://zoom.us/j/..."
+                              className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs text-ink focus:border-saffron-500 focus:outline-none font-mono"
+                            />
+                            <div className="rounded-xl bg-amber-50/90 border border-amber-200/90 p-2.5 text-[11px] text-amber-950 flex items-start gap-2">
+                              <span className="text-sm">🪔</span>
+                              <div className="space-y-0.5">
+                                <p className="font-bold">
+                                  {draft.liveStreamUrl.trim()
+                                    ? "🟢 Live Link is set! Devotees will be able to watch the ceremony live."
+                                    : "⏳ Live Link not provided yet: Devotees will see 'We will be live at the time of puja. So stay relaxed.'"}
+                                </p>
+                                <p className="text-[10px] text-amber-900/80 leading-relaxed">
+                                  You can save the puja now and easily click <strong>Edit</strong> later before the ritual to paste the live link.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1262,20 +1552,59 @@ export default function PoojasManager({
 
                 {/* ── STEP 5: Relationships (Matching Screenshot 5) ── */}
                 {currentStep === 5 && (
-                  <div className="space-y-5">
+                  <div className="space-y-6">
                     <div>
                       <h3 className="text-base font-bold text-ink">Relationships</h3>
-                      <p className="text-xs text-ink-soft">Step 5 of 8 — Connect Deities, Chadhavas, and Temples</p>
+                      <p className="text-xs text-ink-soft">
+                        Step 5 of 8 — Connect Deities, Chadhavas, and Temples. Use "+ Other" to add any custom deity, temple, or offering.
+                      </p>
                     </div>
 
-                    <div className="space-y-4">
-                      {/* Deities Multi-Select */}
-                      <div>
-                        <label className="block text-xs font-bold text-ink mb-1.5">
-                          Presiding Deities
-                        </label>
+                    <div className="space-y-5">
+                      {/* Deities Multi-Select with + Other Deity Option */}
+                      <div className="rounded-2xl border border-saffron-100 bg-cream/20 p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-ink">
+                            Presiding Deities
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingDeity(!isAddingDeity)}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <Plus className="h-3 w-3" />
+                            {isAddingDeity ? "Cancel" : "+ Other Deity / God"}
+                          </button>
+                        </div>
+
+                        {/* Inline Custom Deity Input */}
+                        {isAddingDeity && (
+                          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-purple-200 shadow-xs animate-fadeIn">
+                            <input
+                              type="text"
+                              value={newCustomDeity}
+                              onChange={(e) => setNewCustomDeity(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddCustomDeity();
+                                }
+                              }}
+                              placeholder="Type custom deity (e.g. Lord Murugan, Radha Krishna, Kuldevi...)"
+                              className="flex-1 rounded-lg border border-saffron-200 px-3 py-1.5 text-xs text-ink focus:border-purple-600 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCustomDeity}
+                              className="rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-bold px-3 py-1.5 text-xs shadow-xs"
+                            >
+                              Add Deity
+                            </button>
+                          </div>
+                        )}
+
                         <div className="flex flex-wrap gap-2">
-                          {AVAILABLE_DEITIES.map((deity) => {
+                          {Array.from(new Set([...AVAILABLE_DEITIES, ...customDeities, ...draft.deities])).map((deity) => {
                             const selected = draft.deities.includes(deity);
                             return (
                               <button
@@ -1290,7 +1619,7 @@ export default function PoojasManager({
                                 className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
                                   selected
                                     ? "bg-purple-600 text-white shadow-sm"
-                                    : "bg-slate-100 text-ink-soft hover:bg-slate-200"
+                                    : "bg-white text-ink-soft hover:bg-slate-100 border border-saffron-100"
                                 }`}
                               >
                                 {deity} {selected && "✓"}
@@ -1300,11 +1629,71 @@ export default function PoojasManager({
                         </div>
                       </div>
 
-                      {/* Temples Selection */}
-                      <div>
-                        <label className="block text-xs font-bold text-ink mb-1.5">
-                          Sacred Temples
-                        </label>
+                      {/* Temples Selection with + Other Temple Option */}
+                      <div className="rounded-2xl border border-saffron-100 bg-cream/20 p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-ink">
+                            Sacred Temples
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingTemple(!isAddingTemple)}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <Plus className="h-3 w-3" />
+                            {isAddingTemple ? "Cancel" : "+ Other Temple"}
+                          </button>
+                        </div>
+
+                        {/* Inline Custom Temple Form */}
+                        {isAddingTemple && (
+                          <div className="p-3 rounded-xl bg-white border border-purple-200 shadow-xs space-y-2.5 animate-fadeIn">
+                            <span className="text-xs font-bold text-ink block">
+                              Add Custom Temple / Pilgrimage Place
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <input
+                                type="text"
+                                value={newTempleName}
+                                onChange={(e) => setNewTempleName(e.target.value)}
+                                placeholder="Temple Name (e.g. Khatu Shyam Mandir)"
+                                className="rounded-lg border border-saffron-200 px-3 py-1.5 text-xs text-ink focus:border-purple-600 focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={newTempleCity}
+                                onChange={(e) => setNewTempleCity(e.target.value)}
+                                placeholder="City (e.g. Sikar)"
+                                className="rounded-lg border border-saffron-200 px-3 py-1.5 text-xs text-ink focus:border-purple-600 focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={newTempleState}
+                                onChange={(e) => setNewTempleState(e.target.value)}
+                                placeholder="State (e.g. Rajasthan)"
+                                className="rounded-lg border border-saffron-200 px-3 py-1.5 text-xs text-ink focus:border-purple-600 focus:outline-none"
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setIsAddingTemple(false)}
+                                className="rounded-lg px-2.5 py-1 text-xs text-ink-soft hover:bg-slate-100"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleAddCustomTemple}
+                                disabled={!newTempleName.trim()}
+                                className="rounded-lg bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold px-3 py-1 text-xs shadow-xs"
+                              >
+                                Add & Select Temple
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex flex-wrap gap-2">
                           {temples.map((temple) => {
                             const selected = draft.templeSlugs.includes(temple.slug);
@@ -1321,7 +1710,7 @@ export default function PoojasManager({
                                 className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
                                   selected
                                     ? "bg-purple-700 text-white shadow-sm"
-                                    : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                                    : "bg-white text-purple-700 hover:bg-purple-50 border border-purple-100"
                                 }`}
                               >
                                 🛕 {temple.name} ({temple.city}) {selected && "✕"}
@@ -1331,13 +1720,50 @@ export default function PoojasManager({
                         </div>
                       </div>
 
-                      {/* Chadhava Offerings */}
-                      <div>
-                        <label className="block text-xs font-bold text-ink mb-1.5">
-                          Chadhava & Seva Offerings
-                        </label>
+                      {/* Chadhava Offerings with + Other Chadhava Option */}
+                      <div className="rounded-2xl border border-saffron-100 bg-cream/20 p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-ink">
+                            Chadhava & Seva Offerings
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingChadhava(!isAddingChadhava)}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <Plus className="h-3 w-3" />
+                            {isAddingChadhava ? "Cancel" : "+ Other Chadhava / Seva"}
+                          </button>
+                        </div>
+
+                        {/* Inline Custom Chadhava Input */}
+                        {isAddingChadhava && (
+                          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-purple-200 shadow-xs animate-fadeIn">
+                            <input
+                              type="text"
+                              value={newCustomChadhava}
+                              onChange={(e) => setNewCustomChadhava(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddCustomChadhava();
+                                }
+                              }}
+                              placeholder="Type custom chadhava (e.g. Gau Seva, 108 Belpatra Mala, Deepam...)"
+                              className="flex-1 rounded-lg border border-saffron-200 px-3 py-1.5 text-xs text-ink focus:border-purple-600 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCustomChadhava}
+                              className="rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-bold px-3 py-1.5 text-xs shadow-xs"
+                            >
+                              Add Chadhava
+                            </button>
+                          </div>
+                        )}
+
                         <div className="flex flex-wrap gap-2">
-                          {CHADHAVA_OFFERINGS.map((chadhava) => {
+                          {Array.from(new Set([...CHADHAVA_OFFERINGS, ...customChadhavas, ...draft.chadhavaOptions])).map((chadhava) => {
                             const selected = draft.chadhavaOptions.includes(chadhava);
                             return (
                               <button
@@ -1352,7 +1778,7 @@ export default function PoojasManager({
                                 className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
                                   selected
                                     ? "bg-purple-800 text-white shadow-sm"
-                                    : "bg-slate-100 text-ink-soft hover:bg-slate-200"
+                                    : "bg-white text-ink-soft hover:bg-slate-100 border border-saffron-100"
                                 }`}
                               >
                                 🌸 {chadhava} {selected && "✓"}
@@ -1629,6 +2055,19 @@ export default function PoojasManager({
                         <span className="rounded-md bg-emerald-100 px-2 py-1 font-semibold text-emerald-800">
                           {draft.online ? "🔴 Online" : "📍 In-Person"}
                         </span>
+                        {draft.online && (
+                          <span
+                            className={`rounded-md px-2 py-1 font-semibold ${
+                              draft.liveStreamUrl.trim()
+                                ? "bg-rose-100 text-rose-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {draft.liveStreamUrl.trim()
+                              ? "📹 Live Link Set"
+                              : "⏳ Live Link Pending (Shows soothing notice)"}
+                          </span>
+                        )}
                         <span className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-ink-soft">
                           🕒 {draft.duration}
                         </span>

@@ -53,6 +53,10 @@ export interface AnalyticsSummary {
   totalRevenue: number;
   totalBookings: number;
   activeBookings: number;
+  pendingBookings: number;
+  pendingRevenue: number;
+  failedBookings: number;
+  failedRevenue: number;
   cancelledBookings: number;
   refundedBookings: number;
   rescheduledBookings: number;
@@ -114,13 +118,18 @@ export function computeAnalytics(
   const activeBookings = bookings.filter(
     (b) => b.status === "confirmed" || b.status === "rescheduled"
   );
+  const pendingBookings = bookings.filter((b) => b.status === "pending");
+  const failedBookings = bookings.filter((b) => b.status === "failed");
   const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
   const refundedBookings = bookings.filter((b) => b.status === "refunded");
   const rescheduledBookings = bookings.filter((b) => b.status === "rescheduled");
   
   const totalRevenue = activeBookings.reduce((s, b) => s + b.amount, 0);
-  const totalDiscountsGiven = bookings.reduce((s, b) => s + (b.discount || 0), 0);
-  const couponBookingsCount = bookings.filter((b) => Boolean(b.couponCode)).length;
+  const pendingRevenue = pendingBookings.reduce((s, b) => s + b.amount, 0);
+  const failedRevenue = failedBookings.reduce((s, b) => s + b.amount, 0);
+  const settledBookings = bookings.filter((b) => b.status !== "pending" && b.status !== "failed");
+  const totalDiscountsGiven = settledBookings.reduce((s, b) => s + (b.discount || 0), 0);
+  const couponBookingsCount = settledBookings.filter((b) => Boolean(b.couponCode)).length;
   const averageOrderValue =
     activeBookings.length > 0 ? Math.round(totalRevenue / activeBookings.length) : 0;
   const conversionRate =
@@ -369,6 +378,10 @@ export function computeAnalytics(
     totalRevenue,
     totalBookings: bookings.length,
     activeBookings: activeBookings.length,
+    pendingBookings: pendingBookings.length,
+    pendingRevenue,
+    failedBookings: failedBookings.length,
+    failedRevenue,
     cancelledBookings: cancelledBookings.length,
     refundedBookings: refundedBookings.length,
     rescheduledBookings: rescheduledBookings.length,

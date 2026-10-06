@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Users, X } from "lucide-react";
+import { Edit3, Key, Search, Users, X } from "lucide-react";
 import type { UserProfile } from "@/lib/storage";
+import type { ProfileTab } from "@/components/admin/CustomerProfileModal";
 
 function initials(name: string) {
   return name
@@ -15,7 +16,7 @@ function initials(name: string) {
 
 interface AdminDevoteesTabProps {
   users: UserProfile[];
-  onSelectDevotee: (u: UserProfile) => void;
+  onSelectDevotee: (u: UserProfile, initialTab?: ProfileTab) => void;
   onResetPassword: (phone: string, newPass: string) => Promise<void>;
   onDeleteUser: (id: string) => Promise<void>;
 }
@@ -214,21 +215,40 @@ export default function AdminDevoteesTab({
                 </span>
               </div>
 
-              <div className="space-y-1 text-xs text-ink-soft border-t border-saffron-50 pt-2">
-                <div>City: {devotee.city}</div>
-                {devotee.email && <div>Email: {devotee.email}</div>}
+              <div className="space-y-1.5 text-xs text-ink-soft border-t border-saffron-50 pt-2">
+                <div className="flex justify-between">
+                  <span>City: <strong className="text-ink">{devotee.city || "Varanasi"}</strong></span>
+                  {devotee.generatedPassword && (
+                    <span className="font-mono text-[11px] bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 font-semibold">
+                      <Key className="h-3 w-3 text-amber-700" /> {devotee.generatedPassword}
+                    </span>
+                  )}
+                </div>
+                {devotee.email && !devotee.email.startsWith("pw:") && (
+                  <div>Email: {devotee.email}</div>
+                )}
               </div>
 
               {/* Actions */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-saffron-100 pt-3 text-xs">
-                <button
-                  type="button"
-                  onClick={() => onSelectDevotee(devotee)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-saffron-500/10 px-2.5 py-1.5 font-bold text-saffron-700 hover:bg-saffron-500/20 transition-colors"
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  View Complete Profile & Media
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onSelectDevotee(devotee, "edit")}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-saffron-500 px-3 py-1.5 font-bold text-white shadow-xs hover:bg-saffron-600 transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    Edit Devotee
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectDevotee(devotee, "overview")}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-saffron-200 bg-saffron-50/70 px-2.5 py-1.5 font-semibold text-saffron-800 hover:bg-saffron-100 transition-colors cursor-pointer"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Profile
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-3">
                   <button
@@ -239,7 +259,7 @@ export default function AdminDevoteesTab({
                       setResetMsg("");
                       setResetErr("");
                     }}
-                    className="text-saffron-700 font-semibold hover:underline"
+                    className="text-saffron-700 font-semibold hover:underline cursor-pointer"
                   >
                     Reset Password
                   </button>
@@ -247,7 +267,7 @@ export default function AdminDevoteesTab({
                   <button
                     type="button"
                     onClick={() => onDeleteUser(devotee.id)}
-                    className="text-red-500 font-semibold hover:underline"
+                    className="text-red-500 font-semibold hover:underline cursor-pointer"
                   >
                     Delete
                   </button>

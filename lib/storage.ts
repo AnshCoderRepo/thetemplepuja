@@ -2,7 +2,13 @@
 // No backend exists yet, so profiles live in localStorage. All functions are
 // SSR-safe (they no-op on the server) — call them only from client effects.
 
-export type BookingStatus = "confirmed" | "cancelled" | "rescheduled" | "refunded";
+export type BookingStatus =
+  | "confirmed"
+  | "pending"
+  | "failed"
+  | "cancelled"
+  | "rescheduled"
+  | "refunded";
 
 export interface BookingAddonItem {
   id: string;
@@ -43,6 +49,7 @@ export interface BookingRecord {
   videos?: CustomerMediaRecord[];
   createdAt: string; // ISO
   status: BookingStatus;
+  failureReason?: string; // set when payment fails or is rejected
   cancelledAt?: string; // ISO — set when the devotee cancels
   refundedAt?: string; // ISO — set when the admin marks the booking refunded
   /** Set when this booking came from a live-event slot — the event's
@@ -87,6 +94,8 @@ export interface UserProfile {
   createdAt: string; // ISO
   bookings: BookingRecord[];
   videos?: CustomerMediaRecord[];
+  passwordHash?: string;
+  generatedPassword?: string;
 }
 
 import { STORAGE_KEYS } from "./constants";
@@ -129,6 +138,9 @@ export interface BookingInput {
   city: string;
   email: string;
   booking: BookingRecord;
+  password?: string;
+  passwordHash?: string;
+  generatedPassword?: string;
 }
 
 /** Add (or refresh) a devotee and append their booking. Dedupes bookingId. */
@@ -150,6 +162,8 @@ export function upsertInto(
       email: input.email,
       createdAt: new Date().toISOString(),
       bookings: [],
+      passwordHash: input.passwordHash,
+      generatedPassword: input.generatedPassword,
     };
     users.push(user);
   } else {
@@ -158,15 +172,23 @@ export function upsertInto(
     user.gotra = input.gotra;
     user.city = input.city;
     if (input.email) user.email = input.email;
+    if (input.passwordHash) user.passwordHash = input.passwordHash;
+    if (input.generatedPassword) user.generatedPassword = input.generatedPassword;
   }
 
-  // Guard against duplicate saves of the same booking (e.g. modal close
-  // firing twice) — never append the same bookingId twice.
-  if (!user.bookings.some((b) => b.bookingId === input.booking.bookingId)) {
-    // A booking is always created confirmed — never trust the client to set
-    // the status (cancel/refund/reschedule go through their own routes).
-    const booking: BookingRecord = { ...input.booking, status: "confirmed" };
+  // Deduplicate and update booking: if new, append it; if existing, update it
+  // (e.g. status transition from pending -> confirmed or pending -> failed).
+  const existingIdx = user.bookings.findIndex((b) => b.bookingId === input.booking.bookingId);
+  const status = input.booking.status || "confirmed";
+  if (existingIdx === -1) {
+    const booking: BookingRecord = { ...input.booking, status };
     user.bookings.push(booking);
+  } else {
+    user.bookings[existingIdx] = {
+      ...user.bookings[existingIdx],
+      ...input.booking,
+      status,
+    };
   }
   return { users, user };
 }
