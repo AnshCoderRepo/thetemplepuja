@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpDown,
   BookOpen,
   Calendar,
   Check,
@@ -11,6 +12,7 @@ import {
   Clock,
   Eye,
   EyeOff,
+  Filter,
   Flame,
   Globe,
   Languages,
@@ -23,6 +25,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   Sparkles,
   Tag,
@@ -34,6 +37,12 @@ import { fetchCatalog, saveCatalogSection } from "@/lib/api";
 import { isPoojaActive, type Pooja, type PoojaPackage, type Temple } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import ConfirmDialog from "./ConfirmDialog";
+import {
+  DateInput,
+  dateToDaysFromToday,
+  daysFromTodayToDate,
+  toISODateString,
+} from "./manager-ui";
 
 const WIZARD_STEPS = [
   { id: 1, label: "Basic Info", icon: BookOpen },
@@ -137,7 +146,7 @@ const emptyDraft: PoojaDraft = {
   price: "1101",
   duration: "1.5 hours",
   bestMuhurat: "Shukla Paksha Auspicious Muhurat",
-  startDate: "Oct 4, 2026",
+  startDate: "2026-10-04",
   description: "",
   hindiDescription: "",
   teluguDescription: "",
@@ -177,6 +186,8 @@ export default function PoojasManager({
   const [typeFilter, setTypeFilter] = useState<"all" | "temple" | "home">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [deityFilter, setDeityFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("default");
   
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -185,7 +196,8 @@ export default function PoojasManager({
   const [draft, setDraft] = useState<PoojaDraft>(emptyDraft);
   const [newBenefit, setNewBenefit] = useState("");
   const [newPackage, setNewPackage] = useState<PoojaPackage>({ name: "", price: 501, description: "" });
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatingTarget, setTranslatingTarget] = useState<"all" | "title" | "description" | "benefits" | null>(null);
+  const isTranslating = translatingTarget !== null;
   
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -215,12 +227,111 @@ export default function PoojasManager({
     setTimeout(() => setSuccess(""), 4000);
   };
 
+  const translateTitleOnly = async () => {
+    if (!draft.title.trim()) {
+      setError("Please enter the English Puja Name first to translate.");
+      return;
+    }
+    setTranslatingTarget("title");
+    setError("");
+    try {
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: draft.title.trim(), targets: ["hi", "te", "ta"] }),
+      });
+      const data = await res.json();
+      if (data.ok && data.translations) {
+        setDraft((prev) => ({
+          ...prev,
+          hindiTitle: data.translations.hi || prev.hindiTitle,
+          teluguTitle: data.translations.te || prev.teluguTitle,
+          tamilTitle: data.translations.ta || prev.tamilTitle,
+        }));
+        showNotification("✨ Puja Name translated to Hindi, Telugu, and Tamil!");
+      } else {
+        setError(data.error || "Failed to translate Puja Name.");
+      }
+    } catch (e) {
+      console.error("Title translate error:", e);
+      setError("Could not complete title translation.");
+    } finally {
+      setTranslatingTarget(null);
+    }
+  };
+
+  const translateDescriptionOnly = async () => {
+    if (!draft.description.trim()) {
+      setError("Please enter the English Spiritual Description first to translate.");
+      return;
+    }
+    setTranslatingTarget("description");
+    setError("");
+    try {
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: draft.description.trim(), targets: ["hi", "te", "ta"] }),
+      });
+      const data = await res.json();
+      if (data.ok && data.translations) {
+        setDraft((prev) => ({
+          ...prev,
+          hindiDescription: data.translations.hi || prev.hindiDescription,
+          teluguDescription: data.translations.te || prev.teluguDescription,
+          tamilDescription: data.translations.ta || prev.tamilDescription,
+        }));
+        showNotification("✨ Spiritual Description translated to Hindi, Telugu, and Tamil!");
+      } else {
+        setError(data.error || "Failed to translate description.");
+      }
+    } catch (e) {
+      console.error("Description translate error:", e);
+      setError("Could not complete description translation.");
+    } finally {
+      setTranslatingTarget(null);
+    }
+  };
+
+  const translateBenefitsOnly = async () => {
+    if (draft.benefits.length === 0) {
+      setError("Please add at least one Devotee Benefit in English first to translate.");
+      return;
+    }
+    setTranslatingTarget("benefits");
+    setError("");
+    try {
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texts: draft.benefits, targets: ["hi", "te", "ta"] }),
+      });
+      const data = await res.json();
+      if (data.ok && data.translations) {
+        setDraft((prev) => ({
+          ...prev,
+          hindiBenefits: data.translations.hi || prev.hindiBenefits,
+          teluguBenefits: data.translations.te || prev.teluguBenefits,
+          tamilBenefits: data.translations.ta || prev.tamilBenefits,
+        }));
+        showNotification("✨ Devotee Benefits translated to Hindi, Telugu, and Tamil!");
+      } else {
+        setError(data.error || "Failed to translate benefits.");
+      }
+    } catch (e) {
+      console.error("Benefits translate error:", e);
+      setError("Could not complete benefits translation.");
+    } finally {
+      setTranslatingTarget(null);
+    }
+  };
+
   const autoTranslateAll = async () => {
     if (!draft.title.trim() && !draft.description.trim()) {
       setError("Please enter the English Title or Description first to translate.");
       return;
     }
-    setIsTranslating(true);
+    setTranslatingTarget("all");
     setError("");
     try {
       // 1. Translate Title
@@ -277,12 +388,12 @@ export default function PoojasManager({
         }
       }
 
-      showNotification("✨ AI Translated content to Hindi, Telugu, and Tamil successfully!");
+      showNotification("✨ AI Translated all content to Hindi, Telugu, and Tamil successfully!");
     } catch (e) {
       console.error("Auto-translate error:", e);
       setError("Could not complete automatic translation. Please try again.");
     } finally {
-      setIsTranslating(false);
+      setTranslatingTarget(null);
     }
   };
 
@@ -308,7 +419,7 @@ export default function PoojasManager({
       price: String(p.price),
       duration: p.duration ?? "1.5 hours",
       bestMuhurat: p.bestMuhurat ?? "",
-      startDate: p.startDate ?? "Oct 4, 2026",
+      startDate: toISODateString(p.startDate) || p.startDate || "2026-10-04",
       description: p.description ?? "",
       hindiDescription: p.hindiDescription ?? "",
       teluguDescription: p.teluguDescription ?? "",
@@ -460,7 +571,7 @@ export default function PoojasManager({
       price: Number(draft.price) || 1101,
       duration: draft.duration.trim() || "1.5 hours",
       bestMuhurat: draft.bestMuhurat.trim() || "Auspicious Muhurat",
-      startDate: draft.startDate.trim() || "Oct 4, 2026",
+      startDate: toISODateString(draft.startDate) || draft.startDate.trim() || "2026-10-04",
       description: draft.description.trim(),
       hindiDescription: draft.hindiDescription.trim() || undefined,
       teluguDescription: draft.teluguDescription.trim() || undefined,
@@ -510,37 +621,98 @@ export default function PoojasManager({
     showNotification(editingSlug ? "Puja updated successfully!" : "New Puja ceremony published!");
   };
 
-  const filtered = list.filter((p) => {
+  const dynamicCategories = useMemo(() => {
+    const set = new Set<string>();
+    CATEGORIES.forEach((c) => set.add(c));
+    list.forEach((p) => {
+      if (p.category && p.category.trim()) set.add(p.category.trim());
+    });
+    return Array.from(set);
+  }, [list]);
+
+  const dynamicDeities = useMemo(() => {
+    const set = new Set<string>();
+    AVAILABLE_DEITIES.forEach((d) => set.add(d));
+    list.forEach((p) => {
+      if (p.deities && Array.isArray(p.deities)) {
+        p.deities.forEach((d) => {
+          if (d && d.trim()) set.add(d.trim());
+        });
+      }
+    });
+    return Array.from(set);
+  }, [list]);
+
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+    typeFilter !== "all" ||
+    categoryFilter !== "all" ||
+    statusFilter !== "all" ||
+    deityFilter !== "all" ||
+    sortBy !== "default"
+  );
+
+  const resetAllFilters = () => {
+    setSearch("");
+    setTypeFilter("all");
+    setCategoryFilter("all");
+    setStatusFilter("all");
+    setDeityFilter("all");
+    setSortBy("default");
+    setPage(1);
+  };
+
+  const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    const matchesSearch =
-      !q ||
-      p.title.toLowerCase().includes(q) ||
-      (p.hindiTitle && p.hindiTitle.toLowerCase().includes(q)) ||
-      p.description.toLowerCase().includes(q) ||
-      p.slug.toLowerCase().includes(q) ||
-      (p.category && p.category.toLowerCase().includes(q)) ||
-      (p.deities && p.deities.some((d) => d.toLowerCase().includes(q)));
+    const result = list.filter((p) => {
+      const matchesSearch =
+        !q ||
+        p.title.toLowerCase().includes(q) ||
+        (p.hindiTitle && p.hindiTitle.toLowerCase().includes(q)) ||
+        p.description.toLowerCase().includes(q) ||
+        p.slug.toLowerCase().includes(q) ||
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (p.deities && p.deities.some((d) => d.toLowerCase().includes(q)));
 
-    const matchesType =
-      typeFilter === "all" ||
-      (typeFilter === "temple" && (p.type === "temple" || !p.type)) ||
-      (typeFilter === "home" && p.type === "home");
+      const matchesType =
+        typeFilter === "all" ||
+        (typeFilter === "temple" && (p.type === "temple" || !p.type)) ||
+        (typeFilter === "home" && p.type === "home");
 
-    const matchesCat =
-      categoryFilter === "all" ||
-      (p.category ? p.category.toLowerCase() === categoryFilter.toLowerCase() : false);
+      const matchesCat =
+        categoryFilter === "all" ||
+        (p.category ? p.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim() : false);
 
-    const active = isPoojaActive(p);
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && active) ||
-      (statusFilter === "inactive" && !active);
+      const matchesDeity =
+        deityFilter === "all" ||
+        (p.deities && p.deities.some((d) => d.toLowerCase().trim() === deityFilter.toLowerCase().trim()));
 
-    return matchesSearch && matchesType && matchesCat && matchesStatus;
-  });
+      const active = isPoojaActive(p);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && active) ||
+        (statusFilter === "inactive" && !active);
+
+      return matchesSearch && matchesType && matchesCat && matchesDeity && matchesStatus;
+    });
+
+    if (sortBy === "name-asc") {
+      result.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === "name-desc") {
+      result.sort((a, b) => b.title.localeCompare(a.title));
+    } else if (sortBy === "price-asc") {
+      result.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+    } else if (sortBy === "price-desc") {
+      result.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+    }
+
+    return result;
+  }, [list, search, typeFilter, categoryFilter, deityFilter, statusFilter, sortBy]);
 
   const activeCount = list.filter((p) => isPoojaActive(p)).length;
   const inactiveCount = list.filter((p) => !isPoojaActive(p)).length;
+  const templeCount = list.filter((p) => p.type === "temple" || !p.type).length;
+  const homeCount = list.filter((p) => p.type === "home").length;
   const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
   const paginated = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
@@ -629,18 +801,18 @@ export default function PoojasManager({
                       <button
                         type="button"
                         onClick={autoTranslateAll}
-                        disabled={isTranslating || (!draft.title.trim() && !draft.description.trim())}
+                        disabled={translatingTarget !== null || (!draft.title.trim() && !draft.description.trim())}
                         className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-saffron-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-purple-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isTranslating ? (
+                        {translatingTarget === "all" ? (
                           <>
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            <span>Translating to 4 Languages…</span>
+                            <span>Translating All to 3 Languages…</span>
                           </>
                         ) : (
                           <>
                             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                            <span>✨ AI Auto-Translate (Hindi, Telugu, Tamil)</span>
+                            <span>✨ AI Auto-Translate All (Title, Content & Benefits)</span>
                           </>
                         )}
                       </button>
@@ -649,9 +821,30 @@ export default function PoojasManager({
                     <div className="space-y-4">
                       {/* English Title */}
                       <div>
-                        <label className="block text-xs font-bold text-ink mb-1">
-                          Puja Name (English) *
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold text-ink">
+                            Puja Name (English) *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={translateTitleOnly}
+                            disabled={translatingTarget !== null || !draft.title.trim()}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-saffron-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Translate English name into Hindi, Telugu, and Tamil"
+                          >
+                            {translatingTarget === "title" ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>Translating Name…</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-3 w-3 text-amber-300" />
+                                <span>✨ AI Auto-Translate Name</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                         <input
                           type="text"
                           value={draft.title}
@@ -750,9 +943,30 @@ export default function PoojasManager({
 
                       {/* English Description */}
                       <div>
-                        <label className="block text-xs font-bold text-ink mb-1">
-                          Spiritual Description (English) *
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold text-ink">
+                            Spiritual Description / Content (English) *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={translateDescriptionOnly}
+                            disabled={translatingTarget !== null || !draft.description.trim()}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-saffron-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Translate English content into Hindi, Telugu, and Tamil"
+                          >
+                            {translatingTarget === "description" ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>Translating Content…</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-3 w-3 text-amber-300" />
+                                <span>✨ AI Auto-Translate Content (Hindi, Telugu, Tamil)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                         <textarea
                           rows={3}
                           value={draft.description}
@@ -937,14 +1151,18 @@ export default function PoojasManager({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-ink mb-1">Next Scheduled Date</label>
-                        <input
-                          type="text"
+                        <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-saffron-600" />
+                          Next Scheduled Date (Calendar)
+                        </label>
+                        <DateInput
                           value={draft.startDate}
-                          onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
-                          placeholder="e.g. Oct 4, 2026"
-                          className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
+                          onChange={(val) => setDraft({ ...draft, startDate: val })}
+                          placeholder="Select auspicious date from calendar"
                         />
+                        <p className="mt-1 text-[11px] text-ink-soft">
+                          Choose the date directly from the calendar. Automatically scheduled for devotee bookings.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -973,15 +1191,36 @@ export default function PoojasManager({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-ink mb-1">Days from Today (Carousel)</label>
-                          <input
-                            type="number"
-                            value={draft.daysFromToday}
-                            onChange={(e) => setDraft({ ...draft, daysFromToday: e.target.value })}
-                            placeholder="e.g. 5 (Leave blank for catalog-only)"
-                            className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
+                        <div className="space-y-1">
+                          <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-saffron-600" />
+                            Carousel Event Date (Calendar)
+                          </label>
+                          <DateInput
+                            value={draft.daysFromToday ? daysFromTodayToDate(draft.daysFromToday) : ""}
+                            onChange={(val) => {
+                              if (!val) {
+                                setDraft({ ...draft, daysFromToday: "" });
+                              } else {
+                                const days = dateToDaysFromToday(val);
+                                setDraft({ ...draft, daysFromToday: String(days) });
+                              }
+                            }}
+                            placeholder="Select live event date from calendar"
                           />
+                          <div className="flex items-center gap-2 pt-1 text-[11px] text-ink-soft">
+                            <span>Or Days from Today:</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={90}
+                              value={draft.daysFromToday}
+                              onChange={(e) => setDraft({ ...draft, daysFromToday: e.target.value })}
+                              placeholder="e.g. 5"
+                              className="w-20 rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-xs text-ink focus:border-saffron-500 focus:outline-none"
+                            />
+                            <span className="text-ink-soft/70">(auto-synced)</span>
+                          </div>
                         </div>
 
                         <div>
@@ -1156,9 +1395,30 @@ export default function PoojasManager({
 
                     {/* English Benefits */}
                     <div className="space-y-3">
-                      <label className="block text-xs font-bold text-ink">
-                        Devotee Benefits (English)
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-ink">
+                          Devotee Benefits (English)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={translateBenefitsOnly}
+                          disabled={translatingTarget !== null || draft.benefits.length === 0}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-saffron-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Translate English benefits into Hindi, Telugu, and Tamil"
+                        >
+                          {translatingTarget === "benefits" ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span>Translating Benefits…</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3 w-3 text-amber-300" />
+                              <span>✨ AI Auto-Translate Benefits (Hindi, Telugu, Tamil)</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -1486,52 +1746,67 @@ export default function PoojasManager({
             </div>
           )}
 
-          {/* Filter Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-saffron-100 shadow-sm">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Type Pills */}
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-                <span>Type:</span>
-                <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100">
+          {/* ── Enhanced 2-Row Filter & Search Console ── */}
+          <div className="bg-white rounded-3xl border border-saffron-100 shadow-sm p-4 space-y-3.5">
+            {/* Row 1: Search Bar & Sort & Metrics */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Spacious Full Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-saffron-600/60" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  placeholder="Search pujas by name, deity, category, benefits or slug..."
+                  className="w-full pl-10 pr-9 py-2.5 text-xs rounded-2xl border border-saffron-200 bg-cream/30 text-ink placeholder:text-ink-soft/50 focus:border-saffron-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-saffron-100 transition-all font-medium"
+                />
+                {search && (
                   <button
                     type="button"
-                    onClick={() => { setTypeFilter("all"); setPage(1); }}
-                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                      typeFilter === "all" ? "bg-white text-saffron-800 shadow-sm" : "text-ink-soft hover:text-ink"
-                    }`}
+                    onClick={() => { setSearch(""); setPage(1); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink p-0.5 rounded-md"
+                    title="Clear search"
                   >
-                    All
+                    <X className="h-3.5 w-3.5" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setTypeFilter("temple"); setPage(1); }}
-                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                      typeFilter === "temple" ? "bg-saffron-500 text-white shadow-sm" : "text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    🛕 Temple
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setTypeFilter("home"); setPage(1); }}
-                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                      typeFilter === "home" ? "bg-saffron-500 text-white shadow-sm" : "text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    🏠 Home
-                  </button>
-                </div>
+                )}
               </div>
 
-              {/* Status Pills (Active / Hidden) */}
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-                <span>Status:</span>
-                <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100">
+              {/* Sort Dropdown & Result Count */}
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-saffron-600" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
+                    className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:border-saffron-500 focus:outline-none shadow-xs"
+                  >
+                    <option value="default">Default Order</option>
+                    <option value="name-asc">Name (A → Z)</option>
+                    <option value="name-desc">Name (Z → A)</option>
+                    <option value="price-asc">Price (Low → High)</option>
+                    <option value="price-desc">Price (High → Low)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center rounded-xl bg-saffron-50 px-3 py-2 text-xs font-bold text-saffron-900 border border-saffron-200 whitespace-nowrap">
+                  {filtered.length} of {list.length} Pujas
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Filter Controls (Status, Type, Category, Deity) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-saffron-100/70">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Status Segmented Control */}
+                <div className="inline-flex rounded-xl bg-cream/70 p-1 border border-saffron-200 text-xs font-semibold">
                   <button
                     type="button"
                     onClick={() => { setStatusFilter("all"); setPage(1); }}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                      statusFilter === "all" ? "bg-white text-saffron-800 shadow-sm" : "text-ink-soft hover:text-ink"
+                      statusFilter === "all"
+                        ? "bg-white text-saffron-900 shadow-xs font-bold"
+                        : "text-ink-soft hover:text-ink"
                     }`}
                   >
                     All ({list.length})
@@ -1540,7 +1815,9 @@ export default function PoojasManager({
                     type="button"
                     onClick={() => { setStatusFilter("active"); setPage(1); }}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                      statusFilter === "active" ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:text-emerald-800"
+                      statusFilter === "active"
+                        ? "bg-emerald-600 text-white shadow-xs font-bold"
+                        : "text-emerald-700 hover:text-emerald-800"
                     }`}
                   >
                     🟢 Active ({activeCount})
@@ -1549,72 +1826,171 @@ export default function PoojasManager({
                     type="button"
                     onClick={() => { setStatusFilter("inactive"); setPage(1); }}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                      statusFilter === "inactive" ? "bg-slate-700 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"
+                      statusFilter === "inactive"
+                        ? "bg-slate-700 text-white shadow-xs font-bold"
+                        : "text-slate-600 hover:text-slate-800"
                     }`}
                   >
                     ⚪ Hidden ({inactiveCount})
                   </button>
                 </div>
-              </div>
 
-              {/* Category Dropdown */}
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-                <span>Category:</span>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => {
-                    setCategoryFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="rounded-xl border border-saffron-100 bg-cream/70 px-3 py-1 text-xs font-semibold text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
-                >
-                  <option value="all">All Categories</option>
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Search Bar */}
-              <div className="relative flex items-center min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-soft/50" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  placeholder="Search puja by name, slug or deity..."
-                  className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
-                />
-                {search && (
+                {/* Type Filter */}
+                <div className="inline-flex rounded-xl bg-cream/70 p-1 border border-saffron-200 text-xs font-semibold">
                   <button
                     type="button"
-                    onClick={() => setSearch("")}
-                    className="absolute right-2 text-ink-soft/40 hover:text-ink"
+                    onClick={() => { setTypeFilter("all"); setPage(1); }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                      typeFilter === "all"
+                        ? "bg-white text-saffron-900 shadow-xs font-bold"
+                        : "text-ink-soft hover:text-ink"
+                    }`}
                   >
-                    <X className="h-3 w-3" />
+                    All Types
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => { setTypeFilter("temple"); setPage(1); }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                      typeFilter === "temple"
+                        ? "bg-saffron-500 text-white shadow-xs font-bold"
+                        : "text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    🛕 Temple ({templeCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setTypeFilter("home"); setPage(1); }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                      typeFilter === "home"
+                        ? "bg-saffron-500 text-white shadow-xs font-bold"
+                        : "text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    🏠 Home ({homeCount})
+                  </button>
+                </div>
+
+                {/* Dynamic Category Dropdown with Item Counts */}
+                <div className="relative">
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => {
+                      setCategoryFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className={`rounded-xl border px-3 py-1.5 text-xs font-semibold focus:outline-none transition-all shadow-xs ${
+                      categoryFilter !== "all"
+                        ? "border-saffron-500 bg-saffron-50 text-saffron-900 ring-1 ring-saffron-400 font-bold"
+                        : "border-saffron-200 bg-white text-ink-soft hover:border-saffron-400"
+                    }`}
+                  >
+                    <option value="all">📁 All Categories</option>
+                    {dynamicCategories.map((cat) => {
+                      const count = list.filter((p) => p.category?.toLowerCase() === cat.toLowerCase()).length;
+                      return (
+                        <option key={cat} value={cat}>
+                          {cat} {count > 0 ? `(${count})` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Dynamic Deity Dropdown */}
+                <div className="relative">
+                  <select
+                    value={deityFilter}
+                    onChange={(e) => {
+                      setDeityFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className={`rounded-xl border px-3 py-1.5 text-xs font-semibold focus:outline-none transition-all shadow-xs ${
+                      deityFilter !== "all"
+                        ? "border-purple-500 bg-purple-50 text-purple-900 ring-1 ring-purple-400 font-bold"
+                        : "border-saffron-200 bg-white text-ink-soft hover:border-saffron-400"
+                    }`}
+                  >
+                    <option value="all">🔱 All Deities</option>
+                    {dynamicDeities.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {/* Reset */}
-              {(search || typeFilter !== "all" || categoryFilter !== "all" || statusFilter !== "all") && (
+              {/* Reset Filters Action Button */}
+              {hasActiveFilters && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setTypeFilter("all");
-                    setCategoryFilter("all");
-                    setStatusFilter("all");
-                    setPage(1);
-                  }}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200"
+                  onClick={resetAllFilters}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50/80 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-all shrink-0"
                 >
-                  Reset Filters ✕
+                  <RotateCcw className="h-3 w-3" />
+                  Reset Filters
                 </button>
               )}
             </div>
+
+            {/* Active Filters Summary Chips */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-saffron-100/60 text-xs">
+                <span className="text-[11px] font-bold text-ink-soft uppercase tracking-wider mr-1">
+                  Active Filters:
+                </span>
+                {search && (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-saffron-100/80 px-2 py-0.5 text-xs font-semibold text-saffron-900">
+                    Query: &ldquo;{search}&rdquo;
+                    <button type="button" onClick={() => { setSearch(""); setPage(1); }}>
+                      <X className="h-3 w-3 hover:text-red-600" />
+                    </button>
+                  </span>
+                )}
+                {statusFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-saffron-100/80 px-2 py-0.5 text-xs font-semibold text-saffron-900">
+                    Status: {statusFilter === "active" ? "Active" : "Hidden"}
+                    <button type="button" onClick={() => { setStatusFilter("all"); setPage(1); }}>
+                      <X className="h-3 w-3 hover:text-red-600" />
+                    </button>
+                  </span>
+                )}
+                {typeFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-saffron-100/80 px-2 py-0.5 text-xs font-semibold text-saffron-900">
+                    Type: {typeFilter === "temple" ? "Temple" : "Home"}
+                    <button type="button" onClick={() => { setTypeFilter("all"); setPage(1); }}>
+                      <X className="h-3 w-3 hover:text-red-600" />
+                    </button>
+                  </span>
+                )}
+                {categoryFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-saffron-100/80 px-2 py-0.5 text-xs font-semibold text-saffron-900">
+                    Category: {categoryFilter}
+                    <button type="button" onClick={() => { setCategoryFilter("all"); setPage(1); }}>
+                      <X className="h-3 w-3 hover:text-red-600" />
+                    </button>
+                  </span>
+                )}
+                {deityFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-purple-100/80 px-2 py-0.5 text-xs font-semibold text-purple-900">
+                    Deity: {deityFilter}
+                    <button type="button" onClick={() => { setDeityFilter("all"); setPage(1); }}>
+                      <X className="h-3 w-3 hover:text-red-600" />
+                    </button>
+                  </span>
+                )}
+                {sortBy !== "default" && (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">
+                    Sorted: {sortBy}
+                    <button type="button" onClick={() => { setSortBy("default"); setPage(1); }}>
+                      <X className="h-3 w-3 hover:text-red-600" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Table */}
@@ -1635,22 +2011,23 @@ export default function PoojasManager({
                 <tbody className="divide-y divide-saffron-50">
                   {paginated.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-ink-soft">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <p>No pujas found matching current criteria.</p>
-                          {(search || typeFilter !== "all" || categoryFilter !== "all" || statusFilter !== "all") && (
+                      <td colSpan={7} className="p-12 text-center text-ink-soft">
+                        <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-saffron-50 border border-saffron-200 text-2xl">
+                            🔍
+                          </div>
+                          <h4 className="text-sm font-bold text-ink">No pujas match your filters</h4>
+                          <p className="text-xs text-ink-soft">
+                            We couldn&apos;t find any puja ceremonies matching your current filter combination.
+                          </p>
+                          {hasActiveFilters && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setSearch("");
-                                setTypeFilter("all");
-                                setCategoryFilter("all");
-                                setStatusFilter("all");
-                                setPage(1);
-                              }}
-                              className="text-xs font-bold text-saffron-700 hover:underline inline-flex items-center gap-1 bg-saffron-50 px-3 py-1.5 rounded-lg border border-saffron-200"
+                              onClick={resetAllFilters}
+                              className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-saffron-600 transition-all"
                             >
-                              Reset All Filters ✕
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              Reset All Filters
                             </button>
                           )}
                         </div>

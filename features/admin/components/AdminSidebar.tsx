@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   BarChart3,
   Building2,
-  CalendarDays,
   ExternalLink,
   Flame,
   Gift,
@@ -25,7 +24,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "bookings", label: "Successful Bookings", icon: ShieldCheck, group: "Orders & Sevas" },
   { id: "orders", label: "All Orders & Payments", icon: ShoppingBag, group: "Orders & Sevas" },
   { id: "devotees", label: "Devotee Profiles", icon: Users, group: "Community" },
-  { id: "dates", label: "Pooja Dates", icon: CalendarDays, group: "Settings" },
   { id: "coupons", label: "Coupons", icon: Gift, group: "Settings" },
   { id: "account", label: "Admin Account", icon: KeyRound, group: "Settings" },
 ];

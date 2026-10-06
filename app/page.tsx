@@ -1,7 +1,7 @@
 import { Header, Footer } from "@/components/layout";
 import { JsonLd } from "@/components/common";
 import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
-import { PoojaCatalog } from "@/features/catalog";
+import { PoojaCatalog, UpcomingEvents } from "@/features/catalog";
 import { faqs } from "@/lib/data";
 import { faqPageLd, organizationLd, websiteLd } from "@/lib/seo";
 
@@ -31,6 +31,9 @@ export default function Home() {
           </div>
           <PoojaCatalog limit={8} showViewAll={true} viewAllHref="/book" />
         </section>
+
+        {/* Live Upcoming Rituals & Auspicious Muhurats */}
+        <UpcomingEvents />
 
         <WhyChooseUs />
         <Testimonials />

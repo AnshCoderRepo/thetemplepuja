@@ -33,7 +33,7 @@ function ServiceInner({ service }: { service: string }) {
   const { openBooking } = useBookingModal();
 
   // Resolve from the backend catalog (falls back to the static list).
-  const { poojas, loaded } = useCatalog();
+  const { poojas, temples, loaded } = useCatalog();
   const pooja = loaded ? (poojas.find((p) => p.slug === service) ?? null) : undefined;
 
   const locTitle = pooja ? getLocalizedPoojaTitle(pooja, locale) : "";
@@ -80,7 +80,7 @@ function ServiceInner({ service }: { service: string }) {
   const locDuration = getLocalizedPoojaDuration(pooja, locale);
   const locMuhurat = getLocalizedPoojaBestMuhurat(pooja, locale);
   const locBenefits = getLocalizedPoojaBenefits(pooja, locale);
-  const temple = getTempleForPooja(pooja);
+  const temple = getTempleForPooja(pooja, temples);
   const bannerImage = getPoojaBannerImage(pooja);
 
   const handleBookNowClick = () => {

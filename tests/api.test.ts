@@ -1,17 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  addCustomerMediaRemote,
   adminLogin,
   cancelBookingRemote,
+  deleteCustomerMediaRemote,
   deleteUserRemote,
   fetchAllUsers,
   fetchBooking,
   fetchCatalog,
   fetchUserByPhone,
+  getCatalogVersion,
   refundBookingRemote,
   resetCatalogCache,
   saveCatalogSection,
   submitBooking,
 } from "../lib/api";
+import { getTempleForPooja, type Temple } from "../lib/data";
 import { getUsers } from "../lib/storage";
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -350,5 +354,88 @@ describe("admin user actions", () => {
       vi.fn().mockResolvedValue(jsonResponse({ user: null }, 404))
     );
     expect(await fetchUserByPhone("9876543210")).toBeUndefined();
+  });
+
+  it("addCustomerMediaRemote calls media API and merges user", async () => {
+    const mockUser = {
+      id: "USR1",
+      name: "Aarav",
+      phone: "9876543210",
+      city: "Delhi",
+      bookings: [],
+      createdAt: new Date().toISOString(),
+      videos: [{ id: "vid1", title: "Kashi Aarti", url: "https://example.com/vid.mp4", uploadedAt: new Date().toISOString() }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ ok: true, user: mockUser }))
+    );
+
+    const res = await addCustomerMediaRemote(
+      "USR1",
+      { title: "Kashi Aarti", url: "https://example.com/vid.mp4" },
+      "tok"
+    );
+    expect(res.ok).toBe(true);
+    expect(res.user?.videos?.[0].title).toBe("Kashi Aarti");
+  });
+
+  it("deleteCustomerMediaRemote calls media API with delete action", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ ok: true }))
+    );
+    const res = await deleteCustomerMediaRemote("USR1", "vid1", "tok");
+    expect(res.ok).toBe(true);
+  });
+});
+
+describe("catalog updates & dynamic temples", () => {
+  beforeEach(() => {
+    resetCatalogCache();
+    vi.unstubAllGlobals();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("saveCatalogSection clears cache and bumps version", async () => {
+    const initialVersion = getCatalogVersion();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ ok: true, catalog: { poojas: [], events: [], coupons: {} } }))
+    );
+    const res = await saveCatalogSection("poojas", [], "tok");
+    expect(res.ok).toBe(true);
+    expect(getCatalogVersion()).toBeGreaterThanOrEqual(initialVersion);
+  });
+
+  it("getTempleForPooja resolves custom temple from catalog temples list", () => {
+    const customTemple: Temple = {
+      slug: "somnath-jyotirlinga",
+      name: "Somnath Jyotirlinga Temple",
+      deity: "Lord Shiva",
+      city: "Veraval",
+      state: "Gujarat",
+      description: "First among the twelve Jyotirlinga shrines.",
+      active: true,
+      poojaSlugs: ["somnath-rudrabhishek"],
+    };
+
+    const pooja = {
+      slug: "somnath-rudrabhishek",
+      title: "Somnath Rudrabhishek",
+      hindiTitle: "सोमनाथ रुद्राभिषेक",
+      price: 2101,
+      duration: "2 hours",
+      bestMuhurat: "Shravan Somwar",
+      description: "Sacred abhishekam at Somnath",
+      emoji: "🔱",
+      gradient: "from-sky-500 to-indigo-700",
+      benefits: ["Lord Shiva blessings", "Removal of fear"],
+      templeSlugs: ["somnath-jyotirlinga"],
+    };
+
+    const resolved = getTempleForPooja(pooja, [customTemple]);
+    expect(resolved.slug).toBe("somnath-jyotirlinga");
+    expect(resolved.name).toBe("Somnath Jyotirlinga Temple");
   });
 });

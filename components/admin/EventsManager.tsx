@@ -32,6 +32,10 @@ import {
   NumberInput,
   TextInput,
   Toggle,
+  DateInput,
+  daysFromTodayToDate,
+  dateToDaysFromToday,
+  toISODateString,
 } from "./manager-ui";
 
 interface FestivalDraft {
@@ -60,8 +64,8 @@ const emptyFestivalDraft: FestivalDraft = {
   badge: "🪔 UPCOMING FESTIVAL",
   heroTitle: "",
   heroSubtitle: "",
-  startDate: "",
-  endDate: "",
+  startDate: daysFromTodayToDate(7),
+  endDate: daysFromTodayToDate(16),
   daysFromToday: "7",
   durationDays: "9",
   heroImage: "/festivals/durga-puja.jpg",
@@ -534,24 +538,86 @@ export default function EventsManager({
                   />
                 </Field>
 
-                <Field label="Starts In (Days from Today)">
+                <Field label="Festival Start Date (Calendar)" hint="Pick start date from calendar">
+                  <DateInput
+                    value={festivalDraft.startDate}
+                    onChange={(val) => {
+                      setFestivalDraft((d) => {
+                        const next = { ...d, startDate: val };
+                        if (val) {
+                          next.daysFromToday = String(dateToDaysFromToday(val));
+                          if (next.endDate) {
+                            const s = new Date(val + "T00:00:00");
+                            const e = new Date(next.endDate + "T00:00:00");
+                            const diff = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1);
+                            next.durationDays = String(diff);
+                          }
+                        }
+                        return next;
+                      });
+                    }}
+                    placeholder="Select festival start date"
+                  />
+                </Field>
+
+                <Field label="Festival End Date (Calendar)" hint="Pick end date from calendar">
+                  <DateInput
+                    value={festivalDraft.endDate}
+                    min={festivalDraft.startDate}
+                    onChange={(val) => {
+                      setFestivalDraft((d) => {
+                        const next = { ...d, endDate: val };
+                        if (val && next.startDate) {
+                          const s = new Date(next.startDate + "T00:00:00");
+                          const e = new Date(val + "T00:00:00");
+                          const diff = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1);
+                          next.durationDays = String(diff);
+                        }
+                        return next;
+                      });
+                    }}
+                    placeholder="Select festival end date"
+                  />
+                </Field>
+
+                <Field label="Starts In (Days from Today)" hint="Auto-synced with start date">
                   <NumberInput
                     value={festivalDraft.daysFromToday}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setFestivalDraft((d) => ({ ...d, daysFromToday: v }));
+                      setFestivalDraft((d) => {
+                        const next = { ...d, daysFromToday: v };
+                        if (v !== "") {
+                          next.startDate = daysFromTodayToDate(v);
+                          if (next.durationDays) {
+                            next.endDate = daysFromTodayToDate(Number(v) + Number(next.durationDays));
+                          }
+                        }
+                        return next;
+                      });
                     }}
                     placeholder="7"
                     min={0}
                   />
                 </Field>
 
-                <Field label="Festival Duration (Days)">
+                <Field label="Festival Duration (Days)" hint="Auto-synced with end date">
                   <NumberInput
                     value={festivalDraft.durationDays}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setFestivalDraft((d) => ({ ...d, durationDays: v }));
+                      setFestivalDraft((d) => {
+                        const next = { ...d, durationDays: v };
+                        if (v !== "" && next.startDate) {
+                          const s = new Date(next.startDate + "T00:00:00");
+                          s.setDate(s.getDate() + Math.max(0, Number(v) - 1));
+                          const year = s.getFullYear();
+                          const month = String(s.getMonth() + 1).padStart(2, "0");
+                          const day = String(s.getDate()).padStart(2, "0");
+                          next.endDate = `${year}-${month}-${day}`;
+                        }
+                        return next;
+                      });
                     }}
                     placeholder="9"
                     min={1}
@@ -727,8 +793,8 @@ export default function EventsManager({
                             badge: fest.badge || "🪔 UPCOMING FESTIVAL",
                             heroTitle: fest.heroTitle,
                             heroSubtitle: fest.heroSubtitle,
-                            startDate: fest.startDate || "",
-                            endDate: fest.endDate || "",
+                            startDate: fest.startDate ? toISODateString(fest.startDate) : daysFromTodayToDate(fest.daysFromToday ?? 7),
+                            endDate: fest.endDate ? toISODateString(fest.endDate) : daysFromTodayToDate((fest.daysFromToday ?? 7) + (fest.durationDays ?? 9)),
                             daysFromToday: String(fest.daysFromToday ?? 7),
                             durationDays: String(fest.durationDays ?? 9),
                             heroImage: fest.heroImage || "",
@@ -830,7 +896,22 @@ export default function EventsManager({
                   />
                 </Field>
 
-                <Field label="Days from Today">
+                <Field label="Event Date (Calendar)" hint="Pick ritual date directly from calendar">
+                  <DateInput
+                    value={eventDraft.daysFromToday ? daysFromTodayToDate(eventDraft.daysFromToday) : ""}
+                    onChange={(val) => {
+                      if (!val) {
+                        setEventDraft((d) => ({ ...d, daysFromToday: "" }));
+                      } else {
+                        const days = dateToDaysFromToday(val);
+                        setEventDraft((d) => ({ ...d, daysFromToday: String(days) }));
+                      }
+                    }}
+                    placeholder="Select event date from calendar"
+                  />
+                </Field>
+
+                <Field label="Days from Today" hint="Auto-synced with calendar date">
                   <NumberInput
                     value={eventDraft.daysFromToday}
                     onChange={(e) => {

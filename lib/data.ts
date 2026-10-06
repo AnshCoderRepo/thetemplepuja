@@ -1827,15 +1827,20 @@ export function activeTemples(list: Temple[]): Temple[] {
   return list.filter(isTempleActive);
 }
 
-export function getTempleForPooja(pooja?: Pooja | null): Temple {
-  if (!pooja) return defaultTemples[1];
+export function getTempleForPooja(
+  pooja?: Pooja | null,
+  templesList?: Temple[]
+): Temple {
+  const pool = templesList && templesList.length > 0 ? templesList : defaultTemples;
+  const fallback = pool.find((t) => t.slug === "kashi-vishwanath") || pool[0] || defaultTemples[1];
+  if (!pooja) return fallback;
   if (pooja.templeSlugs && pooja.templeSlugs.length > 0) {
-    const found = defaultTemples.find((t) => pooja.templeSlugs?.includes(t.slug));
+    const found = pool.find((t) => pooja.templeSlugs?.includes(t.slug));
     if (found) return found;
   }
-  const match = defaultTemples.find((t) => t.poojaSlugs?.includes(pooja.slug));
+  const match = pool.find((t) => t.poojaSlugs?.includes(pooja.slug));
   if (match) return match;
-  return defaultTemples[1]; // Kashi Vishwanath Temple
+  return fallback;
 }
 
 export const defaultTemples: Temple[] = [

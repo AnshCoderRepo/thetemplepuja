@@ -23,8 +23,8 @@ const CREATE_TIMEOUT_MS = 10_000;
 
 function razorpayConfig() {
   return {
-    keyId: process.env.RAZORPAY_KEY_ID ?? "",
-    keySecret: process.env.RAZORPAY_KEY_SECRET ?? "",
+    keyId: (process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "").trim(),
+    keySecret: (process.env.RAZORPAY_KEY_SECRET || "").trim(),
   };
 }
 

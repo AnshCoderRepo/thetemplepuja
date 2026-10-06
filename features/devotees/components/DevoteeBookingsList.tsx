@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, XCircle } from "lucide-react";
+import { CalendarClock, Play, Video, XCircle } from "lucide-react";
 import type { BookingRecord, UserProfile } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
 import BookingCancelDialog from "./BookingCancelDialog";
@@ -154,6 +154,39 @@ export default function DevoteeBookingsList({
             </Link>
             <span className="ml-auto">Booked {formatDate(b.createdAt)}</span>
           </div>
+
+          {b.videos && b.videos.length > 0 && (
+            <div className="border-t border-saffron-100 bg-saffron-50/50 px-6 py-3.5 space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-800 flex items-center gap-1.5">
+                <Video className="h-3.5 w-3.5 text-saffron-600" />
+                Live Puja Video Recordings ({b.videos.length})
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {b.videos.map((vid) => (
+                  <div
+                    key={vid.id}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-saffron-200/80 bg-white p-2.5 shadow-2xs"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-ink truncate">{vid.title}</p>
+                      {vid.description && (
+                        <p className="text-[11px] text-ink-soft truncate">{vid.description}</p>
+                      )}
+                    </div>
+                    <a
+                      href={vid.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-saffron-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-saffron-600"
+                    >
+                      <Play className="h-3 w-3 fill-current" />
+                      Watch
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {(b.status === "confirmed" || b.status === "rescheduled") && (
             <div className="border-t border-dashed border-saffron-100 px-6 py-3.5">

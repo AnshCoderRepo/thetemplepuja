@@ -29,8 +29,12 @@ import { isValidIndianPhone } from "@/lib/validation";
 import type { BookingAddonItem, BookingRecord } from "@/lib/storage";
 import { useCatalog } from "@/features/catalog";
 import { useI18n } from "@/components/providers";
-import RazorpayCheckout from "@/features/payments/components/RazorpayCheckout";
+import { loadRazorpayScript } from "@/features/payments/services/razorpayScript";
+import { createRazorpayOrderRemote } from "@/features/payments/api/paymentApi";
+import CouponInput from "@/features/payments/components/CouponInput";
+import { couponDiscount, couponProblem } from "@/lib/coupons";
 import type {
+  AppliedCoupon,
   CheckoutSummary,
   PaymentProof,
 } from "@/features/payments/types/payment.types";
@@ -68,7 +72,7 @@ export default function BookingFlow({
   onClose,
   scrollContainerRef,
 }: BookingFlowProps) {
-  const { poojas: catalogPoojas, coupons } = useCatalog();
+  const { poojas: catalogPoojas, coupons, temples } = useCatalog();
   const { locale, t } = useI18n();
 
   // 3-step popup flow:
@@ -100,7 +104,10 @@ export default function BookingFlow({
   // Exactly 1 phone number required for all cases:
   const [phone, setPhone] = useState("");
   const [formError, setFormError] = useState("");
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmed, setConfirmed] = useState<ConfirmedBooking | null>(null);
 
   // Sync primary devotee name & gotra with familyMembers[0]
@@ -178,7 +185,7 @@ export default function BookingFlow({
     pooja ??
     catalogPoojas[0];
 
-  const temple = getTempleForPooja(selectedPooja);
+  const temple = getTempleForPooja(selectedPooja, temples);
 
   // Calculate pricing
   const rawBasePrice = selectedPooja?.price ?? 1101;
@@ -230,7 +237,73 @@ export default function BookingFlow({
   );
 
   const total = packagePrice + chadhavaTotal;
+  const discount = appliedCoupon
+    ? couponDiscount(appliedCoupon.code, packagePrice, coupons)
+    : 0;
+  const finalTotal = Math.max(total - discount, 0);
   const phoneValid = isValidIndianPhone(phone);
+
+  const couponEligibility = (code: string): string | null =>
+    couponProblem(
+      code,
+      {
+        phone: phone ?? "",
+        price: packagePrice,
+        poojaTitle: selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Pooja",
+      },
+      coupons
+    );
+
+  const handleApplyCoupon = () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+    const problem = couponEligibility(code);
+    if (problem) {
+      setAppliedCoupon(null);
+      setCouponMsg({ ok: false, text: problem });
+      return;
+    }
+    const c = coupons[code];
+    if (!c) {
+      setAppliedCoupon(null);
+      setCouponMsg({ ok: false, text: `"${code}" is not a valid coupon code.` });
+      return;
+    }
+    setAppliedCoupon({
+      code,
+      label: c.label,
+      description: c.description,
+      kind: c.kind,
+      value: c.value,
+    });
+    setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
+  };
+
+  const handleQuickApplyCoupon = (code: string) => {
+    setCouponCode(code);
+    const problem = couponEligibility(code);
+    if (problem) {
+      setAppliedCoupon(null);
+      setCouponMsg({ ok: false, text: problem });
+      return;
+    }
+    const c = coupons[code];
+    if (!c) return;
+    setAppliedCoupon({
+      code,
+      label: c.label,
+      description: c.description,
+      kind: c.kind,
+      value: c.value,
+    });
+    setCouponMsg({ ok: true, text: `Coupon ${code} applied — ${c.label}!` });
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponMsg(null);
+    setCouponCode("");
+  };
 
   // Returning devotee auto-fill if phone is entered
   useEffect(() => {
@@ -258,8 +331,8 @@ export default function BookingFlow({
     }
   };
 
-  // Step 3 Validation before opening Razorpay
-  const handleProceedToPayment = () => {
+  // Step 3 Validation and DIRECT Razorpay Gateway Opening
+  const handleProceedToPayment = async () => {
     setFormError("");
 
     if (selectedTier === "single") {
@@ -311,7 +384,122 @@ export default function BookingFlow({
       return;
     }
 
-    setCheckoutOpen(true);
+    const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+    const primaryName =
+      selectedTier === "single"
+        ? name.trim()
+        : selectedTier === "couple"
+        ? `${name.trim()} & ${partnerName.trim()}`
+        : `${familyMembers[0]?.name.trim() || "Devotee"} & Family (${familyMembers.length} Members)`;
+
+    setIsProcessingPayment(true);
+
+    try {
+      const orderResult = await createRazorpayOrderRemote({
+        poojaSlug: selectedPooja?.slug || prayerSlug,
+        packageTier: selectedTier,
+        addons: addonItems.map((a) => ({ id: a.id, quantity: a.quantity })),
+        couponCode: appliedCoupon?.code ?? null,
+        phone: cleanPhone,
+      });
+
+      if (orderResult.configured && orderResult.orderId && orderResult.keyId) {
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          setIsProcessingPayment(false);
+          setFormError("Razorpay could not load. Please check your internet connection.");
+          return;
+        }
+        const Rzp = (window as unknown as { Razorpay: new (o: object) => { open: () => void } }).Razorpay;
+        if (!Rzp) {
+          setIsProcessingPayment(false);
+          setFormError("Razorpay could not be initialized. Please try again.");
+          return;
+        }
+
+        const rzp = new Rzp({
+          key: orderResult.keyId,
+          amount: orderResult.amount,
+          currency: orderResult.currency || "INR",
+          order_id: orderResult.orderId,
+          name: "templepujasewa",
+          description: selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Pooja",
+          prefill: {
+            name: primaryName,
+            contact: cleanPhone,
+          },
+          theme: { color: "#0b245b" },
+          modal: {
+            ondismiss: () => {
+              setIsProcessingPayment(false);
+            },
+          },
+          handler: async (response: {
+            razorpay_payment_id?: string;
+            razorpay_order_id?: string;
+            razorpay_signature?: string;
+          }) => {
+            const paymentId = response.razorpay_payment_id;
+            const orderId = response.razorpay_order_id;
+            const signature = response.razorpay_signature;
+            if (!paymentId || !orderId || !signature) {
+              setIsProcessingPayment(false);
+              setFormError("Payment was not completed. Please try again.");
+              return;
+            }
+
+            await handlePaymentSuccess(
+              "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+              {
+                razorpayOrderId: orderId,
+                razorpayPaymentId: paymentId,
+                razorpaySignature: signature,
+              },
+              {
+                amount: (orderResult.amount ?? Math.round(finalTotal * 100)) / 100,
+                subtotal: total,
+                addonTotal: chadhavaTotal,
+                discount,
+                coupon: appliedCoupon,
+                addons: addonItems,
+              }
+            );
+            setIsProcessingPayment(false);
+          },
+        });
+
+        rzp.open();
+        return;
+      }
+
+      if (orderResult.error) {
+        setIsProcessingPayment(false);
+        setFormError(orderResult.error);
+        return;
+      }
+
+      // Demo mode fallback — simulate 1s processing and complete booking
+      setTimeout(async () => {
+        await handlePaymentSuccess(
+          "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          undefined,
+          {
+            amount: finalTotal,
+            subtotal: total,
+            addonTotal: chadhavaTotal,
+            discount,
+            coupon: appliedCoupon,
+            addons: addonItems,
+          }
+        );
+        setIsProcessingPayment(false);
+      }, 1000);
+    } catch (err) {
+      setIsProcessingPayment(false);
+      setFormError(
+        err instanceof Error ? err.message : "Unable to initiate payment. Please try again."
+      );
+    }
   };
 
   const handlePaymentSuccess = async (
@@ -319,12 +507,11 @@ export default function BookingFlow({
     payment?: PaymentProof,
     summary?: CheckoutSummary
   ) => {
-    setCheckoutOpen(false);
 
     const generatedPassword = generateDevoteePassword();
     const receiptNum = generateReceiptNumber(bookingId);
 
-    const paidTotal = summary?.amount ?? total;
+    const paidTotal = summary?.amount ?? finalTotal;
     const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
     const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
 
@@ -409,8 +596,8 @@ export default function BookingFlow({
       total: paidTotal,
       subtotal: total,
       addonTotal: chadhavaTotal,
-      discount: summary?.discount ?? 0,
-      coupon: summary?.coupon ?? null,
+      discount: summary?.discount ?? discount,
+      coupon: summary?.coupon ?? appliedCoupon,
       addons: addonItems,
       date: formatBookingDate(finalDate),
       time: finalTime,
@@ -1111,6 +1298,21 @@ export default function BookingFlow({
             </p>
           </div>
 
+          {/* Coupon Input */}
+          {coupons && Object.keys(coupons).length > 0 && (
+            <CouponInput
+              coupon={couponCode}
+              onCouponChange={setCouponCode}
+              applied={appliedCoupon}
+              discount={discount}
+              couponMsg={couponMsg}
+              couponMap={coupons}
+              onApply={handleApplyCoupon}
+              onQuickApply={handleQuickApplyCoupon}
+              onRemove={handleRemoveCoupon}
+            />
+          )}
+
           {/* Clean Order Price Summary */}
           <div className="rounded-2xl border border-saffron-100 bg-saffron-50/40 p-3.5 space-y-2">
             <div className="flex items-center justify-between text-xs text-ink-soft">
@@ -1133,25 +1335,40 @@ export default function BookingFlow({
               </div>
             )}
 
+            {discount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-700 font-semibold">
+                <span>Coupon Discount ({appliedCoupon?.code})</span>
+                <span>−{formatINR(discount)}</span>
+              </div>
+            )}
+
             <div className="border-t border-saffron-200/80 pt-2 flex items-center justify-between">
               <span className="font-display text-sm font-bold text-ink">
                 Total Dakshina
               </span>
               <span className="font-display text-lg font-extrabold text-saffron-700">
-                {formatINR(total)}
+                {formatINR(finalTotal)}
               </span>
             </div>
           </div>
+
+          {/* Error notification if payment initiation fails */}
+          {formError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 animate-shake">
+              ⚠️ {formError}
+            </div>
+          )}
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 pt-1">
             <button
               type="button"
+              disabled={isProcessingPayment}
               onClick={() => {
                 setCurrentStep(2);
                 scrollToTop();
               }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 disabled:opacity-50"
             >
               <ChevronLeft className="h-4 w-4" />
               <span>Back</span>
@@ -1159,37 +1376,28 @@ export default function BookingFlow({
 
             <button
               type="button"
+              disabled={isProcessingPayment}
               onClick={handleProceedToPayment}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99]"
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white shadow-md transition-all ${
+                isProcessingPayment
+                  ? "bg-saffron-600 cursor-wait opacity-90 shadow-saffron-600/20"
+                  : "bg-gradient-to-r from-saffron-500 to-saffron-600 shadow-saffron-600/20 hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99]"
+              }`}
             >
-              <span>Proceed to Payment ({formatINR(total)})</span>
-              <ChevronRight className="h-4 w-4" />
+              {isProcessingPayment ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Opening Razorpay Gateway...</span>
+                </>
+              ) : (
+                <>
+                  <span>Proceed to Pay ({formatINR(finalTotal)})</span>
+                  <ChevronRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </div>
         </div>
-      )}
-
-      {/* Razorpay Checkout Modal */}
-      {checkoutOpen && selectedPooja && (
-        <RazorpayCheckout
-          open={checkoutOpen}
-          poojaPrice={packagePrice}
-          packageTier={selectedTier}
-          poojaTitle={getLocalizedPoojaTitle(selectedPooja, locale)}
-          poojaSlug={selectedPooja.slug}
-          addons={addonItems}
-          couponMap={coupons}
-          devoteeName={
-            selectedTier === "single"
-              ? name.trim()
-              : selectedTier === "couple"
-              ? `${name.trim()} & ${partnerName.trim()}`
-              : `${familyMembers[0]?.name.trim() || "Devotee"} & Family (${familyMembers.length} Members)`
-          }
-          phone={phone}
-          onClose={() => setCheckoutOpen(false)}
-          onSuccess={handlePaymentSuccess}
-        />
       )}
     </div>
   );

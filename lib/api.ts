@@ -55,6 +55,19 @@ const CATALOG_VERSION_KEY = "ttp_catalog_version_v1";
 /** Monotonically increasing counter — bumped every time the catalog is
  * refreshed so useCatalog consumers can re-fetch without polling. */
 export function getCatalogVersion(): number {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(CATALOG_VERSION_KEY);
+      if (stored) {
+        const num = Number(stored);
+        if (!Number.isNaN(num) && num > catalogVersion) {
+          catalogVersion = num;
+        }
+      }
+    } catch {
+      // storage unavailable — ignore
+    }
+  }
   return catalogVersion;
 }
 
@@ -62,7 +75,7 @@ export function getCatalogVersion(): number {
  * so other tabs pick it up via the "storage" event, and dispatches a custom
  * event so same-tab consumers update instantly — zero polling. */
 export function bumpCatalogVersion(): void {
-  catalogVersion++;
+  catalogVersion = Date.now();
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(CATALOG_VERSION_KEY, String(catalogVersion));
@@ -375,8 +388,8 @@ export async function deleteCustomerMediaRemote(
       user?: UserProfile;
       error?: string;
     };
-    if (res.ok && body.user) {
-      mergeUserFromServer(body.user);
+    if (res.ok && (body.ok || body.user)) {
+      if (body.user) mergeUserFromServer(body.user);
       return { ok: true, user: body.user };
     }
     return { ok: false, error: body.error };

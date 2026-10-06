@@ -237,14 +237,27 @@ export default function AnalyticsDashboard({
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="rounded-lg px-2 py-1 text-xs border border-saffron-100 focus:outline-none"
+                onClick={(e) => {
+                  try {
+                    (e.currentTarget as HTMLInputElement).showPicker?.();
+                  } catch {}
+                }}
+                title="Select start date from calendar"
+                className="rounded-lg px-2 py-1 text-xs border border-saffron-100 focus:outline-none cursor-pointer"
               />
               <span className="text-ink-soft text-[10px]">to</span>
               <input
                 type="date"
                 value={customEnd}
+                min={customStart}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="rounded-lg px-2 py-1 text-xs border border-saffron-100 focus:outline-none"
+                onClick={(e) => {
+                  try {
+                    (e.currentTarget as HTMLInputElement).showPicker?.();
+                  } catch {}
+                }}
+                title="Select end date from calendar"
+                className="rounded-lg px-2 py-1 text-xs border border-saffron-100 focus:outline-none cursor-pointer"
               />
             </div>
           )}

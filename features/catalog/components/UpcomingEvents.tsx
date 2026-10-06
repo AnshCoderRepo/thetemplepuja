@@ -39,7 +39,7 @@ function getSacredImageForEvent(slug: string, title: string): string {
 
 export default function UpcomingEvents() {
   const [today, setToday] = useState<Date | null>(null);
-  const { poojas: catalogPoojas, loaded } = useCatalog();
+  const { poojas: catalogPoojas, events: catalogEvents, loaded } = useCatalog();
   const { locale } = useI18n();
 
   useEffect(() => {
@@ -47,9 +47,14 @@ export default function UpcomingEvents() {
   }, []);
 
   const poojaEvents = poojasAsEvents(catalogPoojas);
-  const events = today
-    ? getUpcomingEvents(today, poojaEvents.length > 0 ? poojaEvents : undefined)
-    : [];
+  const eventSpecs =
+    catalogEvents && catalogEvents.length > 0
+      ? catalogEvents
+      : poojaEvents.length > 0
+      ? poojaEvents
+      : undefined;
+
+  const events = today ? getUpcomingEvents(today, eventSpecs) : [];
 
   const slides: CoverflowSlide[] = events.map((event) => {
     const matchedPooja = catalogPoojas.find((p) => p.slug === event.slug);
