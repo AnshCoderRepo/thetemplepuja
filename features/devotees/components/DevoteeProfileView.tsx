@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Play, Video } from "lucide-react";
 import { PoojaExperience } from "@/features/catalog";
 import { cancelBookingRemote, rescheduleBookingRemote } from "@/features/bookings";
 import { fetchUserByPhone } from "../api/devoteeApi";
@@ -150,6 +150,56 @@ export default function DevoteeProfileView() {
           </PoojaExperience>
 
           <DevoteeProfileCard profile={profile} />
+
+          {profile.videos && profile.videos.length > 0 && (
+            <div className="mt-8 rounded-3xl border border-saffron-100 bg-white p-6 shadow-card space-y-4">
+              <h3 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
+                <Video className="h-5 w-5 text-saffron-600" />
+                Your Sacred Puja Video Recordings ({profile.videos.length})
+              </h3>
+              <p className="text-xs text-ink-soft">
+                Watch the authentic Vedic rituals and sankalp performed on your behalf by our certified pandits.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {profile.videos.map((vid) => (
+                  <div
+                    key={vid.id}
+                    className="flex flex-col justify-between rounded-2xl border border-saffron-100 bg-cream/50 p-4 space-y-3"
+                  >
+                    <div>
+                      <h4 className="font-bold text-ink text-sm flex items-center gap-1.5">
+                        📹 {vid.title}
+                      </h4>
+                      {vid.poojaTitle && (
+                        <p className="text-saffron-700 text-xs font-semibold mt-0.5">
+                          🪔 {vid.poojaTitle}
+                        </p>
+                      )}
+                      {vid.description && (
+                        <p className="text-xs text-ink-soft mt-1 leading-relaxed bg-white/80 p-2 rounded-xl">
+                          {vid.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between border-t border-saffron-100/60 pt-2 text-[11px]">
+                      <span className="text-ink-soft">
+                        {vid.bookingId ? `Ref: ${vid.bookingId}` : "General Ritual"}
+                      </span>
+                      <a
+                        href={vid.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-soft hover:bg-saffron-600 transition-colors"
+                      >
+                        <Play className="h-3 w-3 fill-current" />
+                        Watch Video
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <h3 className="mb-4 mt-10 flex items-center gap-2 font-display text-xl font-bold text-ink">
             <CalendarDays className="h-5 w-5 text-saffron-600" />

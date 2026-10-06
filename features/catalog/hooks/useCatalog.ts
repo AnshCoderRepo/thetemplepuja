@@ -5,16 +5,19 @@ import {
   coupons as staticCoupons,
   defaultFestivals as staticFestivals,
   defaultPoojaDates,
+  defaultTemples as staticTemples,
   poojas as staticPoojas,
   type Coupon,
   type FestivalEvent,
   type Pooja,
   type PoojaDate,
+  type Temple,
   type UpcomingEventSpec,
 } from "@/lib/data";
 import {
   fetchCatalog,
   getCatalogVersion,
+  resetCatalogCache,
 } from "../api/catalogApi";
 import type { ResolvedCatalog } from "../types/catalog.types";
 
@@ -24,6 +27,7 @@ export interface CatalogState {
   festivals: FestivalEvent[];
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
+  temples: Temple[];
   loaded: boolean;
 }
 
@@ -44,7 +48,8 @@ export function useCatalog(): CatalogState {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "ttp_catalog_version_v1") {
-        setCatalogVersion(Number(e.newValue) || 0);
+        resetCatalogCache();
+        setCatalogVersion(Number(e.newValue) || Date.now());
       }
     };
     window.addEventListener("storage", onStorage);
@@ -54,8 +59,8 @@ export function useCatalog(): CatalogState {
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === "visible") {
-        const v = getCatalogVersion();
-        setCatalogVersion(v);
+        resetCatalogCache();
+        setCatalogVersion(Date.now());
       }
     };
     document.addEventListener("visibilitychange", onVis);
@@ -63,7 +68,10 @@ export function useCatalog(): CatalogState {
   }, []);
 
   useEffect(() => {
-    const onCatalogUpdated = () => setCatalogVersion(getCatalogVersion());
+    const onCatalogUpdated = () => {
+      resetCatalogCache();
+      setCatalogVersion(getCatalogVersion() || Date.now());
+    };
     window.addEventListener("catalog-updated", onCatalogUpdated);
     return () => window.removeEventListener("catalog-updated", onCatalogUpdated);
   }, []);
@@ -74,6 +82,7 @@ export function useCatalog(): CatalogState {
     festivals: catalog?.festivals ?? staticFestivals,
     coupons: catalog?.coupons ?? staticCoupons,
     poojaDates: catalog?.poojaDates ?? defaultPoojaDates,
+    temples: catalog?.temples ?? staticTemples,
     loaded: catalog !== null,
   };
 }

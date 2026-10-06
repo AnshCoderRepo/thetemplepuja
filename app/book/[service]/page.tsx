@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/common";
-import { getCatalogPoojas } from "@/lib/catalog";
+import { getResolvedCatalog } from "@/lib/server-store";
 import { isPoojaActive, type Pooja } from "@/lib/data";
 import { serviceLd } from "@/lib/seo";
 import ServiceClient from "./ServiceClient";
@@ -9,16 +9,19 @@ interface Params {
   params: Promise<{ service: string }>;
 }
 
-/** The pooja this slug maps to, per the static catalog (the same source the
- * client falls back to), or null when it doesn't exist / is deactivated. */
-function resolvePooja(service: string): Pooja | null {
-  const pooja = getCatalogPoojas().find((p) => p.slug === service);
+export const dynamic = "force-dynamic";
+
+/** The pooja this slug maps to, per the resolved backend catalog,
+ * or null when it doesn't exist / is deactivated. */
+async function resolvePooja(service: string): Promise<Pooja | null> {
+  const catalog = await getResolvedCatalog();
+  const pooja = catalog.poojas.find((p) => p.slug === service);
   return pooja && isPoojaActive(pooja) ? pooja : null;
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { service } = await params;
-  const pooja = resolvePooja(service);
+  const pooja = await resolvePooja(service);
   const url = `/book/${service}`;
 
   if (!pooja) {
@@ -52,7 +55,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function ServicePage({ params }: Params) {
   const { service } = await params;
-  const pooja = resolvePooja(service);
+  const pooja = await resolvePooja(service);
 
   return (
     <>

@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { fetchCatalog, resetCatalogSection, saveCatalogSection } from "@/lib/api";
 import { computeUpcomingDates, type PoojaDate } from "@/lib/data";
 import {
+  CalendarDayPicker,
   Field,
   ManagerCard,
   ManagerHeader,
@@ -206,6 +207,23 @@ export default function DatesManager({
             </button>
           </div>
 
+          {/* Interactive Calendar Day Picker */}
+          <div className="mb-4">
+            <CalendarDayPicker
+              value={draft.dayOfMonth}
+              onChange={(day) =>
+                setDraft((d) => {
+                  const next = { ...d, dayOfMonth: String(day) };
+                  if (!editing && (!d.id || d.id === `${d.dayOfMonth}th-7pm` || d.id === "8th-7pm")) {
+                    const suffix = day === 1 ? "1st" : day === 2 ? "2nd" : day === 3 ? "3rd" : `${day}th`;
+                    next.id = `${suffix}-7pm`;
+                  }
+                  return next;
+                })
+              }
+            />
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="ID *" hint="Short identifier, e.g. 8th-7pm">
               <TextInput
@@ -220,7 +238,7 @@ export default function DatesManager({
                 disabled={Boolean(editing)}
               />
             </Field>
-            <Field label="Day of Month *" hint="1–31">
+            <Field label="Day of Month *" hint="Synced with calendar (1–31)">
               <NumberInput
                 value={draft.dayOfMonth}
                 onChange={(e) =>

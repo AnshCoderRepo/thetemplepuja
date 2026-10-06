@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { withEventBookedSeats } from "@/lib/data";
 import {
   clearCatalogOverrides,
@@ -8,6 +9,9 @@ import {
   saveCatalogOverrides,
   type CatalogOverrideSection,
 } from "@/lib/server-store";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const SECTIONS: CatalogOverrideSection[] = [
   "poojas",
@@ -31,10 +35,19 @@ export async function GET() {
   // so cancellations free a seat automatically on the next fetch).
   const users = await getAllUsers();
   const bookings = users.flatMap((u) => u.bookings);
-  return NextResponse.json({
-    ...catalog,
-    events: withEventBookedSeats(catalog.events, bookings),
-  });
+  return NextResponse.json(
+    {
+      ...catalog,
+      events: withEventBookedSeats(catalog.events, bookings),
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -66,6 +79,14 @@ export async function POST(req: NextRequest) {
     await saveCatalogOverrides(
       overrides as Parameters<typeof saveCatalogOverrides>[0]
     );
+  }
+
+  // Revalidate Next.js cache so SSR pages and landing page update immediately
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/book");
+  } catch {
+    // Ignore during test/standalone execution
   }
 
   return NextResponse.json({ ok: true, catalog: await getResolvedCatalog() });

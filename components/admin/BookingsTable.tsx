@@ -188,7 +188,13 @@ export default function BookingsTable({
             type="date"
             value={dateFilter}
             onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
-            className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium"
+            onClick={(e) => {
+              try {
+                (e.currentTarget as HTMLInputElement).showPicker?.();
+              } catch {}
+            }}
+            title="Filter by date (select from calendar)"
+            className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
           />
 
           {(search || dateFilter) && (
