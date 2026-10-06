@@ -36,7 +36,7 @@ const ScrollExpandMedia = ({
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [showContent, setShowContent] = useState<boolean>(false);
   const [mediaFullyExpanded, setMediaFullyExpanded] = useState<boolean>(false);
-  const [touchStartY, setTouchStartY] = useState<number>(0);
+  const touchStartYRef = useRef<number>(0);
   const [isMobileState, setIsMobileState] = useState<boolean>(false);
   const [inView, setInView] = useState<boolean>(false);
 
@@ -91,15 +91,15 @@ const ScrollExpandMedia = ({
 
     const handleTouchStart = (e: TouchEvent) => {
       if (!inView) return;
-      setTouchStartY(e.touches[0].clientY);
+      touchStartYRef.current = e.touches[0].clientY;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!inView) return;
-      if (!touchStartY) return;
+      if (!touchStartYRef.current) return;
 
       const touchY = e.touches[0].clientY;
-      const deltaY = touchStartY - touchY;
+      const deltaY = touchStartYRef.current - touchY;
 
       if (mediaFullyExpanded && deltaY < -20 && isSectionAtTop()) {
         setMediaFullyExpanded(false);
@@ -121,12 +121,12 @@ const ScrollExpandMedia = ({
           setShowContent(false);
         }
 
-        setTouchStartY(touchY);
+        touchStartYRef.current = touchY;
       }
     };
 
     const handleTouchEnd = (): void => {
-      setTouchStartY(0);
+      touchStartYRef.current = 0;
     };
 
     const handleScroll = (): void => {

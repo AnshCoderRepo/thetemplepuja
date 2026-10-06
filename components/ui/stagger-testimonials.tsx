@@ -101,6 +101,7 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
         }}
       />
       {testimonial.imgSrc ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={testimonial.imgSrc}
           alt={testimonial.by.split(",")[0]}

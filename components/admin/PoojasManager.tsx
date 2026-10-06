@@ -1556,7 +1556,7 @@ export default function PoojasManager({
                     <div>
                       <h3 className="text-base font-bold text-ink">Relationships</h3>
                       <p className="text-xs text-ink-soft">
-                        Step 5 of 8 — Connect Deities, Chadhavas, and Temples. Use "+ Other" to add any custom deity, temple, or offering.
+                        Step 5 of 8 — Connect Deities, Chadhavas, and Temples. Use &quot;+ Other&quot; to add any custom deity, temple, or offering.
                       </p>
                     </div>
 
