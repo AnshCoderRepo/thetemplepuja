@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteUserRecord, isValidSessionToken } from "@/lib/server-store";
+import { broadcastRealtime } from "@/lib/realtime";
 
 function bearerToken(req: NextRequest): string | null {
   const header = req.headers.get("authorization");
@@ -20,5 +21,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing user id." }, { status: 400 });
   }
   const res = await deleteUserRecord(body.id);
+  if (res.ok) {
+    broadcastRealtime({ type: "devotee_updated", target: body.id });
+    broadcastRealtime({ type: "catalog_updated", section: "events" });
+  }
   return NextResponse.json({ ok: res.ok });
 }

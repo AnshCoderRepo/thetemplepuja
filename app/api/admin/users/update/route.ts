@@ -3,6 +3,7 @@ import {
   isValidSessionToken,
   updateUserProfile,
 } from "@/lib/server-store";
+import { broadcastRealtime } from "@/lib/realtime";
 import { isValidIndianPhone, normalizePhone } from "@/lib/validation";
 
 function bearerToken(req: NextRequest): string | null {
@@ -67,6 +68,8 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  broadcastRealtime({ type: "devotee_updated", target: targetId });
 
   return NextResponse.json({ ok: true, user: res.user });
 }

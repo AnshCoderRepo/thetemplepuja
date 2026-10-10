@@ -5,6 +5,7 @@ import {
   findUserByPhone,
   updateUserPassword,
 } from "@/lib/server-store";
+import { broadcastRealtime } from "@/lib/realtime";
 import { normalizePhone, isValidIndianPhone } from "@/lib/validation";
 
 /**
@@ -53,6 +54,8 @@ export async function POST(request: NextRequest) {
     // Hash and save new password
     const passwordHash = await hashPassword(newPassword);
     await updateUserPassword(phone, passwordHash);
+
+    broadcastRealtime({ type: "devotee_updated", target: phone });
 
     return NextResponse.json({
       ok: true,

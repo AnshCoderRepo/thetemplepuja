@@ -15,6 +15,7 @@ import {
 } from "@/lib/razorpay";
 import { isValidIndianPhone, normalizePhone } from "@/lib/validation";
 import { bookingRateLimiter } from "@/lib/rate-limit";
+import { broadcastRealtime } from "@/lib/realtime";
 
 interface PaymentProof {
   razorpayOrderId?: unknown;
@@ -193,6 +194,10 @@ export async function POST(req: NextRequest) {
       },
     });
   }
+
+  // Broadcast realtime updates for live seating and devotee profiles
+  broadcastRealtime({ type: "devotee_updated", target: normalizedPhone });
+  broadcastRealtime({ type: "catalog_updated", section: "events" });
 
   return NextResponse.json({
     ok: true,
