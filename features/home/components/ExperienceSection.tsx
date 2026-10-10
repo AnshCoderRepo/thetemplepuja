@@ -24,8 +24,8 @@ export default function ExperienceSection() {
             <Link href="/book/form" className="btn-primary">
               🪔 Book Your Pooja
             </Link>
-            <Link href="#events" className="btn-outline">
-              Explore Live Events
+            <Link href="#poojas" className="btn-outline">
+              Explore Poojas
             </Link>
           </div>
         </div>

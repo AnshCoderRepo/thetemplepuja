@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cancelUserBooking } from "@/lib/server-store";
 import { notifyBookingCancelled, receiptUrlFor } from "@/lib/whatsapp";
+import { broadcastRealtime } from "@/lib/realtime";
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
@@ -44,5 +45,9 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  broadcastRealtime({ type: "devotee_updated", target: String(body.phone) });
+  broadcastRealtime({ type: "catalog_updated", section: "events" });
+
   return NextResponse.json({ ok: true, user: res.user });
 }

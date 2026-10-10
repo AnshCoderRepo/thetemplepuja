@@ -51,6 +51,21 @@ export default function DevoteeProfileView() {
     setMounted(true);
   }, []);
 
+  // Live real-time sync: refresh devotee profile when admin uploads videos or updates status
+  useEffect(() => {
+    if (!profile?.phone) return;
+    const phone = profile.phone;
+    const onDevoteeUpdated = (e: Event) => {
+      const detail = (e as CustomEvent<{ target?: string }>).detail;
+      const target = detail?.target;
+      if (!target || target === phone || target === profile.id) {
+        void refresh(phone);
+      }
+    };
+    window.addEventListener("devotee-updated", onDevoteeUpdated);
+    return () => window.removeEventListener("devotee-updated", onDevoteeUpdated);
+  }, [profile?.phone, profile?.id]);
+
   const handleCancel = async (bookingId: string) => {
     if (!profile) return;
     const res = await cancelBookingRemote(profile.phone, bookingId);

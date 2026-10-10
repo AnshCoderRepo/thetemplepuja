@@ -15,6 +15,7 @@ import {
   type UpcomingEventSpec,
 } from "@/lib/data";
 import {
+  clearCatalogMemoryCache,
   fetchCatalog,
   getCatalogVersion,
   resetCatalogCache,
@@ -48,7 +49,7 @@ export function useCatalog(): CatalogState {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "ttp_catalog_version_v1") {
-        resetCatalogCache();
+        clearCatalogMemoryCache();
         setCatalogVersion(Number(e.newValue) || Date.now());
       }
     };
@@ -59,7 +60,7 @@ export function useCatalog(): CatalogState {
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === "visible") {
-        resetCatalogCache();
+        clearCatalogMemoryCache();
         setCatalogVersion(Date.now());
       }
     };
@@ -68,9 +69,10 @@ export function useCatalog(): CatalogState {
   }, []);
 
   useEffect(() => {
-    const onCatalogUpdated = () => {
-      resetCatalogCache();
-      setCatalogVersion(getCatalogVersion() || Date.now());
+    const onCatalogUpdated = (e: Event) => {
+      const customVer = (e as CustomEvent<{ version?: number }>).detail?.version;
+      clearCatalogMemoryCache();
+      setCatalogVersion(customVer || getCatalogVersion() || Date.now());
     };
     window.addEventListener("catalog-updated", onCatalogUpdated);
     return () => window.removeEventListener("catalog-updated", onCatalogUpdated);

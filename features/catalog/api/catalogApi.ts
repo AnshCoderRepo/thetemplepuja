@@ -2,6 +2,7 @@ export {
   fetchCatalog,
   refreshCatalog,
   resetCatalogCache,
+  clearCatalogMemoryCache,
   bumpCatalogVersion,
   getCatalogVersion,
   saveCatalogSection,

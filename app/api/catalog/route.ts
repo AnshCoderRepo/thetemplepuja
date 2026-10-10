@@ -9,6 +9,7 @@ import {
   saveCatalogOverrides,
   type CatalogOverrideSection,
 } from "@/lib/server-store";
+import { broadcastRealtime } from "@/lib/realtime";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -88,6 +89,17 @@ export async function POST(req: NextRequest) {
   } catch {
     // Ignore during test/standalone execution
   }
+
+  // Instantly notify all connected user frontend tabs and devices via SSE
+  const affectedSections = [
+    ...(Array.isArray(body.reset) ? body.reset : []),
+    ...Object.keys(overrides),
+  ].join(",");
+
+  broadcastRealtime({
+    type: "catalog_updated",
+    section: affectedSections || "catalog",
+  });
 
   return NextResponse.json({ ok: true, catalog: await getResolvedCatalog() });
 }

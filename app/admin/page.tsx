@@ -42,6 +42,20 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Live real-time sync in Admin: automatically refresh data when devotees book or catalog updates
+  useEffect(() => {
+    if (!session || !token) return;
+    const onLiveUpdate = () => {
+      void loadData(token);
+    };
+    window.addEventListener("devotee-updated", onLiveUpdate);
+    window.addEventListener("catalog-updated", onLiveUpdate);
+    return () => {
+      window.removeEventListener("devotee-updated", onLiveUpdate);
+      window.removeEventListener("catalog-updated", onLiveUpdate);
+    };
+  }, [session, token]);
+
   const loadData = async (tok: string | null) => {
     const remoteUsers = await fetchAllUsers(tok);
     if (remoteUsers) setUsers(remoteUsers);

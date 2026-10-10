@@ -74,8 +74,8 @@ export function getCatalogVersion(): number {
 /** Notify all tabs/pages that the catalog has changed. Writes to localStorage
  * so other tabs pick it up via the "storage" event, and dispatches a custom
  * event so same-tab consumers update instantly — zero polling. */
-export function bumpCatalogVersion(): void {
-  catalogVersion = Date.now();
+export function bumpCatalogVersion(explicitVersion?: number): void {
+  catalogVersion = explicitVersion && explicitVersion > catalogVersion ? explicitVersion : Date.now();
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(CATALOG_VERSION_KEY, String(catalogVersion));
@@ -84,9 +84,15 @@ export function bumpCatalogVersion(): void {
     }
     // Same-tab notification (storage event only fires cross-tab)
     if (typeof window.dispatchEvent === "function") {
-      window.dispatchEvent(new CustomEvent("catalog-updated"));
+      window.dispatchEvent(
+        new CustomEvent("catalog-updated", { detail: { version: catalogVersion } })
+      );
     }
   }
+}
+
+export function clearCatalogMemoryCache(): void {
+  catalogCache = null;
 }
 
 export function resetCatalogCache(): void {

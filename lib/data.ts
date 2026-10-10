@@ -9,12 +9,12 @@ export const stats = [
 
 export const heroCtas = [
   { label: "Book Pooja", href: "/book/form", primary: true },
-  { label: "Explore Events", href: "#events" },
+  { label: "Explore Poojas", href: "#poojas" },
 ];
 
 export const navLinks = [
   { label: "Home", href: "#home" },
-  { label: "Events", href: "#events" },
+  { label: "Poojas", href: "#poojas" },
   { label: "Why Us", href: "#why-us" },
   { label: "Reviews", href: "#testimonials" },
   { label: "FAQ", href: "#faq" },

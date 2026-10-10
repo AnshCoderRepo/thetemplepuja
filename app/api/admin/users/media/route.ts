@@ -4,6 +4,7 @@ import {
   deleteCustomerMediaRecord,
   isValidSessionToken,
 } from "@/lib/server-store";
+import { broadcastRealtime } from "@/lib/realtime";
 
 function bearerToken(req: NextRequest): string | null {
   const header = req.headers.get("authorization");
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing mediaId." }, { status: 400 });
     }
     const res = await deleteCustomerMediaRecord(userId, mediaId);
+    if (res.ok) {
+      broadcastRealtime({ type: "devotee_updated", target: userId });
+    }
     return NextResponse.json(res);
   }
 
@@ -56,5 +60,8 @@ export async function POST(req: NextRequest) {
   }
 
   const res = await addCustomerMediaRecord(userId, body.media);
+  if (res.ok) {
+    broadcastRealtime({ type: "devotee_updated", target: userId });
+  }
   return NextResponse.json(res);
 }

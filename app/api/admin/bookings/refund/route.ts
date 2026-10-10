@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidSessionToken, refundUserBooking } from "@/lib/server-store";
+import { broadcastRealtime } from "@/lib/realtime";
 
 function bearerToken(req: NextRequest): string | null {
   const header = req.headers.get("authorization");
@@ -32,5 +33,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  broadcastRealtime({ type: "devotee_updated", target: body.userId });
+  broadcastRealtime({ type: "catalog_updated", section: "events" });
+
   return NextResponse.json({ ok: true, user: res.user });
 }
