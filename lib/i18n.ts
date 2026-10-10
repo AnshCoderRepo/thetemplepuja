@@ -67,6 +67,14 @@ export const translations = {
     "footer.subscribe": "Subscribe",
     "footer.rights": "All rights reserved.",
     "footer.madeWith": "Made with 🙏 for the divine",
+    "footer.whatsappChannel": "WhatsApp Channel",
+    "footer.joinChannel": "Join WhatsApp Channel",
+    "footer.followOnWhatsApp": "Follow on WhatsApp",
+    "footer.channelTitle": "Join Our Sacred WhatsApp Channel",
+    "footer.channelDesc": "Get daily Panchang, auspicious Muhurat alerts, festival pooja dates, and divine temple darshan directly on WhatsApp.",
+    "footer.channelBadge": "Official Channel",
+    "footer.channelHighlights": "Daily Panchang & Auspicious Muhurats",
+    "footer.channelFree": "100% Free • Daily Sacred Updates",
 
     // ─── Book Page ───
     "book.title": "Sacred Pooja",
@@ -382,6 +390,14 @@ export const translations = {
     "footer.subscribe": "सदस्यता लें",
     "footer.rights": "सर्वाधिकार सुरक्षित।",
     "footer.madeWith": "दिव्य के लिए 🙏 से बनाया गया",
+    "footer.whatsappChannel": "व्हाट्सऐप चैनल",
+    "footer.joinChannel": "व्हाट्सऐप चैनल से जुड़ें",
+    "footer.followOnWhatsApp": "व्हाट्सऐप पर फॉलो करें",
+    "footer.channelTitle": "हमारे पवित्र व्हाट्सऐप चैनल से जुड़ें",
+    "footer.channelDesc": "दैनिक पंचांग, शुभ मुहूर्त, विशेष त्योहार और लाइव मंदिर दर्शन सीधे अपने व्हाट्सऐप पर पाएं।",
+    "footer.channelBadge": "आधिकारिक चैनल",
+    "footer.channelHighlights": "दैनिक पंचांग एवं शुभ मुहूर्त",
+    "footer.channelFree": "100% निःशुल्क • दैनिक पवित्र अपडेट",
 
     // ─── Book Page ───
     "book.title": "पवित्र पूजा",
@@ -700,6 +716,14 @@ export const translations = {
     "footer.subscribe": "సబ్‌స్క్రైబ్ చేయండి",
     "footer.rights": "సర్వ హక్కులు ప్రత్యేకించబడ్డాయి.",
     "footer.madeWith": "దైవం కోసం 🙏 తో రూపొందించబడింది",
+    "footer.whatsappChannel": "వాట్సాప్ ఛానల్",
+    "footer.joinChannel": "వాట్సాప్ ఛానల్‌లో చేరండి",
+    "footer.followOnWhatsApp": "వాట్సాప్‌లో ఫాలో అవ్వండి",
+    "footer.channelTitle": "మా పవిత్ర వాట్సాప్ ఛానల్‌లో చేరండి",
+    "footer.channelDesc": "రోజువారీ పంచాంగం, శుభ ముహూర్తాలు, పండుగ సమాచారం మరియు పవిత్ర దర్శనం నేరుగా వాట్సాప్‌లో పొందండి.",
+    "footer.channelBadge": "అధికారిక ఛానల్",
+    "footer.channelHighlights": "రోజువారీ పంచాంగం మరియు శుభ ముహూర్తాలు",
+    "footer.channelFree": "100% ఉచితం • రోజువారీ నవీకరణలు",
 
     // ─── Book Page ───
     "book.title": "పవిత్ర పూజా",
@@ -1018,6 +1042,14 @@ export const translations = {
     "footer.subscribe": "இணையுங்கள்",
     "footer.rights": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
     "footer.madeWith": "தெய்வீகத்திற்காக 🙏 உடன் உருவாக்கப்பட்டது",
+    "footer.whatsappChannel": "வாட்ஸ்அப் சேனல்",
+    "footer.joinChannel": "வாட்ஸ்அப் சேனலில் இணையுங்கள்",
+    "footer.followOnWhatsApp": "வாட்ஸ்அப்பில் பின்தொடரவும்",
+    "footer.channelTitle": "எங்கள் புனித வாட்ஸ்அப் சேனலில் இணையுங்கள்",
+    "footer.channelDesc": "தினசரி பஞ்சாங்கம், சுப முகூர்த்தம், திருவிழா தகவல்கள் மற்றும் நேரடி தரிசனத்தை உங்கள் வாட்ஸ்அப்பில் பெறுங்கள்.",
+    "footer.channelBadge": "அதிகாரப்பூர்வ சேனல்",
+    "footer.channelHighlights": "தினசரி பஞ்சாங்கம் மற்றும் சுப முகூர்த்தங்கள்",
+    "footer.channelFree": "100% இலவசம் • தினசரி ஆன்மீக அறிவிப்புகள்",
 
     // ─── Book Page ───
     "book.title": "புனித பூஜை",
