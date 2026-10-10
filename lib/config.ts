@@ -30,6 +30,10 @@ export const SITE_CONFIG = {
     whatsappPreFilledMessage: "Namaste, I would like to know more about your Puja services.",
     // Support & Admin Email
     email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "admin@thetemplepuja.com",
+    // Official WhatsApp Channel link (e.g. for daily panchang, pooja muhurat & darshan updates)
+    whatsappChannelUrl:
+      process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL_URL ||
+      "https://whatsapp.com/channel/0029Vaexample",
   },
 
   // Admin Portal Defaults
@@ -48,6 +52,16 @@ export function getWhatsAppUrl(customMessage?: string): string {
   const message = customMessage || SITE_CONFIG.contact.whatsappPreFilledMessage;
   const encoded = encodeURIComponent(message);
   return `https://wa.me/${number}?text=${encoded}`;
+}
+
+/**
+ * Retrieve the official WhatsApp Channel URL
+ */
+export function getWhatsAppChannelUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL_URL ||
+    SITE_CONFIG.contact.whatsappChannelUrl
+  );
 }
 
 export default SITE_CONFIG;
