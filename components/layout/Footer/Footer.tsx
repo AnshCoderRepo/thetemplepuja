@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
 import { useI18n } from "@/components/providers";
 import { SITE_CONFIG, getWhatsAppChannelUrl } from "@/lib/config";
 
@@ -42,78 +41,6 @@ export default function Footer() {
       />
 
       <div className="container-px relative pb-12">
-        {/* ─── Sacred WhatsApp Channel Spotlight Card ─── */}
-        <div className="relative mb-14 overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-r from-[#072418] via-[#0d211a] to-[#081f16] p-6 sm:p-8 backdrop-blur-md shadow-2xl">
-          {/* Subtle divine auric glow */}
-          <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute -left-16 -bottom-16 h-56 w-56 rounded-full bg-saffron-500/10 blur-3xl" />
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, #25D366 1px, transparent 0)",
-              backgroundSize: "20px 20px",
-            }}
-          />
-
-          <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            {/* Left: Icon & Channel Details */}
-            <div className="flex items-start sm:items-center gap-4 sm:gap-5">
-              <div className="relative flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#25D366] via-[#1eb357] to-[#0b6b3e] text-white shadow-xl shadow-emerald-500/25 ring-2 ring-emerald-400/30">
-                <WhatsAppIcon className="h-7 w-7 sm:h-8 sm:w-8 drop-shadow" />
-                {/* Verified Channel badge */}
-                <span
-                  title="Official Verified Channel"
-                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400 text-ink ring-2 ring-[#072418] text-[11px] font-black shadow-sm"
-                >
-                  ✓
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    {t("footer.channelBadge")}
-                  </span>
-                  <span className="text-[11px] font-medium text-amber-200/90 flex items-center gap-1">
-                    <span>🪔</span>
-                    {t("footer.channelHighlights")}
-                  </span>
-                </div>
-                <h3 className="font-display text-lg sm:text-xl font-bold tracking-tight text-white">
-                  {t("footer.channelTitle")}
-                </h3>
-                <p className="text-xs text-cream/75 max-w-xl leading-relaxed">
-                  {t("footer.channelDesc")}
-                </p>
-              </div>
-            </div>
-
-            {/* Right: CTA Action Button & Benefit Tag */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-              <div className="hidden xl:flex flex-col text-right pr-2">
-                <span className="text-[11px] font-semibold text-emerald-300">
-                  {t("footer.channelFree")}
-                </span>
-                <span className="text-[10px] text-cream/50">
-                  Instant Access • Direct Announcements
-                </span>
-              </div>
-              <a
-                href={channelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-[#25D366] via-emerald-500 to-[#128C7E] px-6 py-3.5 text-xs sm:text-sm font-bold text-white shadow-xl shadow-emerald-500/30 transition-all duration-200 hover:scale-[1.03] hover:shadow-emerald-500/50 hover:brightness-110 active:scale-95 cursor-pointer"
-              >
-                <WhatsAppIcon className="h-4 w-4 shrink-0" />
-                <span>{t("footer.followOnWhatsApp")}</span>
-                <ExternalLink className="h-3.5 w-3.5 opacity-80" />
-              </a>
-            </div>
-          </div>
-        </div>
-
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="space-y-4">
@@ -134,17 +61,17 @@ export default function Footer() {
               {t("footer.description") ||
                 "Connecting devotees worldwide with authentic Vedic rituals, sacred temples, and verified certified pandits."}
             </p>
-            {/* Quick Channel Pill */}
+            {/* Official WhatsApp Channel - Small Icon */}
             <div className="pt-1">
               <a
                 href={channelUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-1.5 text-[11px] font-medium text-cream/80 hover:bg-emerald-950/60 hover:border-emerald-500/40 hover:text-emerald-300 transition-all"
+                title="Join WhatsApp Channel"
+                aria-label="Join WhatsApp Channel"
+                className="group inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/30 shadow-sm transition-all duration-200 hover:scale-110 hover:bg-[#25D366] hover:text-white hover:border-[#25D366]"
               >
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{t("footer.whatsappChannel")}</span>
-                <ExternalLink className="h-3 w-3 opacity-60" />
+                <WhatsAppIcon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
               </a>
             </div>
           </div>
@@ -180,18 +107,9 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a
-                  href={channelUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-cream/70 hover:text-emerald-400 transition-colors"
-                >
-                  <WhatsAppIcon className="h-3 w-3 text-emerald-400" />
-                  <span>{t("footer.whatsappChannel")}</span>
-                  <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">
-                    Official
-                  </span>
-                </a>
+                <Link href="/profile" className="hover:text-saffron-400 transition-colors">
+                  My Bookings & Receipts
+                </Link>
               </li>
               <li>
                 <Link href="/privacy" className="hover:text-saffron-400 transition-colors">
@@ -212,7 +130,7 @@ export default function Footer() {
               24/7 Helpline & Care
             </h4>
             <p className="text-xs text-cream/70 leading-relaxed mb-4">
-              Speak with our spiritual advisors on WhatsApp for personalized muhurat advice or join our official channel for daily divine updates.
+              Speak with our spiritual coordinators on WhatsApp for personalized muhurat guidance and pooja bookings.
             </p>
             <div className="flex flex-col gap-2.5">
               <button
@@ -222,36 +140,23 @@ export default function Footer() {
               >
                 <span>💬 Chat with Support</span>
               </button>
-              <a
-                href={channelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-950/70 border border-emerald-500/35 px-3.5 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-900/80 hover:text-white transition-all shadow-soft group"
-              >
-                <WhatsAppIcon className="h-3.5 w-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span>{t("footer.joinChannel")}</span>
-                <ExternalLink className="h-3 w-3 opacity-70 ml-auto" />
-              </a>
             </div>
           </div>
         </div>
 
-        {/* ─── Bottom Copyright & Quick Channel Row ─── */}
+        {/* ─── Bottom Copyright Row ─── */}
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-cream/10 pt-6 text-xs text-cream/50">
           <div>
             © {new Date().getFullYear()} {SITE_CONFIG.brandName}. {t("footer.rights")} {t("footer.madeWith")}
           </div>
           <div className="flex items-center gap-4 text-cream/60">
-            <a
-              href={channelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-emerald-400 transition-colors flex items-center gap-1.5"
-            >
-              <WhatsAppIcon className="h-3.5 w-3.5 text-emerald-400" />
-              <span>{t("footer.whatsappChannel")}</span>
-              <ExternalLink className="h-3 w-3 opacity-60" />
-            </a>
+            <Link href="/privacy" className="hover:text-saffron-400 transition-colors">
+              Privacy
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-saffron-400 transition-colors">
+              Terms
+            </Link>
           </div>
         </div>
       </div>
