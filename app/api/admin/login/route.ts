@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     email?: unknown;
     password?: unknown;
   };
-  const email = typeof body.email === "string" ? body.email : "";
+  const email = typeof body.email === "string" ? body.email.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
 
   if (!email || !password) {

@@ -6,8 +6,13 @@ import type {
   CatalogOverrides,
   PersistenceStore,
 } from "./persistence";
-import type { Coupon, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
+import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
 import type { BookingRecord, UserProfile } from "./storage";
+import type {
+  ChatbotKnowledgeEntry,
+  ChatbotSettings,
+  PlatformSettings,
+} from "./chatbot-types";
 import { ensureDnsPatch } from "./dns-fix";
 
 // Some networks (corporate/ISP DNS) refuse Node's c-ares resolver while the
@@ -36,9 +41,13 @@ interface CatalogDoc extends Document {
   _id: string;
   poojas?: Pooja[];
   events?: UpcomingEventSpec[];
+  festivals?: FestivalEvent[];
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
   temples?: Temple[];
+  chatbotKnowledge?: ChatbotKnowledgeEntry[];
+  chatbotSettings?: ChatbotSettings;
+  platformSettings?: PlatformSettings;
 }
 
 interface AdminDoc extends Document {
@@ -139,8 +148,13 @@ export const mongoStore: PersistenceStore = {
     const out: CatalogOverrides = {};
     if (doc.poojas) out.poojas = doc.poojas;
     if (doc.events) out.events = doc.events;
+    if (doc.festivals) out.festivals = doc.festivals;
     if (doc.coupons) out.coupons = doc.coupons;
     if (doc.poojaDates) out.poojaDates = doc.poojaDates;
+    if (doc.temples) out.temples = doc.temples;
+    if (doc.chatbotKnowledge) out.chatbotKnowledge = doc.chatbotKnowledge;
+    if (doc.chatbotSettings) out.chatbotSettings = doc.chatbotSettings;
+    if (doc.platformSettings) out.platformSettings = doc.platformSettings;
     return out;
   },
 

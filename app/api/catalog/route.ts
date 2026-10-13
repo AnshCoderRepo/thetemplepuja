@@ -21,6 +21,9 @@ const SECTIONS: CatalogOverrideSection[] = [
   "coupons",
   "poojaDates",
   "temples",
+  "chatbotKnowledge",
+  "chatbotSettings",
+  "platformSettings",
 ];
 
 function bearerToken(req: NextRequest): string | null {

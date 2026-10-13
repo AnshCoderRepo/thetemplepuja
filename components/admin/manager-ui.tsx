@@ -311,6 +311,8 @@ export function TextAreaInput(props: TextareaHTMLAttributes<HTMLTextAreaElement>
   );
 }
 
+export const TextArea = TextAreaInput;
+
 export function SelectInput({
   options,
   ...props

@@ -10,6 +10,7 @@ export type AdminTab =
   | "devotees"
   | "dates"
   | "coupons"
+  | "chatbot"
   | "account";
 
 export interface NavItem {

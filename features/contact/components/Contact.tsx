@@ -48,20 +48,28 @@ export default function Contact() {
 
               <div className="mt-8 space-y-4">
                 {contactInfo.map((info) => (
-                  <div key={info.label} className="card flex items-start gap-4 p-4">
-                    <span className="text-2xl">{info.icon}</span>
-                    <div>
-                      <div className="text-xs text-ink-soft">{info.label}</div>
-                      <a
-                        href={info.href}
-                        target={info.href.startsWith("http") ? "_blank" : undefined}
-                        rel={info.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                        className="text-sm font-bold text-ink hover:text-saffron-500"
-                      >
-                        {info.value}
-                      </a>
+                  <a
+                    key={info.label}
+                    href={info.href}
+                    target={info.href.startsWith("http") ? "_blank" : undefined}
+                    rel={info.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                    className="card flex items-center justify-between p-4 group transition-all hover:border-saffron-300 hover:shadow-card cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl transition-transform group-hover:scale-110">
+                        {info.icon}
+                      </span>
+                      <div>
+                        <div className="text-xs text-ink-soft">{info.label}</div>
+                        <div className="text-sm font-bold text-ink group-hover:text-saffron-600 transition-colors">
+                          {info.value}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                    <span className="text-xs font-semibold text-saffron-600 group-hover:translate-x-1 transition-transform">
+                      Connect &rarr;
+                    </span>
+                  </a>
                 ))}
 
                 <div className="card flex items-start gap-4 p-4">

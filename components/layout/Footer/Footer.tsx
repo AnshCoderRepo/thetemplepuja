@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useI18n } from "@/components/providers";
 import { SITE_CONFIG, getWhatsAppChannelUrl } from "@/lib/config";
+import { useCatalog } from "@/features/catalog";
 
 function WhatsAppIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -20,7 +21,8 @@ function WhatsAppIcon({ className = "h-5 w-5" }: { className?: string }) {
 
 export default function Footer() {
   const { t } = useI18n();
-  const channelUrl = getWhatsAppChannelUrl();
+  const { platformSettings } = useCatalog();
+  const channelUrl = platformSettings?.whatsappChannelUrl || getWhatsAppChannelUrl();
 
   const navLinks = [
     { label: t("nav.home"), href: "#home" },

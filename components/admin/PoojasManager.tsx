@@ -180,6 +180,39 @@ const emptyDraft: PoojaDraft = {
   active: true,
 };
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getUniqueSlug(
+  baseText: string,
+  existingList: { slug: string }[],
+  currentSlugToIgnore?: string | null
+): string {
+  const cleanBase = slugify(baseText) || "pooja";
+  let candidate = cleanBase;
+  let counter = 2;
+
+  const isTaken = (s: string) =>
+    existingList.some(
+      (p) =>
+        p.slug.toLowerCase().trim() === s.toLowerCase().trim() &&
+        p.slug.toLowerCase().trim() !== currentSlugToIgnore?.toLowerCase().trim()
+    );
+
+  while (isTaken(candidate)) {
+    candidate = `${cleanBase}-${counter}`;
+    counter++;
+  }
+
+  return candidate;
+}
+
 export default function PoojasManager({
   token,
   onAuthError,
@@ -201,6 +234,17 @@ export default function PoojasManager({
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [draft, setDraft] = useState<PoojaDraft>(emptyDraft);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+
+  const isSlugConflict = useMemo(() => {
+    const s = draft.slug.trim().toLowerCase();
+    if (!s) return false;
+    return list.some(
+      (p) =>
+        p.slug.trim().toLowerCase() === s &&
+        p.slug.trim().toLowerCase() !== editingSlug?.trim().toLowerCase()
+    );
+  }, [draft.slug, list, editingSlug]);
   const [newBenefit, setNewBenefit] = useState("");
   const [newPackage, setNewPackage] = useState<PoojaPackage>({ name: "", price: 501, description: "" });
   const [translatingTarget, setTranslatingTarget] = useState<"all" | "title" | "description" | "benefits" | null>(null);
@@ -549,6 +593,7 @@ export default function PoojasManager({
 
   const startAdd = () => {
     setEditingSlug(null);
+    setSlugManuallyEdited(false);
     setDraft(emptyDraft);
     setCurrentStep(1);
     setError("");
@@ -557,6 +602,7 @@ export default function PoojasManager({
 
   const startEdit = (p: Pooja) => {
     setEditingSlug(p.slug);
+    setSlugManuallyEdited(true);
     setDraft({
       slug: p.slug,
       title: p.title,
@@ -640,18 +686,27 @@ export default function PoojasManager({
         setError("Puja Name (English) is required.");
         return false;
       }
-      if (!draft.slug.trim()) {
-        setError("Slug is required.");
-        return false;
+      
+      // Auto-populate or sanitize slug so admin is never blocked
+      let effectiveSlug = slugify(draft.slug.trim());
+      if (!effectiveSlug) {
+        effectiveSlug = getUniqueSlug(draft.title.trim(), list, editingSlug);
+        setDraft((prev) => ({ ...prev, slug: effectiveSlug }));
+      } else if (effectiveSlug !== draft.slug.trim()) {
+        setDraft((prev) => ({ ...prev, slug: effectiveSlug }));
       }
-      if (!/^[a-z0-9-]+$/.test(draft.slug.trim())) {
-        setError("Slug must contain lowercase letters, numbers and hyphens only.");
-        return false;
+
+      // If user typed a slug that conflicts with another puja, auto-disambiguate
+      const hasConflict = list.some(
+        (p) =>
+          p.slug.trim().toLowerCase() === effectiveSlug &&
+          p.slug.trim().toLowerCase() !== editingSlug?.trim().toLowerCase()
+      );
+      if (hasConflict) {
+        effectiveSlug = getUniqueSlug(effectiveSlug, list, editingSlug);
+        setDraft((prev) => ({ ...prev, slug: effectiveSlug }));
       }
-      if (list.some((p) => p.slug === draft.slug.trim() && p.slug !== editingSlug)) {
-        setError("Another puja is already using this slug.");
-        return false;
-      }
+
       if (!draft.description.trim()) {
         setError("Description is required.");
         return false;
@@ -710,8 +765,21 @@ export default function PoojasManager({
     setSaving(true);
     setError("");
 
+    let finalSlug = slugify(draft.slug.trim());
+    if (!finalSlug) {
+      finalSlug = getUniqueSlug(draft.title.trim(), list, editingSlug);
+    }
+    const hasConflict = list.some(
+      (p) =>
+        p.slug.trim().toLowerCase() === finalSlug &&
+        p.slug.trim().toLowerCase() !== editingSlug?.trim().toLowerCase()
+    );
+    if (hasConflict) {
+      finalSlug = getUniqueSlug(finalSlug, list, editingSlug);
+    }
+
     const pooja: Pooja = {
-      slug: draft.slug.trim(),
+      slug: finalSlug,
       title: draft.title.trim(),
       hindiTitle: draft.hindiTitle.trim() || draft.title.trim(),
       teluguTitle: draft.teluguTitle.trim() || undefined,
@@ -753,7 +821,9 @@ export default function PoojasManager({
     }
 
     const next = editingSlug
-      ? list.map((p) => (p.slug === editingSlug ? pooja : p))
+      ? list.map((p) =>
+          p.slug.trim().toLowerCase() === editingSlug.trim().toLowerCase() ? pooja : p
+        )
       : [...list, pooja];
 
     const res = await saveCatalogSection("poojas", next, token);
@@ -770,6 +840,9 @@ export default function PoojasManager({
 
     setList(next);
     setIsWizardOpen(false);
+    setDraft(emptyDraft);
+    setEditingSlug(null);
+    setSlugManuallyEdited(false);
     showNotification(editingSlug ? "Puja updated successfully!" : "New Puja ceremony published!");
   };
 
@@ -1002,12 +1075,97 @@ export default function PoojasManager({
                           value={draft.title}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const slug = !editingSlug && !draft.slug ? val.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : draft.slug;
-                            setDraft({ ...draft, title: val, slug });
+                            if (!slugManuallyEdited) {
+                              const autoSlug = slugify(val);
+                              setDraft((prev) => ({ ...prev, title: val, slug: autoSlug }));
+                            } else {
+                              setDraft((prev) => ({ ...prev, title: val }));
+                            }
                           }}
                           placeholder="e.g. Rahu-Ketu Mool Mantra Jap & Shanti Anushthan"
                           className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
                         />
+                      </div>
+
+                      {/* URL Slug (Customizable, Unique, with Realtime Feedback) */}
+                      <div className="rounded-2xl border border-saffron-200/90 bg-cream/30 p-3.5 sm:p-4 space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                          <div>
+                            <label className="block text-xs font-bold text-ink">
+                              Puja URL Slug *
+                            </label>
+                            <p className="text-[11px] text-ink-soft">
+                              Public booking link: <span className="font-mono text-saffron-800 font-semibold">/book/{draft.slug || "your-slug"}</span>
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const generated = getUniqueSlug(draft.title || "pooja", list, editingSlug);
+                                setDraft((prev) => ({ ...prev, slug: generated }));
+                                setSlugManuallyEdited(false);
+                                setError("");
+                              }}
+                              className="inline-flex items-center gap-1 rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-saffron-700 shadow-2xs hover:bg-saffron-50 transition-colors"
+                              title="Sync slug with Puja Name"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              <span>Sync with Name</span>
+                            </button>
+
+                            {isSlugConflict && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const unique = getUniqueSlug(draft.slug || draft.title || "pooja", list, editingSlug);
+                                  setDraft((prev) => ({ ...prev, slug: unique }));
+                                  setError("");
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-amber-500 to-saffron-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-xs hover:from-amber-600 hover:to-saffron-700 transition-colors"
+                                title="Auto-generate a unique slug that does not conflict"
+                              >
+                                <Sparkles className="h-3 w-3" />
+                                <span>⚡ Make Unique</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={draft.slug}
+                            onChange={(e) => {
+                              const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                              setDraft((prev) => ({ ...prev, slug: val }));
+                              setSlugManuallyEdited(true);
+                              setError("");
+                            }}
+                            placeholder="e.g. rahu-ketu-jap-anushthan"
+                            className={`w-full rounded-xl border bg-white px-3.5 py-2 text-xs font-mono text-ink focus:outline-none ${
+                              isSlugConflict
+                                ? "border-amber-400 bg-amber-50/20 focus:border-amber-500"
+                                : "border-saffron-200 focus:border-saffron-500"
+                            }`}
+                          />
+                        </div>
+
+                        {/* Realtime Status Badges */}
+                        <div className="flex items-center gap-2 pt-0.5 text-[11px]">
+                          {isSlugConflict ? (
+                            <span className="flex items-center gap-1 text-amber-700 font-medium">
+                              <span>⚠️ This slug is used by another puja. Click "⚡ Make Unique" or edit freely.</span>
+                            </span>
+                          ) : draft.slug.trim() ? (
+                            <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                              <span>✓ Slug is available & ready</span>
+                            </span>
+                          ) : (
+                            <span className="text-ink-soft">Enter lowercase letters, numbers, and hyphens.</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* 3 Regional Language Titles */}

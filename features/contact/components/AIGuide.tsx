@@ -1,145 +1,324 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Sparkles } from "lucide-react";
+import Link from "next/link";
+import {
+  X,
+  Sparkles,
+  Send,
+  RotateCcw,
+  MessageCircle,
+  ExternalLink,
+  Bot,
+  User,
+  ShieldCheck,
+} from "lucide-react";
+import { sendChatMessage } from "@/lib/api";
+import { getWhatsAppUrl } from "@/lib/config";
 
 interface Message {
   from: "bot" | "user";
   text: string;
+  time?: string;
+  isError?: boolean;
 }
 
-const replies: { match: RegExp; answer: string }[] = [
-  {
-    match: /(pooja|puja|book|ritual)/i,
-    answer:
-      "🙏 Wonderful! We offer Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti & more. Check out our upcoming events or browse the full catalogue and pick the one that speaks to you!",
-  },
-  {
-    match: /(kundli|rashi|nakshatra|astrolog)/i,
-    answer:
-      "🔮 Book any pooja above ₹1,500 and get a FREE kundli reading with your booking! Our AI guide can also recommend poojas based on your rashi & nakshatra.",
-  },
-  {
-    match: /(record|video|watch)/i,
-    answer:
-      "📹 Every pooja is recorded in HD and the recording link is shared with you right after the ritual — relive the blessings from anywhere, anytime!",
-  },
-  {
-    match: /(kit|samagri|deliver)/i,
-    answer:
-      "📦 Blessed pooja kits are delivered anywhere in India within 2–5 business days. Every kit is blessed by our pandits before shipping!",
-  },
-  {
-    match: /(price|cost|fee|charge|₹)/i,
-    answer:
-      "💰 Prices start at ₹501. Keep an eye out for special offers — apply your coupon at the secure checkout for extra savings!",
-  },
-  {
-    match: /(contact|phone|email|whatsapp|help|support)/i,
-    answer:
-      "📞 Reach us anytime on WhatsApp +91 87653 01563. Our team is available 24/7.",
-  },
+const DEFAULT_GREETING =
+  "🙏 Namaste! I am your Pandit AI Spiritual Guide. Ask me anything about our Vedic poojas, temple sevas, dakshina/pricing, chadhava add-ons, or booking status!";
+
+const SUGGESTIONS = [
+  "What poojas do you offer?",
+  "What are the pricing & packages?",
+  "How do I book online?",
+  "Check my booking status",
+  "Is physical presence required?",
+  "What chadhava items are available?",
 ];
 
-const greeting =
-  "🙏 Namaste! I'm your AI Spiritual Guide. Ask me anything about poojas, upcoming events, or which ritual is right for you!";
+// Simple, safe Markdown-like formatter for bot replies (bold, links, bullet points)
+function formatBotText(text: string) {
+  // Split lines
+  const lines = text.split("\n");
 
-function getBotReply(input: string): string {
-  for (const r of replies) {
-    if (r.match.test(input)) return r.answer;
-  }
-  return "🪔 That's a lovely question! I'd recommend speaking with our team — you can reach us on WhatsApp at +91 87653 01563 for personalised guidance. Om Shanti!";
+  return lines.map((line, idx) => {
+    // Bullet point
+    const isBullet = line.trim().startsWith("•") || line.trim().startsWith("-");
+    const cleanLine = isBullet ? line.replace(/^[\s•-]+/, "").trim() : line;
+
+    // Parse bold text **bold**
+    const parts = cleanLine.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\)|`.*?`)/g);
+
+    const renderedParts = parts.map((part, pIdx) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return (
+          <strong key={pIdx} className="font-bold text-ink">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code
+            key={pIdx}
+            className="rounded-md bg-saffron-100/70 px-1.5 py-0.5 font-mono text-[10px] text-saffron-900 font-semibold"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+        const linkText = part.slice(1, part.indexOf("]("));
+        const linkHref = part.slice(part.indexOf("](") + 2, -1);
+        const isExternal = linkHref.startsWith("http");
+        return (
+          <a
+            key={pIdx}
+            href={linkHref}
+            target={isExternal ? "_blank" : undefined}
+            rel={isExternal ? "noopener noreferrer" : undefined}
+            className="font-bold text-saffron-600 underline underline-offset-2 hover:text-saffron-700 inline-flex items-center gap-0.5"
+          >
+            <span>{linkText}</span>
+            {isExternal && <ExternalLink className="h-2.5 w-2.5 inline" />}
+          </a>
+        );
+      }
+      return <span key={pIdx}>{part}</span>;
+    });
+
+    if (isBullet) {
+      return (
+        <div key={idx} className="flex items-start gap-1.5 my-0.5 pl-1">
+          <span className="text-saffron-500 font-bold">•</span>
+          <span className="flex-1">{renderedParts}</span>
+        </div>
+      );
+    }
+
+    if (!cleanLine.trim()) {
+      return <div key={idx} className="h-1.5" />;
+    }
+
+    return (
+      <p key={idx} className="my-0.5">
+        {renderedParts}
+      </p>
+    );
+  });
 }
 
 export default function AIGuide() {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { from: "bot", text: greeting },
+    {
+      from: "bot",
+      text: DEFAULT_GREETING,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    },
   ]);
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
+  const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing]);
+    setMounted(true);
+  }, []);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const userMsg = input.trim();
-    setMessages((prev) => [...prev, { from: "user", text: userMsg }]);
-    setInput("");
-    setTyping(true);
+  useEffect(() => {
+    if (open) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      setTimeout(() => inputRef.current?.focus(), 150);
+    }
+  }, [open, messages, loading]);
 
-    setTimeout(() => {
-      const reply = getBotReply(userMsg);
-      setMessages((prev) => [...prev, { from: "bot", text: reply }]);
-      setTyping(false);
-    }, 700);
+  const handleSend = async (textToSend?: string) => {
+    const text = (textToSend || input).trim();
+    if (!text || loading) return;
+
+    const userMessage: Message = {
+      from: "user",
+      text,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    if (!textToSend) setInput("");
+    setLoading(true);
+
+    try {
+      const res = await sendChatMessage(
+        nextMessages.map((m) => ({ from: m.from, text: m.text }))
+      );
+
+      setLoading(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          from: "bot",
+          text: res.reply,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          isError: !res.ok,
+        },
+      ]);
+    } catch {
+      setLoading(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          from: "bot",
+          text: "🙏 Namaste. I had a brief network delay. Please connect directly with our coordinators on WhatsApp.",
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          isError: true,
+        },
+      ]);
+    }
   };
+
+  const handleReset = () => {
+    setMessages([
+      {
+        from: "bot",
+        text: DEFAULT_GREETING,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+  };
+
+  if (!mounted) return null;
+
+  const whatsappSupportUrl = getWhatsAppUrl();
 
   return (
     <>
-      {/* Floating launcher trigger */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Open AI Spiritual Guide"
-        className="fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-500 to-saffron-600 px-4 py-2.5 text-xs font-bold text-white shadow-soft transition-all duration-300 hover:scale-105 hover:shadow-hover md:bottom-26 md:right-8"
-      >
-        <Sparkles className="h-4 w-4 animate-spin-slow" />
-        <span>Ask Pandit AI</span>
-      </button>
+      {/* ─── Floating Launcher Button (Bottom-Left to avoid WhatsApp collision) ─── */}
+      <div className="fixed bottom-6 left-6 z-40 flex items-center select-none">
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-expanded={open}
+          aria-label="Ask Pandit AI Guide"
+          title="Ask Pandit AI"
+          className="group relative flex items-center gap-2.5 rounded-full border border-amber-300/50 bg-gradient-to-r from-saffron-500 via-amber-500 to-saffron-600 px-4 py-3 text-xs font-bold text-white shadow-xl shadow-saffron-500/25 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-saffron-500/35 focus:outline-none focus-visible:ring-4 focus-visible:ring-saffron-300 active:scale-95"
+        >
+          {/* Subtle pulsating glow */}
+          <span className="absolute -inset-0.5 -z-10 rounded-full bg-gradient-to-r from-saffron-400 to-amber-300 opacity-60 blur-xs transition-opacity duration-300 group-hover:opacity-100 animate-pulse" />
 
-      {/* Chat drawer */}
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-sm drop-shadow-xs">
+            🪔
+          </span>
+          <span className="font-display tracking-wide font-bold">Ask Pandit AI</span>
+          <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white/70" />
+        </button>
+      </div>
+
+      {/* ─── Responsive Chat Modal / Drawer ─── */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[480px] w-[90vw] max-w-[360px] flex-col overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-card animate-scale-in md:bottom-8 md:right-8">
+        <div className="fixed bottom-20 left-4 sm:left-6 z-50 flex h-[540px] max-h-[85vh] w-[calc(100vw-32px)] max-w-[390px] flex-col overflow-hidden rounded-3xl border border-saffron-200 bg-white shadow-2xl animate-scale-in">
           {/* Header */}
-          <div className="flex items-center justify-between bg-gradient-to-r from-maroon-900 to-maroon-800 p-4 text-white">
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-saffron-500/30 text-base">
+          <div className="flex items-center justify-between bg-gradient-to-r from-[#3a0808] via-maroon-900 to-[#3a0808] px-4 py-3.5 text-white shadow-sm border-b border-saffron-500/20">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-amber-600 text-lg shadow-sm border border-white/20">
                 🪔
               </span>
               <div>
-                <h3 className="font-display text-sm font-bold">
-                  Pandit AI Guide
-                </h3>
-                <span className="flex items-center gap-1 text-[10px] text-amber-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Online
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="rounded-full p-1 text-white/70 hover:bg-white/10 hover:text-white"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 space-y-3 overflow-y-auto bg-cream/40 p-4 text-xs">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex ${
-                  m.from === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl p-3 leading-relaxed ${
-                    m.from === "user"
-                      ? "rounded-br-xs bg-saffron-500 text-white"
-                      : "rounded-bl-xs border border-saffron-100 bg-white text-ink shadow-xs"
-                  }`}
-                >
-                  {m.text}
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-display text-sm font-bold tracking-tight text-white">
+                    Pandit AI Guide
+                  </h3>
+                  <span className="rounded-md bg-saffron-500/30 px-1.5 py-0.2 text-[9px] font-bold text-amber-200 border border-saffron-400/30">
+                    Vedic AI
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-amber-200/90 font-medium">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Online • 24/7 Spiritual Guidance</span>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleReset}
+                title="Restart Conversation"
+                className="rounded-xl p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                title="Close Chat"
+                className="rounded-xl p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Suggestion Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto bg-cream/70 px-3 py-2 border-b border-saffron-100 scrollbar-none text-[11px]">
+            <Sparkles className="h-3 w-3 text-saffron-600 shrink-0" />
+            {SUGGESTIONS.map((suggestion, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleSend(suggestion)}
+                className="rounded-full bg-white border border-saffron-200/80 px-2.5 py-1 text-ink-soft whitespace-nowrap hover:bg-saffron-50 hover:text-saffron-700 hover:border-saffron-300 transition-all font-medium shrink-0 shadow-2xs"
+              >
+                {suggestion}
+              </button>
             ))}
-            {typing && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-1 rounded-2xl rounded-bl-xs border border-saffron-100 bg-white p-3 text-ink-soft shadow-xs">
+          </div>
+
+          {/* Message Stream */}
+          <div className="flex-1 space-y-3.5 overflow-y-auto bg-gradient-to-b from-cream/30 to-cream/60 p-4 text-xs">
+            {messages.map((m, i) => {
+              const isUser = m.from === "user";
+              return (
+                <div
+                  key={i}
+                  className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`}
+                >
+                  {!isUser && (
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-saffron-100 text-xs border border-saffron-200 mb-0.5">
+                      🪔
+                    </span>
+                  )}
+                  <div className="flex flex-col max-w-[85%]">
+                    <div
+                      className={`rounded-2xl p-3 leading-relaxed shadow-xs text-xs ${
+                        isUser
+                          ? "rounded-br-xs bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-medium shadow-saffron-500/10"
+                          : "rounded-bl-xs border border-saffron-100/80 bg-white text-ink"
+                      }`}
+                    >
+                      {isUser ? m.text : formatBotText(m.text)}
+                    </div>
+                    {m.time && (
+                      <span
+                        className={`text-[9px] text-ink-soft/60 px-1 mt-0.5 ${
+                          isUser ? "text-right" : "text-left"
+                        }`}
+                      >
+                        {m.time}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Typing Indicator */}
+            {loading && (
+              <div className="flex items-end gap-2 justify-start">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-saffron-100 text-xs border border-saffron-200 mb-0.5">
+                  🪔
+                </span>
+                <div className="flex items-center gap-1 rounded-2xl rounded-bl-xs border border-saffron-100 bg-white px-3.5 py-2.5 text-ink-soft shadow-xs">
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-saffron-500" />
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-saffron-500 [animation-delay:0.2s]" />
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-saffron-500 [animation-delay:0.4s]" />
@@ -149,27 +328,47 @@ export default function AIGuide() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
+          {/* Quick WhatsApp Escalation Banner */}
+          <div className="flex items-center justify-between border-t border-saffron-100 bg-cream/40 px-3.5 py-1.5 text-[11px] text-ink-soft">
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="h-3 w-3 text-emerald-600" />
+              <span>Need human assistance?</span>
+            </span>
+            <a
+              href={whatsappSupportUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:text-emerald-700"
+            >
+              <span>WhatsApp Support</span>
+              <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          </div>
+
+          {/* Input Box */}
           <div className="border-t border-saffron-100 bg-white p-3">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex gap-2"
+              className="flex items-center gap-2"
             >
               <input
+                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about poojas, muhurat..."
-                className="flex-1 rounded-full border border-saffron-100 bg-cream/30 px-3.5 py-2 text-xs text-ink outline-none focus:border-saffron-500"
+                placeholder="Ask about pooja, muhurat, pricing..."
+                disabled={loading}
+                className="flex-1 rounded-full border border-saffron-100 bg-cream/40 px-4 py-2.5 text-xs text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200/50"
               />
               <button
                 type="submit"
-                className="rounded-full bg-saffron-500 px-4 py-2 font-display text-xs font-bold text-white transition-colors hover:bg-saffron-600"
+                disabled={loading || !input.trim()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-saffron-500 to-saffron-600 text-white shadow-md shadow-saffron-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
               >
-                Send
+                <Send className="h-4 w-4" />
               </button>
             </form>
           </div>
