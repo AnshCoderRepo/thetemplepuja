@@ -235,7 +235,7 @@ export default function BookingsTable({
       booking.amount,
       `"${booking.couponCode || ""}"`,
       `"${booking.status}"`,
-      `"${booking.razorpayPaymentId || "Demo"}"`,
+      `"${booking.upiTransactionId ? `UPI-${booking.upiTransactionId}` : booking.razorpayPaymentId || "Demo"}"`,
       `"${booking.createdAt}"`,
     ]);
 
@@ -554,6 +554,14 @@ export default function BookingsTable({
                     {formatINR(selectedBooking.booking.amount)}
                   </span>
                 </div>
+                {selectedBooking.booking.upiTransactionId && (
+                  <div className="flex justify-between text-[11px] pt-1 border-t border-purple-100 text-purple-800 font-semibold">
+                    <span>UPI Reference (UTR):</span>
+                    <span className="font-mono bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 select-all">
+                      {selectedBooking.booking.upiTransactionId}
+                    </span>
+                  </div>
+                )}
                 {selectedBooking.booking.razorpayPaymentId && (
                   <div className="flex justify-between text-[11px] pt-1 border-t border-emerald-100 text-emerald-800">
                     <span>Payment Ref:</span>

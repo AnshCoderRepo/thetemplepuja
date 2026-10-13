@@ -16,11 +16,15 @@ import {
 import { isValidIndianPhone, normalizePhone } from "@/lib/validation";
 import { bookingRateLimiter } from "@/lib/rate-limit";
 import { broadcastRealtime } from "@/lib/realtime";
+import { SITE_CONFIG } from "@/lib/config";
 
 interface PaymentProof {
+  method?: "upi_qr" | "razorpay" | "simulated";
   razorpayOrderId?: unknown;
   razorpayPaymentId?: unknown;
   razorpaySignature?: unknown;
+  upiTransactionId?: unknown;
+  upiId?: unknown;
 }
 
 export async function POST(req: NextRequest) {
@@ -83,10 +87,36 @@ export async function POST(req: NextRequest) {
     // Booking failed — payment was rejected, expired, or cancelled
     booking.status = "failed";
   } else {
-    // Real-payment flow: when Razorpay is configured, a booking is only accepted
-    // with a payment proof whose signature verifies and whose order amount
-    // matches the price the client was charged.
-    if (razorpayConfigured()) {
+    const isUpiQrPayment =
+      booking.paymentMethod === "upi_qr" ||
+      body.payment?.method === "upi_qr" ||
+      typeof body.payment?.upiTransactionId === "string" ||
+      typeof booking.upiTransactionId === "string";
+
+    if (isUpiQrPayment) {
+      // Devotee paid via merchant UPI ID / QR code
+      booking.paymentMethod = "upi_qr";
+      const utr =
+        (typeof body.payment?.upiTransactionId === "string" && body.payment.upiTransactionId.trim()) ||
+        (typeof booking.upiTransactionId === "string" && booking.upiTransactionId.trim()) ||
+        "";
+      const upiId =
+        (typeof body.payment?.upiId === "string" && body.payment.upiId.trim()) ||
+        (typeof booking.upiId === "string" && booking.upiId.trim()) ||
+        SITE_CONFIG.payment.upiId;
+
+      booking.upiTransactionId = utr;
+      booking.upiId = upiId;
+      booking.paidAt = booking.paidAt || new Date().toISOString();
+      booking.status = "confirmed";
+    } else if (
+      razorpayConfigured() &&
+      (booking.paymentMethod === "razorpay" ||
+        body.payment?.method === "razorpay" ||
+        body.payment?.razorpayPaymentId ||
+        booking.razorpayPaymentId)
+    ) {
+      // Real Razorpay gateway payment verification
       const payment = body.payment ?? {
         razorpayOrderId: booking.razorpayOrderId,
         razorpayPaymentId: booking.razorpayPaymentId,
@@ -133,12 +163,18 @@ export async function POST(req: NextRequest) {
 
       // Stamp the verified payment proof on the booking (server-authoritative —
       // never trust these fields from the client).
+      booking.paymentMethod = "razorpay";
       booking.razorpayOrderId = orderId;
       booking.razorpayPaymentId = paymentId;
       booking.razorpaySignature = signature;
       booking.paidAt = new Date().toISOString();
+      booking.status = "confirmed";
+    } else {
+      // Demo / simulated checkout fallback
+      booking.paymentMethod = booking.paymentMethod || "simulated";
+      booking.paidAt = booking.paidAt || new Date().toISOString();
+      booking.status = "confirmed";
     }
-    booking.status = "confirmed";
 
     // Create / ensure user profile has a random password if none set
     const existingUser = await findUserByPhone(normalizedPhone);
@@ -182,6 +218,8 @@ export async function POST(req: NextRequest) {
       discount: booking.discount ?? 0,
       couponCode: booking.couponCode ?? null,
       reason: booking.reason,
+      paymentMethod: booking.paymentMethod,
+      upiTransactionId: booking.upiTransactionId,
       receiptUrl: receiptUrlFor(
         host,
         booking.bookingId,

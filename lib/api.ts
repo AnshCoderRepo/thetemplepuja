@@ -512,9 +512,12 @@ export async function syncUserFromServer(phone: string): Promise<void> {
 export async function submitBooking(
   input: BookingInput & {
     payment?: {
+      method?: "upi_qr" | "razorpay" | "simulated";
       razorpayOrderId?: string;
       razorpayPaymentId?: string;
       razorpaySignature?: string;
+      upiTransactionId?: string;
+      upiId?: string;
     };
   }
 ): Promise<{

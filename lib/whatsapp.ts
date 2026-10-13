@@ -35,6 +35,8 @@ export interface BookingAlertInfo {
   discount: number;
   couponCode: string | null;
   reason?: string;
+  paymentMethod?: string;
+  upiTransactionId?: string;
   /** Public receipt link (e.g. https://site/booking/SKABC123?phone=…). */
   receiptUrl?: string;
   credentials?: {
@@ -89,6 +91,11 @@ export function bookingAlertText(info: BookingAlertInfo): string {
     `Devotee: ${info.name} (${info.phone})`,
     `Muhurat: ${info.date} · ${info.time}`,
     `Amount: ${formatINR(info.amount)}`,
+    info.paymentMethod === "upi_qr"
+      ? `Payment: UPI / QR Code${info.upiTransactionId ? ` (UTR: ${info.upiTransactionId})` : ""}`
+      : info.paymentMethod === "razorpay"
+      ? "Payment: Razorpay Gateway"
+      : null,
     info.discount > 0 && info.couponCode
       ? `Coupon: ${info.couponCode} (saved ${formatINR(info.discount)})`
       : null,
@@ -107,6 +114,7 @@ export function devoteeBookingAlertText(info: BookingAlertInfo): string {
     `Pooja: ${info.poojaTitle}`,
     `Muhurat: ${info.date} · ${info.time}`,
     `Amount paid: ${formatINR(info.amount)}`,
+    info.upiTransactionId ? `Payment Ref (UTR): ${info.upiTransactionId}` : null,
     info.discount > 0 && info.couponCode
       ? `Coupon ${info.couponCode} applied — you saved ${formatINR(
           info.discount

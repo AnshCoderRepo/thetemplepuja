@@ -82,6 +82,12 @@ export interface BookingRecord {
   partnerGotra?: string;
   devotees?: { name: string; gotra: string }[];
   familyMembers?: { name: string; gotra: string }[] | string[];
+  /** Payment method used: "upi_qr", "razorpay", or "simulated" */
+  paymentMethod?: "upi_qr" | "razorpay" | "simulated";
+  /** 12-digit UTR or UPI Reference Number submitted by devotee */
+  upiTransactionId?: string;
+  /** Merchant UPI ID paid to */
+  upiId?: string;
 }
 
 export interface UserProfile {
@@ -141,6 +147,9 @@ export interface BookingInput {
   password?: string;
   passwordHash?: string;
   generatedPassword?: string;
+  paymentMethod?: "upi_qr" | "razorpay" | "simulated";
+  upiTransactionId?: string;
+  upiId?: string;
 }
 
 /** Add (or refresh) a devotee and append their booking. Dedupes bookingId. */
