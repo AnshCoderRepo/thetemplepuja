@@ -43,11 +43,11 @@ export const SITE_CONFIG = {
       ? "razorpay"
       : "upi_qr") as "upi_qr" | "razorpay",
     // UPI ID to receive client payments (easily configurable via NEXT_PUBLIC_UPI_ID)
-    upiId: process.env.NEXT_PUBLIC_UPI_ID || "7070410031@upi",
+    upiId: process.env.NEXT_PUBLIC_UPI_ID || "rajnimaurya875@okicici",
     // Merchant/Payee name displayed on UPI app & QR code
-    payeeName: process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "The Temple Puja",
-    // Optional custom QR image URL (e.g. "/images/custom-qr.png") if owner uploads custom QR
-    qrImageUrl: process.env.NEXT_PUBLIC_UPI_QR_IMAGE || "",
+    payeeName: process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "Rajni Maurya",
+    // Custom QR image URL (placed in /public)
+    qrImageUrl: process.env.NEXT_PUBLIC_UPI_QR_IMAGE || "/payment-qr.jpg",
   },
 
   // Admin Portal Defaults

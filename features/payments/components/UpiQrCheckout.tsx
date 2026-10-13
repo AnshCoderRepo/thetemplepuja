@@ -167,7 +167,7 @@ export default function UpiQrCheckout({
                 <img
                   src={customQrImage}
                   alt="Official UPI Payment QR Code"
-                  className="h-48 w-48 object-contain rounded-lg sm:h-52 sm:w-52"
+                  className="max-h-72 w-auto max-w-full object-contain rounded-lg sm:max-h-80 shadow-xs"
                 />
               ) : qrDataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
