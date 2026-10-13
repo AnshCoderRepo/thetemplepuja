@@ -1328,6 +1328,88 @@ export function activePoojas(list: Pooja[]): Pooja[] {
   return sortPoojasByRecent(list.filter(isPoojaActive));
 }
 
+export const DEMO_POOJA: Pooja = {
+  slug: "demo-pooja",
+  title: "Test Demo Pooja (₹1)",
+  hindiTitle: "टेस्ट डेमो पूजा (₹1)",
+  teluguTitle: "టెస్ట్ డెమో పూజ (₹1)",
+  tamilTitle: "டெஸ்ட் டெமோ பூஜை (₹1)",
+  emoji: "🪔",
+  gradient: "from-amber-500 via-orange-500 to-rose-500",
+  price: 1,
+  duration: "5–10 mins",
+  daysFromToday: 0,
+  eventTime: "Live Today (Instant)",
+  bestMuhurat: "Sarva Muhurat (Anytime)",
+  hindiBestMuhurat: "सर्व मुहूर्त (किसी भी समय)",
+  teluguBestMuhurat: "సర్వ ముహూర్తం",
+  tamilBestMuhurat: "சர்வ முகூர்த்தம்",
+  category: "Special Seva",
+  type: "temple",
+  online: true,
+  imageUrl: "/festivals/ganesha-altar.jpg",
+  deities: ["Lord Ganesha", "Lord Shiva"],
+  description:
+    "A quick ₹1 test demo pooja designed to test live sankalp booking, instant receipt generation, UPI QR code & Razorpay payment flows end-to-end.",
+  hindiDescription:
+    "लाइव संकल्प बुकिंग, त्वरित रसीद, यूपीआई क्यूआर और रेज़रपे पेमेंट की सम्पूर्ण प्रक्रिया की जांच के लिए विशेष ₹1 डेमो पूजा।",
+  teluguDescription:
+    "ఆన్‌లైన్ సంకల్ప బుకింగ్, తక్షణ రశీదు మరియు పేమెంట్ గేట్‌వేను పరీక్షించడానికి ప్రత్యేక ₹1 టెస్ట్ పూజ.",
+  tamilDescription:
+    "நேரலை சங்கல்ப முன்பதிவு, உடனடி ரசீது மற்றும் கட்டண முறைகளை சோதிக்க சிறப்பு ₹1 டெஸ்ட் பூஜை.",
+  benefits: [
+    "Real ₹1 gateway & UPI test",
+    "Instant booking confirmation & receipt",
+    "Devotee dashboard access",
+    "WhatsApp & SMS status updates",
+  ],
+  hindiBenefits: [
+    "वास्तविक ₹1 गेटवे व UPI टेस्ट",
+    "त्वरित बुकिंग पुष्टि व डिजिटल रसीद",
+    "भक्त डैशबोर्ड तक सीधी पहुंच",
+    "व्हाट्सएप और एसएमएस स्थिति अपडेट",
+  ],
+  teluguBenefits: [
+    "నిజమైన ₹1 గేట్‌వే & UPI పరీక్ష",
+    "తక్షణ బుకింగ్ నిర్ధారణ & రసీదు",
+    "భక్తుల డాష్‌బోర్డ్ యాక్సెస్",
+    "వాట్సాప్ అప్‌డేట్‌లు",
+  ],
+  tamilBenefits: [
+    "உண்மையான ₹1 கட்டண சோதனை",
+    "உடனடி முன்பதிவு உறுதி & ரசீது",
+    "பக்தர் போர்டல் அணுகல்",
+    "வாட்ஸ்அப் அறிவிப்புகள்",
+  ],
+  isNew: true,
+  createdAt: "2026-10-13T12:00:00.000Z",
+  seats: "Live Demo",
+  capacity: 100,
+  live: true,
+  packages: [
+    { name: "Single Devotee", price: 1, description: "1 Devotee Name & Gotra Sankalp (₹1)" },
+    { name: "Couple / Dampati", price: 1, description: "Husband & Wife Joint Sankalp (₹1)" },
+    { name: "Family / Kul Sankalp", price: 1, description: "Complete Family Sankalp (₹1)" },
+  ],
+};
+
+export const DEMO_POOJA_SLUGS = [
+  "demo-pooja",
+  "demo-puja",
+  "test-demo-pooja",
+  "test-demo-puja",
+  "test-pooja",
+  "test-puja",
+  "test-pooja-1-rupee",
+  "demo",
+] as const;
+
+export function isDemoSlug(slug?: string | null): boolean {
+  if (!slug) return false;
+  const s = slug.toLowerCase().replace(/_/g, "-");
+  return (DEMO_POOJA_SLUGS as readonly string[]).includes(s);
+}
+
 export const poojas: Pooja[] = [
   {
     slug: "satyanarayan-katha",

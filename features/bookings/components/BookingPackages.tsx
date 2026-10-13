@@ -45,6 +45,7 @@ export const POOJA_PACKAGES: PoojaPackageOption[] = [
 ];
 
 export function calculatePackagePrice(basePrice: number, tier: PackageTier): number {
+  if (basePrice <= 1) return basePrice;
   const pkg = POOJA_PACKAGES.find((p) => p.id === tier);
   if (!pkg) return basePrice;
   const raw = Math.round(basePrice * pkg.priceMultiplier);

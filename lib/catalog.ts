@@ -12,6 +12,8 @@ import {
   defaultTemples as staticTemples,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEventSpecs,
+  DEMO_POOJA,
+  isDemoSlug,
   type Coupon,
   type FestivalEvent,
   type Pooja,
@@ -63,6 +65,7 @@ export function getCatalogPoojas(): Pooja[] {
 }
 
 export function getCatalogPooja(slug: string): Pooja | undefined {
+  if (isDemoSlug(slug)) return DEMO_POOJA;
   return getCatalogPoojas().find((p) => p.slug === slug);
 }
 
