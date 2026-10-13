@@ -52,6 +52,7 @@ import type {
 import { COMMON_GOTRAS } from "../types/booking.types";
 import { calculatePackagePrice } from "./BookingPackages";
 import BookingConfirmation from "./BookingConfirmation";
+import UpiQrCheckout from "@/features/payments/components/UpiQrCheckout";
 
 export interface BookingFlowProps {
   pooja?: Pooja;
@@ -78,8 +79,9 @@ export default function BookingFlow({
   // 3-step popup flow:
   // Step 1: Select Option (Single, Couple, Family with price only)
   // Step 2: Select Chadhava (with price and multiple items stepper)
-  // Step 3: Enter Name(s) & Gotra(s) + 1 Mobile Number + Proceed to Payment
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  // Step 3: Enter Name(s) & Gotra(s) + 1 Mobile Number
+  // Step 4: Pay via UPI & QR Code / Gateway
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   const [prayerSlug, setPrayerSlug] = useState<string>(
     pooja?.slug ?? initialPoojaSlug ?? (catalogPoojas[0]?.slug || "satyanarayan-katha")
@@ -101,8 +103,8 @@ export default function BookingFlow({
     { id: "2", name: "", gotra: "" },
   ]);
 
-  // Exactly 1 phone number required for all cases:
   const [phone, setPhone] = useState("");
+  const [activeBookingId, setActiveBookingId] = useState("");
   const [formError, setFormError] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -420,11 +422,12 @@ export default function BookingFlow({
     const temple = getTempleForPooja(selectedPooja, temples);
 
     // Unique booking ID created upfront so pending -> failed -> confirmed lifecycle is linked
-    const activeBookingId = "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const activeReceiptNum = generateReceiptNumber(activeBookingId);
+    const bId = activeBookingId || ("BK-" + Math.random().toString(36).substring(2, 8).toUpperCase());
+    if (!activeBookingId) setActiveBookingId(bId);
+    const activeReceiptNum = generateReceiptNumber(bId);
 
     const pendingBookingRecord: BookingRecord = {
-      bookingId: activeBookingId,
+      bookingId: bId,
       receiptNumber: activeReceiptNum,
       poojaSlug: selectedPooja?.slug || prayerSlug,
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
@@ -463,6 +466,14 @@ export default function BookingFlow({
       });
     } catch {
       // Handled in storage layer fallback
+    }
+
+    // When UPI QR payment mode is active, proceed directly to Step 4 (UPI & QR payment screen)
+    if (SITE_CONFIG.payment.mode === "upi_qr") {
+      setIsProcessingPayment(false);
+      setCurrentStep(4);
+      scrollToTop();
+      return;
     }
 
     try {
@@ -624,6 +635,132 @@ export default function BookingFlow({
         err instanceof Error ? err.message : "Unable to initiate payment. Please try again."
       );
     }
+  };
+
+  const handleUpiPaymentSuccess = async (utr: string) => {
+    setIsProcessingPayment(true);
+    setFormError("");
+
+    const bId = activeBookingId || ("BK-" + Math.random().toString(36).substring(2, 8).toUpperCase());
+    const receiptNum = generateReceiptNumber(bId);
+    const generatedPassword = generateDevoteePassword();
+
+    const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+    const userEmail = `${cleanPhone}@templepujasewa.com`;
+    const primaryName =
+      selectedTier === "single"
+        ? name.trim()
+        : selectedTier === "couple"
+        ? `${name.trim()} & ${partnerName.trim()}`
+        : `${familyMembers[0]?.name.trim() || "Devotee"} & Family (${familyMembers.length} Members)`;
+
+    const primaryGotra =
+      selectedTier === "single"
+        ? gotra.trim() || "Kashyap"
+        : selectedTier === "couple"
+        ? gotra.trim() === partnerGotra.trim()
+          ? gotra.trim()
+          : `${gotra.trim()} / ${partnerGotra.trim()}`
+        : familyMembers[0]?.gotra.trim() || "Kashyap";
+
+    const devoteesList: DevoteeMember[] =
+      selectedTier === "single"
+        ? [{ name: name.trim(), gotra: gotra.trim() || "Kashyap" }]
+        : selectedTier === "couple"
+        ? [
+            { name: name.trim(), gotra: gotra.trim() || "Kashyap" },
+            { name: partnerName.trim(), gotra: partnerGotra.trim() || "Kashyap" },
+          ]
+        : familyMembers.map((m) => ({
+            name: m.name.trim(),
+            gotra: m.gotra.trim() || "Kashyap",
+          }));
+
+    const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
+    const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
+    const temple = getTempleForPooja(selectedPooja, temples);
+
+    const upiBookingRecord: BookingRecord = {
+      bookingId: bId,
+      receiptNumber: receiptNum,
+      poojaSlug: selectedPooja?.slug || prayerSlug,
+      poojaTitle: selectedPooja?.title || "Sacred Pooja",
+      templeSlug: temple?.slug || "thetemplepuja",
+      templeName: temple?.name || SITE_CONFIG.brandName,
+      date: finalDate,
+      time: finalTime,
+      panditName: "Acharya Ji (Vedic Purohit)",
+      reason: "General Well-being & Divine Blessings",
+      packageTier: selectedTier,
+      gotra: primaryGotra,
+      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
+      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      devotees: devoteesList,
+      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      amount: finalTotal,
+      discount,
+      couponCode: appliedCoupon?.code ?? null,
+      addonCount: addonItems.length,
+      addons: addonItems,
+      createdAt: new Date().toISOString(),
+      status: "confirmed",
+      paymentMethod: "upi_qr",
+      upiTransactionId: utr,
+      upiId: SITE_CONFIG.payment.upiId,
+      paidAt: new Date().toISOString(),
+    };
+
+    let finalPassword = generatedPassword;
+    try {
+      const submitRes = await submitBooking({
+        name: primaryName,
+        phone: cleanPhone,
+        gotra: primaryGotra,
+        city: temple?.city || "India",
+        email: userEmail,
+        booking: upiBookingRecord,
+        payment: {
+          method: "upi_qr",
+          upiTransactionId: utr,
+          upiId: SITE_CONFIG.payment.upiId,
+        },
+        generatedPassword,
+      });
+      if (submitRes?.credentials?.password) {
+        finalPassword = submitRes.credentials.password;
+      }
+    } catch {
+      // Handled in storage layer fallback
+    }
+
+    setConfirmed({
+      id: bId,
+      receiptNumber: receiptNum,
+      total: finalTotal,
+      subtotal: total,
+      addonTotal: chadhavaTotal,
+      discount,
+      coupon: appliedCoupon,
+      addons: addonItems,
+      date: formatBookingDate(finalDate),
+      time: finalTime,
+      panditName: "Acharya Ji (Vedic Purohit)",
+      name: primaryName,
+      gotra: primaryGotra,
+      poojaTitle: selectedPooja?.title || "Sacred Pooja",
+      reason: "General Well-being & Divine Blessings",
+      packageTier: selectedTier,
+      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
+      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      devotees: devoteesList,
+      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      credentials: {
+        username: cleanPhone,
+        password: finalPassword,
+        email: userEmail,
+      },
+    });
+    setIsProcessingPayment(false);
   };
 
   const handlePaymentSuccess = async (
@@ -836,19 +973,45 @@ export default function BookingFlow({
             className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
               currentStep === 3
                 ? "bg-saffron-600 text-white shadow-xs"
+                : currentStep > 3
+                ? "bg-emerald-600 text-white"
                 : "bg-slate-100 text-slate-500"
             }`}
           >
-            3
+            {currentStep > 3 ? "✓" : "3"}
           </span>
           <span
             className={`text-xs font-bold ${
               currentStep === 3 ? "text-saffron-800" : "text-slate-500"
             }`}
           >
-            Devotee & Pay
+            {SITE_CONFIG.payment.mode === "upi_qr" ? "Devotee" : "Devotee & Pay"}
           </span>
         </div>
+
+        {SITE_CONFIG.payment.mode === "upi_qr" && (
+          <>
+            <div className="h-0.5 w-4 sm:w-6 bg-slate-200" />
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                  currentStep === 4
+                    ? "bg-saffron-600 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                4
+              </span>
+              <span
+                className={`text-xs font-bold ${
+                  currentStep === 4 ? "text-saffron-800" : "text-slate-500"
+                }`}
+              >
+                Pay via QR
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
@@ -1517,17 +1680,50 @@ export default function BookingFlow({
               {isProcessingPayment ? (
                 <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>Opening Razorpay Gateway...</span>
+                  <span>
+                    {SITE_CONFIG.payment.mode === "upi_qr"
+                      ? "Loading UPI Payment..."
+                      : "Opening Razorpay Gateway..."}
+                  </span>
                 </>
               ) : (
                 <>
-                  <span>Proceed to Pay ({formatINR(finalTotal)})</span>
+                  <span>
+                    {SITE_CONFIG.payment.mode === "upi_qr"
+                      ? `Proceed to Pay via UPI / QR (${formatINR(finalTotal)})`
+                      : `Proceed to Pay (${formatINR(finalTotal)})`}
+                  </span>
                   <ChevronRight className="h-4 w-4" />
                 </>
               )}
             </button>
           </div>
         </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* STEP 4: Pay via UPI & QR Code (Direct Client Payment)         */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {currentStep === 4 && (
+        <UpiQrCheckout
+          amount={finalTotal}
+          poojaTitle={selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Pooja"}
+          devoteeName={
+            selectedTier === "single"
+              ? name.trim() || "Devotee"
+              : selectedTier === "couple"
+              ? `${name.trim() || "Devotee"} & ${partnerName.trim() || "Spouse"}`
+              : `${familyMembers[0]?.name.trim() || "Devotee"} & Family`
+          }
+          phone={phone.replace(/\D/g, "").slice(-10)}
+          bookingId={activeBookingId}
+          isSubmitting={isProcessingPayment}
+          onBack={() => {
+            setCurrentStep(3);
+            scrollToTop();
+          }}
+          onConfirm={handleUpiPaymentSuccess}
+        />
       )}
     </div>
   );

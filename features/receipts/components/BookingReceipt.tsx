@@ -27,7 +27,9 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
     booking.receiptNumber ||
     `RCPT-${booking.createdAt.slice(0, 10).replace(/-/g, "")}-${booking.bookingId.slice(-6).toUpperCase()}`;
   const orderId = booking.razorpayOrderId || `ORD-${booking.bookingId}`;
-  const paymentId = booking.razorpayPaymentId || "PAY-VERIFIED-SEVA";
+  const paymentId = booking.upiTransactionId
+    ? `UTR-${booking.upiTransactionId}`
+    : booking.razorpayPaymentId || "PAY-VERIFIED-SEVA";
 
   const copyText = async (text: string, isRcpt = false) => {
     try {
@@ -372,7 +374,14 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
 
           <div className="mt-4 pt-3 border-t border-dashed border-saffron-200 flex flex-wrap items-center justify-between text-[11px] text-ink-soft">
             <span>Transaction Ref: <code className="font-mono font-semibold">{paymentId}</code></span>
-            <span>Mode: {booking.razorpayPaymentId ? "Razorpay Online" : "Confirmed Seva"}</span>
+            <span>
+              Mode:{" "}
+              {booking.paymentMethod === "upi_qr" || booking.upiTransactionId
+                ? "UPI / QR Code"
+                : booking.razorpayPaymentId
+                ? "Razorpay Online"
+                : "Confirmed Seva"}
+            </span>
           </div>
         </div>
 

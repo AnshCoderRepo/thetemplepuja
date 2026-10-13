@@ -3,9 +3,12 @@ import type { Coupon } from "@/lib/data";
 export type PaymentTab = "upi" | "card" | "netbanking" | "wallet";
 
 export interface PaymentProof {
-  razorpayOrderId: string;
-  razorpayPaymentId: string;
-  razorpaySignature: string;
+  method?: "upi_qr" | "razorpay" | "simulated";
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  upiTransactionId?: string;
+  upiId?: string;
 }
 
 export interface AppliedCoupon {

@@ -8,3 +8,4 @@ export { default as PaymentNetbanking } from "./components/PaymentNetbanking";
 export { default as PaymentUpi } from "./components/PaymentUpi";
 export { default as PaymentWallet } from "./components/PaymentWallet";
 export { default as RazorpayCheckout } from "./components/RazorpayCheckout";
+export { default as UpiQrCheckout } from "./components/UpiQrCheckout";

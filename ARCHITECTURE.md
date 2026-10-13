@@ -57,9 +57,9 @@ templepujaseva/
 │   ├── home/                         # Landing & Marketing presentation
 │   │   ├── components/               # Hero, WhyChooseUs, Testimonials, FAQ, Deals, ExperienceSection
 │   │   └── index.ts
-│   ├── payments/                     # Razorpay integration & checkout UI
+│   ├── payments/                     # UPI QR Code & Razorpay integration
 │   │   ├── api/                      # paymentApi.ts
-│   │   ├── components/               # RazorpayCheckout, PaymentMethodTabs, CouponInput, PaymentUpi, PaymentCard, PaymentNetbanking, PaymentWallet
+│   │   ├── components/               # UpiQrCheckout, RazorpayCheckout, PaymentMethodTabs, CouponInput, PaymentUpi, PaymentCard, PaymentNetbanking, PaymentWallet
 │   │   ├── services/                 # razorpayScript.ts
 │   │   ├── types/                    # payment.types.ts
 │   │   └── index.ts

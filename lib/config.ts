@@ -36,12 +36,45 @@ export const SITE_CONFIG = {
       "https://whatsapp.com/channel/0029Vaexample",
   },
 
+  // Payment Configuration (UPI QR & Razorpay)
+  payment: {
+    // Current active payment mode: "upi_qr" (default) or "razorpay" (for future live credentials)
+    mode: ((process.env.NEXT_PUBLIC_PAYMENT_MODE || "upi_qr").toLowerCase() === "razorpay"
+      ? "razorpay"
+      : "upi_qr") as "upi_qr" | "razorpay",
+    // UPI ID to receive client payments (easily configurable via NEXT_PUBLIC_UPI_ID)
+    upiId: process.env.NEXT_PUBLIC_UPI_ID || "7070410031@upi",
+    // Merchant/Payee name displayed on UPI app & QR code
+    payeeName: process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "The Temple Puja",
+    // Optional custom QR image URL (e.g. "/images/custom-qr.png") if owner uploads custom QR
+    qrImageUrl: process.env.NEXT_PUBLIC_UPI_QR_IMAGE || "",
+  },
+
   // Admin Portal Defaults
   admin: {
     defaultEmail: process.env.ADMIN_EMAIL || "admin@thetemplepuja.com",
     defaultPassword: process.env.ADMIN_PASSWORD || "admin123",
   },
 } as const;
+
+/**
+ * Generate standard UPI Intent URL for QR code and direct mobile UPI app opening
+ * @param amount Amount in rupees
+ * @param note Optional note / transaction description
+ */
+export function getUpiPaymentUrl(amount: number, note?: string): string {
+  const upiId = SITE_CONFIG.payment.upiId;
+  const payeeName = SITE_CONFIG.payment.payeeName;
+  const cleanNote = note || "Sacred Pooja Dakshina";
+  const params = new URLSearchParams({
+    pa: upiId,
+    pn: payeeName,
+    am: amount.toFixed(2),
+    cu: "INR",
+    tn: cleanNote,
+  });
+  return `upi://pay?${params.toString()}`;
+}
 
 /**
  * Generate a standard, compliant WhatsApp Click-to-Chat URL

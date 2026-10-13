@@ -298,7 +298,7 @@ export default function OrdersManager({
       booking.discount || 0,
       `"${booking.status}"`,
       `"${booking.failureReason || ""}"`,
-      `"${booking.razorpayPaymentId || "Demo"}"`,
+      `"${booking.upiTransactionId ? `UPI-${booking.upiTransactionId}` : booking.razorpayPaymentId || "Demo"}"`,
       `"${booking.createdAt}"`,
     ]);
 
@@ -534,9 +534,19 @@ export default function OrdersManager({
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-ink-soft">
+                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                          booking.paymentMethod === "upi_qr" || booking.upiTransactionId
+                            ? "bg-purple-50 text-purple-700 border border-purple-200"
+                            : booking.razorpayPaymentId
+                            ? "bg-sky-50 text-sky-700 border border-sky-200"
+                            : "bg-slate-100 text-ink-soft"
+                        }`}>
                           <CreditCard className="h-3 w-3" />
-                          {booking.razorpayPaymentId ? "Razorpay UPI/Card" : "Simulated Checkout"}
+                          {booking.paymentMethod === "upi_qr" || booking.upiTransactionId
+                            ? `UPI QR${booking.upiTransactionId ? ` (${booking.upiTransactionId.slice(0, 10)})` : ""}`
+                            : booking.razorpayPaymentId
+                            ? "Razorpay UPI/Card"
+                            : "Simulated Checkout"}
                         </span>
                       </td>
                       <td className="px-4 py-3.5 font-bold text-ink text-xs">
@@ -709,6 +719,20 @@ export default function OrdersManager({
                   <span>Net Amount Paid:</span>
                   <span className="text-saffron-700 text-sm">{formatINR(selectedOrder.booking.amount)}</span>
                 </div>
+                {selectedOrder.booking.upiTransactionId && (
+                  <div className="flex justify-between text-[11px] text-purple-700 font-semibold pt-1">
+                    <span>UPI Reference (UTR):</span>
+                    <span className="font-mono bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 select-all">
+                      {selectedOrder.booking.upiTransactionId}
+                    </span>
+                  </div>
+                )}
+                {selectedOrder.booking.upiId && (
+                  <div className="flex justify-between text-[11px] text-ink-soft pt-1">
+                    <span>Paid to UPI ID:</span>
+                    <span className="font-mono">{selectedOrder.booking.upiId}</span>
+                  </div>
+                )}
                 {selectedOrder.booking.razorpayPaymentId && (
                   <div className="flex justify-between text-[11px] text-ink-soft pt-1">
                     <span>Razorpay Payment ID:</span>
