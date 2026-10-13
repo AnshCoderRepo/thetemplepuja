@@ -9,7 +9,7 @@ describe("UPI QR Payment Flow", () => {
     expect(url).toContain("pa=" + encodeURIComponent(SITE_CONFIG.payment.upiId));
     expect(url).toContain("am=1101.00");
     expect(url).toContain("cu=INR");
-    expect(url).toContain("pn=The+Temple+Puja");
+    expect(url).toContain("pn=" + SITE_CONFIG.payment.payeeName.replace(/ /g, "+"));
     expect(url).toContain("tn=Satyanarayan+Katha+-+Ansh");
   });
 
