@@ -6,7 +6,7 @@ import {
   razorpayKeyId,
 } from "@/lib/razorpay";
 import { getResolvedCatalog, findUserByPhone } from "@/lib/server-store";
-import { isPoojaActive } from "@/lib/data";
+import { DEMO_POOJA, isDemoSlug, isPoojaActive } from "@/lib/data";
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
   }
 
   const catalog = await getResolvedCatalog();
-  const pooja = catalog.poojas.find((p) => p.slug === poojaSlug);
+  const normalizedSlug = poojaSlug.toLowerCase().replace(/_/g, "-");
+  const pooja = isDemoSlug(normalizedSlug)
+    ? DEMO_POOJA
+    : catalog.poojas.find((p) => p.slug === normalizedSlug);
   if (!pooja || !isPoojaActive(pooja)) {
     return NextResponse.json(
       { error: "This pooja is not available for booking." },

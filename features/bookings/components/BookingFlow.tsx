@@ -21,6 +21,8 @@ import {
   defaultChadhavaOfferings,
   getLocalizedPoojaTitle,
   getTempleForPooja,
+  DEMO_POOJA,
+  isDemoSlug,
   type ChadhavaOffering,
   type Pooja,
 } from "@/lib/data";
@@ -183,9 +185,11 @@ export default function BookingFlow({
   }, [pooja?.slug, initialPoojaSlug]);
 
   const selectedPooja =
-    catalogPoojas.find((p) => p.slug === prayerSlug) ??
-    pooja ??
-    catalogPoojas[0];
+    isDemoSlug(prayerSlug)
+      ? DEMO_POOJA
+      : catalogPoojas.find((p) => p.slug === prayerSlug) ??
+        pooja ??
+        catalogPoojas[0];
 
   const temple = getTempleForPooja(selectedPooja, temples);
 

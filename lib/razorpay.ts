@@ -100,12 +100,14 @@ export function computeOrderAmount(input: {
   couponProblem: string | null;
 } {
   let basePrice = input.pooja.price;
-  if (input.packageTier === "couple") {
-    const raw = Math.round(basePrice * 1.8);
-    basePrice = Math.round(raw / 100) * 100 + 1;
-  } else if (input.packageTier === "family") {
-    const raw = Math.round(basePrice * 2.5);
-    basePrice = Math.round(raw / 100) * 100 + 1;
+  if (basePrice > 1) {
+    if (input.packageTier === "couple") {
+      const raw = Math.round(basePrice * 1.8);
+      basePrice = Math.round(raw / 100) * 100 + 1;
+    } else if (input.packageTier === "family") {
+      const raw = Math.round(basePrice * 2.5);
+      basePrice = Math.round(raw / 100) * 100 + 1;
+    }
   }
 
   let addonTotal = 0;

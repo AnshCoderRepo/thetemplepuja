@@ -17,6 +17,8 @@ import {
 import { useBookingModal, useI18n } from "@/components/providers";
 import { PoojaCatalog, useCatalog } from "@/features/catalog";
 import {
+  DEMO_POOJA,
+  isDemoSlug,
   isPoojaActive,
   getLocalizedPoojaTitle,
   getLocalizedPoojaDescription,
@@ -36,7 +38,12 @@ function ServiceInner({ service }: { service: string }) {
 
   // Resolve from the backend catalog (falls back to the static list).
   const { poojas, temples, loaded } = useCatalog();
-  const pooja = loaded ? (poojas.find((p) => p.slug === service) ?? null) : undefined;
+  const normalized = service.toLowerCase().replace(/_/g, "-");
+  const pooja = isDemoSlug(normalized)
+    ? DEMO_POOJA
+    : loaded
+    ? (poojas.find((p) => p.slug === normalized) ?? null)
+    : undefined;
 
   const locTitle = pooja ? getLocalizedPoojaTitle(pooja, locale) : "";
   const schedule = pooja ? getPoojaSchedule(pooja) : null;
