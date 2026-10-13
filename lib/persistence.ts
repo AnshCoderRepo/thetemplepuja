@@ -3,6 +3,11 @@
 // in-memory store below.
 import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
 import type { UserProfile } from "./storage";
+import type {
+  ChatbotKnowledgeEntry,
+  ChatbotSettings,
+  PlatformSettings,
+} from "./chatbot-types";
 
 export interface CatalogOverrides {
   poojas?: Pooja[];
@@ -11,6 +16,9 @@ export interface CatalogOverrides {
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
   temples?: Temple[];
+  chatbotKnowledge?: ChatbotKnowledgeEntry[];
+  chatbotSettings?: ChatbotSettings;
+  platformSettings?: PlatformSettings;
 }
 
 export interface AdminCreds {
@@ -22,7 +30,17 @@ export interface PersistenceStore {
   getCatalogOverrides(): Promise<CatalogOverrides>;
   saveCatalogOverrides(overrides: CatalogOverrides): Promise<void>;
   clearCatalogOverrides(
-    sections: ("poojas" | "events" | "festivals" | "coupons" | "poojaDates" | "temples")[]
+    sections: (
+      | "poojas"
+      | "events"
+      | "festivals"
+      | "coupons"
+      | "poojaDates"
+      | "temples"
+      | "chatbotKnowledge"
+      | "chatbotSettings"
+      | "platformSettings"
+    )[]
   ): Promise<void>;
   getAdminCreds(): Promise<AdminCreds>;
   saveAdminCreds(email: string, passwordHash: string): Promise<void>;

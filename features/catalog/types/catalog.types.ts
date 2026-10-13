@@ -6,6 +6,7 @@ import type {
   Temple,
   UpcomingEventSpec,
 } from "@/lib/data";
+import type { PlatformSettings } from "@/lib/chatbot-types";
 
 export interface ResolvedCatalog {
   poojas: Pooja[];
@@ -14,6 +15,7 @@ export interface ResolvedCatalog {
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
+  platformSettings?: PlatformSettings;
 }
 
 export type CatalogSection =

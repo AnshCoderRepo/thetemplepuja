@@ -16,6 +16,7 @@ import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import DatesManager from "@/components/admin/DatesManager";
 import CouponsManager from "@/components/admin/CouponsManager";
 import AccountManager from "@/components/admin/AccountManager";
+import ChatbotManager from "@/components/admin/ChatbotManager";
 import CustomerProfileModal, { type ProfileTab } from "@/components/admin/CustomerProfileModal";
 
 interface AdminDashboardProps {
@@ -155,6 +156,10 @@ export default function AdminDashboard({
 
           {tab === "coupons" && (
             <CouponsManager token={token || ""} onAuthError={onAuthError} />
+          )}
+
+          {tab === "chatbot" && (
+            <ChatbotManager token={token || ""} onAuthError={onAuthError} />
           )}
 
           {tab === "account" && (

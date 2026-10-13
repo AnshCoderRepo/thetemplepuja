@@ -35,6 +35,11 @@ import {
   type UserProfile,
 } from "./storage";
 import { normalizePhone } from "./validation";
+import type {
+  ChatbotKnowledgeEntry,
+  ChatbotSettings,
+  PlatformSettings,
+} from "./chatbot-types";
 
 export interface ResolvedCatalog {
   poojas: Pooja[];
@@ -43,6 +48,9 @@ export interface ResolvedCatalog {
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
+  chatbotKnowledge?: ChatbotKnowledgeEntry[];
+  chatbotSettings?: ChatbotSettings;
+  platformSettings?: PlatformSettings;
 }
 
 const DEFAULT_CONFIG = { email: "admin@thetemplepuja.com", isDefault: true };
@@ -683,6 +691,136 @@ export async function updateCustomerProfileRemote(
     return { ok: false, error: body.error || "Failed to update devotee profile." };
   } catch {
     return { ok: false, error: "Network error while saving changes." };
+  }
+}
+
+// ===================== CHATBOT & PLATFORM APIS =====================
+
+export async function fetchChatbotConfigRemote(token?: string): Promise<{
+  knowledge: ChatbotKnowledgeEntry[];
+  settings: ChatbotSettings;
+  platformSettings?: PlatformSettings;
+  status?: number;
+}> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch("/api/admin/chatbot", {
+      headers,
+      cache: "no-store",
+    });
+    if (res.status === 401) {
+      return { knowledge: [], settings: {} as ChatbotSettings, status: 401 };
+    }
+    const data = await res.json();
+    return {
+      knowledge: data.knowledge || [],
+      settings: data.settings || {},
+      platformSettings: data.platformSettings,
+      status: res.status,
+    };
+  } catch {
+    return { knowledge: [], settings: {} as ChatbotSettings };
+  }
+}
+
+export async function saveChatbotKnowledgeRemote(
+  knowledge: ChatbotKnowledgeEntry[],
+  token: string
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/chatbot", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ knowledge }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 401) return { ok: false, status: 401 };
+    if (!res.ok) return { ok: false, error: body.error || "Failed to save knowledge." };
+    resetCatalogCache();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Network failure while saving knowledge." };
+  }
+}
+
+export async function saveChatbotSettingsRemote(
+  settings: ChatbotSettings,
+  token: string
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/chatbot", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ settings }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 401) return { ok: false, status: 401 };
+    if (!res.ok) return { ok: false, error: body.error || "Failed to update settings." };
+    resetCatalogCache();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Network failure while saving settings." };
+  }
+}
+
+export async function savePlatformSettingsRemote(
+  platformSettings: PlatformSettings,
+  token: string
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/chatbot", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ platformSettings }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 401) return { ok: false, status: 401 };
+    if (!res.ok) return { ok: false, error: body.error || "Failed to update platform settings." };
+    resetCatalogCache();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Network failure while saving platform settings." };
+  }
+}
+
+export async function sendChatMessage(
+  messages: Array<{ from: "bot" | "user"; text: string }>,
+  phone?: string
+): Promise<{ reply: string; ok: boolean; requiresPhone?: boolean; bookingFound?: boolean }> {
+  try {
+    const res = await fetch("/api/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, phone }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        reply: data.reply || "Namaste. I am temporarily unavailable. Please connect via WhatsApp support.",
+        ok: false,
+      };
+    }
+    return {
+      reply: data.reply,
+      ok: true,
+      requiresPhone: data.requiresPhone,
+      bookingFound: data.bookingFound,
+    };
+  } catch {
+    return {
+      reply: "Namaste! I am having difficulty connecting. Please reach our temple coordinators on WhatsApp for instant assistance.",
+      ok: false,
+    };
   }
 }
 

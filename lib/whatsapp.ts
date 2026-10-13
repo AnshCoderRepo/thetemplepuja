@@ -7,7 +7,7 @@
 //   TWILIO_AUTH_TOKEN       — Twilio auth token
 //   TWILIO_WHATSAPP_FROM    — Twilio WhatsApp sender, e.g. "whatsapp:+14155238886"
 //   ADMIN_WHATSAPP_TO       — the admin's WhatsApp, defaults to the site's
-//                             contact number (whatsapp:+918765301563)
+//                             contact number
 //   SITE_URL                — public origin used for the receipt link in the
 //                             devotee message (e.g. https://thetemplepuja.com).
 //                             Falls back to the request's Host header / localhost.

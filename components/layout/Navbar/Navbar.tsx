@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Globe, Menu, X } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/config";
+import { useI18n } from "@/components/providers";
+import LanguageToggle from "@/components/common/LanguageToggle/LanguageToggle";
+import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
 
 export const navLinks = [
   { label: "Home", href: "#home" },
@@ -13,7 +16,14 @@ export const navLinks = [
 ];
 
 export default function Navbar() {
+  const { t, locale, setLocale } = useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const activeNavLinks = [
+    { label: t("nav.home"), href: "#home" },
+    { label: t("nav.bookPooja"), href: "#poojas" },
+    { label: t("nav.contact"), href: "#contact" },
+  ];
 
   return (
     <>
@@ -44,9 +54,9 @@ export default function Navbar() {
 
         {/* Desktop Navigation Links */}
         <div className="hidden items-center gap-1 lg:flex">
-          {navLinks.map((link) => (
+          {activeNavLinks.map((link) => (
             <a
-              key={link.label}
+              key={link.href}
               href={link.href}
               onClick={(e) => {
                 if (link.href === "#contact") {
@@ -63,11 +73,14 @@ export default function Navbar() {
 
         {/* Desktop Action & Mobile Menu Button */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Language Switcher in Navbar */}
+          <LanguageToggle />
+
           <Link
             href="/login"
             className="btn-outline hidden !px-4 !py-2.5 text-xs sm:inline-flex"
           >
-            Login
+            {t("nav.login")}
           </Link>
 
           {/* Mobile hamburger */}
@@ -89,13 +102,13 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       <div
         className={`overflow-hidden bg-cream/95 backdrop-blur-md transition-all duration-300 lg:hidden ${
-          mobileMenuOpen ? "max-h-96 border-b border-saffron-200" : "max-h-0"
+          mobileMenuOpen ? "max-h-[32rem] border-b border-saffron-200" : "max-h-0"
         }`}
       >
-        <div className="container-px flex flex-col gap-1 py-4">
-          {navLinks.map((link) => (
+        <div className="container-px flex flex-col gap-2 py-4">
+          {activeNavLinks.map((link) => (
             <a
-              key={link.label}
+              key={link.href}
               href={link.href}
               onClick={(e) => {
                 setMobileMenuOpen(false);
@@ -109,13 +122,46 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          <div className="mt-2">
+
+          {/* Quick Language Selector for Mobile Drawer */}
+          <div className="mt-2 rounded-xl border border-saffron-200/80 bg-white/80 p-2.5">
+            <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2 flex items-center gap-1.5 px-1">
+              <Globe className="h-3.5 w-3.5 text-saffron-600" />
+              <span>Language / भाषा</span>
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const isSelected = lang.code === locale;
+                return (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => {
+                      setLocale(lang.code);
+                    }}
+                    className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-semibold transition-all ${
+                      isSelected
+                        ? "bg-gradient-to-r from-saffron-600 to-saffron-700 text-white shadow-xs"
+                        : "bg-saffron-50/70 text-ink hover:bg-saffron-100/70"
+                    }`}
+                  >
+                    <span>{lang.nativeName}</span>
+                    <span className={`text-[10px] ${isSelected ? "text-amber-100" : "text-ink-soft"}`}>
+                      {lang.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-1">
             <Link
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
               className="btn-outline !w-full text-center text-xs block py-2.5"
             >
-              Login
+              {t("nav.login")}
             </Link>
           </div>
         </div>

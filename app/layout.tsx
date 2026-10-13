@@ -23,7 +23,7 @@ const devanagari = Noto_Sans_Devanagari({
 
 import { SITE_URL } from "@/lib/seo";
 import { ScrollToTop, ErrorBoundary } from "@/components/common";
-import { FloatingWhatsApp } from "@/features/contact";
+import { FloatingWhatsApp, AIGuide } from "@/features/contact";
 import { BookingModal } from "@/features/bookings";
 import Providers from "@/components/providers/Providers";
 
@@ -67,6 +67,7 @@ export default function RootLayout({
             {children}
             <BookingModal />
             <ScrollToTop />
+            <AIGuide />
             <FloatingWhatsApp />
           </ErrorBoundary>
         </Providers>

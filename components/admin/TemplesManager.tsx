@@ -96,7 +96,13 @@ export default function TemplesManager({
     if (!draft.city.trim() || !draft.state.trim()) {
       return "City and state are required.";
     }
-    if (list.some((t) => t.slug === draft.slug.trim() && t.slug !== editing)) {
+    if (
+      list.some(
+        (t) =>
+          t.slug.trim().toLowerCase() === draft.slug.trim().toLowerCase() &&
+          t.slug.trim().toLowerCase() !== editing?.trim().toLowerCase()
+      )
+    ) {
       return "Another temple already uses this slug.";
     }
     return null;

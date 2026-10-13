@@ -287,7 +287,13 @@ export default function EventsManager({
     if (eventDraft.capacity.trim() && (!Number.isInteger(cap) || cap < 1)) {
       return "Capacity must be a whole number of 1 or more (leave blank for unlimited).";
     }
-    if (events.some((e) => e.slug === eventDraft.slug.trim() && e.slug !== editingEvent)) {
+    if (
+      events.some(
+        (e) =>
+          e.slug.trim().toLowerCase() === eventDraft.slug.trim().toLowerCase() &&
+          e.slug.trim().toLowerCase() !== editingEvent?.trim().toLowerCase()
+      )
+    ) {
       return "Another event already uses this slug.";
     }
     return null;
@@ -892,7 +898,6 @@ export default function EventsManager({
                       setEventDraft((d) => ({ ...d, slug: v }));
                     }}
                     placeholder="hanuman-pooja"
-                    disabled={Boolean(editingEvent)}
                   />
                 </Field>
 

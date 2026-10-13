@@ -24,12 +24,12 @@ export const SITE_CONFIG = {
     phoneDisplay: process.env.NEXT_PUBLIC_CONTACT_PHONE_DISPLAY || "+91 70704 10031",
     // Country code prefix (digits only)
     countryCode: "91",
-    // Full WhatsApp international number (e.g. 917070410031, strictly digits)
+    // Full WhatsApp international number (strictly digits)
     whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "917070410031",
     // Official pre-filled greeting message for customer support
     whatsappPreFilledMessage: "Namaste, I would like to know more about your Puja services.",
     // Support & Admin Email
-    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "admin@thetemplepuja.com",
+    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@thetemplepuja.com",
     // Official WhatsApp Channel link (e.g. for daily panchang, pooja muhurat & darshan updates)
     whatsappChannelUrl:
       process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL_URL ||

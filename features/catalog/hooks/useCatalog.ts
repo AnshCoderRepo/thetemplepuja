@@ -22,6 +22,8 @@ import {
 } from "../api/catalogApi";
 import type { ResolvedCatalog } from "../types/catalog.types";
 
+import type { PlatformSettings } from "@/lib/chatbot-types";
+
 export interface CatalogState {
   poojas: Pooja[];
   events: UpcomingEventSpec[];
@@ -29,6 +31,7 @@ export interface CatalogState {
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
+  platformSettings?: PlatformSettings;
   loaded: boolean;
 }
 
@@ -85,6 +88,7 @@ export function useCatalog(): CatalogState {
     coupons: catalog?.coupons ?? staticCoupons,
     poojaDates: catalog?.poojaDates ?? defaultPoojaDates,
     temples: catalog?.temples ?? staticTemples,
+    platformSettings: catalog?.platformSettings,
     loaded: catalog !== null,
   };
 }

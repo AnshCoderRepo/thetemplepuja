@@ -10,10 +10,10 @@ export interface LanguageOption {
 }
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
-  { code: "en", label: "EN", nativeName: "English" },
-  { code: "hi", label: "हिन्दी", nativeName: "हिन्दी" },
-  { code: "te", label: "తెలుగు", nativeName: "తెలుగు" },
-  { code: "ta", label: "தமிழ்", nativeName: "தமிழ்" },
+  { code: "en", label: "English", nativeName: "English" },
+  { code: "hi", label: "Hindi", nativeName: "हिन्दी" },
+  { code: "ta", label: "Tamil", nativeName: "தமிழ்" },
+  { code: "te", label: "Telugu", nativeName: "తెలుగు" },
 ];
 
 export const translations = {

@@ -2,7 +2,7 @@
 
 **Prepared for:** Client  
 **Product:** The Temple Puja — India's digital spiritual platform for booking certified pandits and sacred poojas online  
-**Contact:** WhatsApp / Phone **+91 87653 01563**
+**Contact:** Configured via `.env` (`NEXT_PUBLIC_WHATSAPP_NUMBER` / `NEXT_PUBLIC_CONTACT_PHONE`)
 
 ---
 
@@ -123,7 +123,7 @@ All configuration lives in `.env.local`:
 |---|---|---|
 | `MONGODB_URI` / `MONGODB_DB` | MongoDB Atlas connection (database `templepuja`) | ✅ Configured |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Enables **real** Razorpay checkout (orders + signature verification) | ⏳ Placeholder — add to go live |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM` / `ADMIN_WHATSAPP_TO` | Real-time **WhatsApp messages**: an alert to the admin **and a confirmation to the devotee** on every booking confirmation/cancellation (admin defaults to +91 87653 01563) | ⏳ Placeholder — add to enable |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM` / `ADMIN_WHATSAPP_TO` | Real-time **WhatsApp messages**: an alert to the admin **and a confirmation to the devotee** on every booking confirmation/cancellation (admin defaults to configured contact number) | ⏳ Placeholder — add to enable |
 | `SITE_URL` | Public origin used for the receipt link inside the devotee's WhatsApp messages — confirmation and the day-before reminder (falls back to the request's Host header in dev) | ⏳ Optional — set in production |
 | `CRON_SECRET` | Bearer token required by the `/api/cron/booking-reminders` job (no auth when unset — dev convenience) | ⏳ Optional — set before deploy |
 

@@ -739,15 +739,21 @@ export const faqs = [
 
 export const contactInfo = [
   {
-    icon: "📱",
-    label: "WhatsApp",
-    value: SITE_CONFIG.contact.phoneDisplay,
+    icon: "💬",
+    label: "WhatsApp Support",
+    value: "Chat on WhatsApp",
     href: getWhatsAppUrl(),
   },
   {
+    icon: "📞",
+    label: "Pooja Helpline",
+    value: "Call Us Directly",
+    href: `tel:${SITE_CONFIG.contact.phoneRaw}`,
+  },
+  {
     icon: "✉️",
-    label: "Email",
-    value: SITE_CONFIG.contact.email,
+    label: "Email Support",
+    value: "Send Sacred Email",
     href: `mailto:${SITE_CONFIG.contact.email}`,
   },
 ];

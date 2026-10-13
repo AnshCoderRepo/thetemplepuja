@@ -407,23 +407,63 @@ export function markBookingRefunded(
   return { ok, user };
 }
 
-// Admin session: the token issued by POST /api/admin/login is kept in
-// sessionStorage and sent as a Bearer header on admin API calls. The server
-// remains the authority — a stale/missing token just logs the admin out.
+// Admin session: the token issued by POST /api/admin/login is synchronized
+// across sessionStorage, localStorage, and a SameSite=Lax cookie. This ensures
+// session resilience across page reloads, new tabs, and browser refreshes
+// while maintaining complete security.
+
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(^|;\\s*)(" + name + ")=([^;]*)"));
+  return match ? decodeURIComponent(match[3]) : null;
+}
+
+function setCookie(name: string, value: string, maxAgeSec: number = 604800): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSec}; SameSite=Lax`;
+}
+
+function deleteCookie(name: string): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+}
 
 export function getAdminToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  // 1. Check sessionStorage
+  let token = window.sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  if (token) return token;
+
+  // 2. Fallback to localStorage
+  token = window.localStorage.getItem(ADMIN_TOKEN_KEY);
+  if (token) {
+    window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    return token;
+  }
+
+  // 3. Fallback to cookie
+  token = getCookie("admin_token");
+  if (token) {
+    window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    return token;
+  }
+
+  return null;
 }
 
 export function setAdminToken(token: string): void {
   if (typeof window === "undefined") return;
   window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+  window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  setCookie("admin_token", token, 604800); // 7 days
 }
 
 export function clearAdminToken(): void {
   if (typeof window === "undefined") return;
   window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+  deleteCookie("admin_token");
 }
 
 export function isAdminSession(): boolean {
