@@ -1,6 +1,6 @@
 "use client";
+import { useEffect, useState } from "react";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,8 +10,14 @@ import {
   Phone,
   ShieldCheck,
   ArrowLeft,
+  RotateCcw,
 } from "lucide-react";
 import { isValidIndianPhone } from "@/lib/validation";
+import {
+  requestForgotOtpRemote,
+  verifyResetOtpRemote,
+  resetDevoteePasswordRemote,
+} from "../api/authApi";
 
 const inputCls =
   "w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200";
@@ -27,45 +33,59 @@ export default function ForgotPasswordSteps() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [testCodeNotice, setTestCodeNotice] = useState<string | null>(null);
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = phone.trim();
-    if (!isValidIndianPhone(trimmed)) {
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanDigits = phone.replace(/\D/g, "");
+    const cleanPhone = cleanDigits.length === 10 ? cleanDigits : cleanDigits.slice(-10);
+    if (!isValidIndianPhone(cleanPhone)) {
       setError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
     setError("");
     setBusy(true);
-    try {
-      const res = await fetch("/api/users/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: trimmed }),
-      });
-      const data = await res.json();
-      setBusy(false);
+    const res = await requestForgotOtpRemote(cleanPhone);
+    setBusy(false);
 
-      if (data.ok) {
-        setStep("otp");
-      } else {
-        setError(data.error ?? "Failed to send OTP. Please try again.");
-      }
-    } catch {
-      setBusy(false);
-      setError("Network error. Please try again.");
+    if (res.ok) {
+      setStep("otp");
+      setCooldown(res.resendAfterSec || 60);
+      if (res.testCodeNotice) setTestCodeNotice(res.testCodeNotice);
+    } else {
+      setError(res.error || "Failed to send reset code. Please try again.");
     }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.trim().length !== 6) {
-      setError("Please enter the 6-digit OTP.");
+    const cleanOtp = otp.trim();
+    if (cleanOtp.length !== 6) {
+      setError("Please enter the 6-digit OTP received via SMS.");
       return;
     }
+
+    const cleanDigits = phone.replace(/\D/g, "");
+    const cleanPhone = cleanDigits.length === 10 ? cleanDigits : cleanDigits.slice(-10);
+
     setError("");
-    setStep("password");
+    setBusy(true);
+    const res = await verifyResetOtpRemote({ phone: cleanPhone, otp: cleanOtp });
+    setBusy(false);
+
+    if (res.ok) {
+      setStep("password");
+    } else {
+      setError(res.error || "Invalid or expired OTP. Please try again.");
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -80,31 +100,25 @@ export default function ForgotPasswordSteps() {
       return;
     }
 
+    const cleanDigits = phone.replace(/\D/g, "");
+    const cleanPhone = cleanDigits.length === 10 ? cleanDigits : cleanDigits.slice(-10);
+
     setError("");
     setBusy(true);
-    try {
-      const res = await fetch("/api/users/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: phone.trim(),
-          otp: otp.trim(),
-          newPassword,
-        }),
-      });
-      const data = await res.json();
-      setBusy(false);
+    const res = await resetDevoteePasswordRemote({
+      phone: cleanPhone,
+      otp: otp.trim(),
+      newPassword,
+    });
+    setBusy(false);
 
-      if (data.ok) {
-        setStep("success");
-      } else {
-        setError(data.error ?? "Failed to reset password. Please try again.");
-      }
-    } catch {
-      setBusy(false);
-      setError("Network error. Please try again.");
+    if (res.ok) {
+      setStep("success");
+    } else {
+      setError(res.error || "Failed to reset password. Please try again.");
     }
   };
+
 
   return (
     <div className="mx-auto max-w-md overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-card">
@@ -188,9 +202,15 @@ export default function ForgotPasswordSteps() {
       {/* Step 2: OTP verification */}
       {step === "otp" && (
         <form onSubmit={handleVerifyOtp} className="space-y-5 px-6 py-7">
-          <div className="rounded-xl bg-green-50 px-4 py-3 text-center text-xs text-green-700">
-            OTP sent to <strong>+91 {phone}</strong> via WhatsApp
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-center text-xs text-amber-900">
+            A 6-digit OTP code has been sent via SMS to <strong>+91 {phone}</strong>
           </div>
+
+          {testCodeNotice && (
+            <div className="rounded-xl bg-blue-50 border border-blue-200 p-2.5 text-center text-xs text-blue-800 font-mono">
+              {testCodeNotice}
+            </div>
+          )}
 
           <div>
             <label
@@ -221,15 +241,15 @@ export default function ForgotPasswordSteps() {
 
           <button
             type="submit"
-            disabled={otp.length !== 6}
+            disabled={otp.length !== 6 || busy}
             className="btn-primary !w-full !py-3.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <ShieldCheck className="h-4 w-4" />
-            Verify OTP
+            {busy ? "Verifying OTP..." : "Verify OTP"}
             <ArrowRight className="h-4 w-4" />
           </button>
 
-          <div className="text-center">
+          <div className="flex items-center justify-between text-xs pt-1">
             <button
               type="button"
               onClick={() => {
@@ -237,9 +257,18 @@ export default function ForgotPasswordSteps() {
                 setOtp("");
                 setError("");
               }}
-              className="text-xs font-semibold text-saffron-600 hover:text-saffron-700"
+              className="font-semibold text-ink-soft hover:text-ink"
             >
               Change mobile number
+            </button>
+            <button
+              type="button"
+              disabled={cooldown > 0 || busy}
+              onClick={() => handleSendOtp()}
+              className="inline-flex items-center gap-1 font-semibold text-saffron-600 hover:text-saffron-700 disabled:opacity-50"
+            >
+              <RotateCcw className="h-3 w-3" />
+              <span>{cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}</span>
             </button>
           </div>
         </form>

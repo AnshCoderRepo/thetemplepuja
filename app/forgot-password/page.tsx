@@ -3,9 +3,10 @@ import { BookPageHeader } from "@/components/layout";
 import { ForgotPasswordSteps } from "@/features/auth";
 
 export const metadata: Metadata = {
-  title: "Reset Password | The Temple Puja",
-  description: "Reset your devotee account password via WhatsApp OTP.",
+  title: "Reset Password | templepujasewa",
+  description: "Reset your devotee account password via SMS OTP.",
 };
+
 
 export default function ForgotPasswordPage() {
   return (

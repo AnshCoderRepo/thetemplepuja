@@ -157,7 +157,7 @@ export default function PoojaFilters({
 
         {/* Row 2: Clean Controls Toolbar (Segmented Tabs + Dropdowns) */}
         <div className="flex flex-wrap items-center gap-2.5 pt-3 border-t border-saffron-100/80">
-          {/* Ritual Type Segmented Control */}
+          {/* Ritual Type Segmented Control (Group Puja is the primary online offering) */}
           {onTypeChange && (
             <div className="inline-flex rounded-2xl bg-cream/70 p-1 border border-saffron-200 text-xs font-semibold">
               <button
@@ -169,7 +169,7 @@ export default function PoojaFilters({
                     : "text-ink-soft hover:text-ink"
                 }`}
               >
-                All ({totalCount})
+                All Pujas ({totalCount})
               </button>
               <button
                 type="button"
@@ -180,32 +180,12 @@ export default function PoojaFilters({
                     : "text-ink-soft hover:text-ink"
                 }`}
               >
-                <span>🛕 Temple</span>
-                {templeCount > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    selectedType === "temple" ? "bg-white/25 text-white" : "bg-saffron-100 text-saffron-800"
-                  }`}>
-                    {templeCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => onTypeChange("home")}
-                className={`inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                  selectedType === "home"
-                    ? "bg-gradient-to-r from-saffron-500 to-saffron-600 text-white shadow-xs font-bold"
-                    : "text-ink-soft hover:text-ink"
-                }`}
-              >
-                <span>🏠 Home</span>
-                {homeCount > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    selectedType === "home" ? "bg-white/25 text-white" : "bg-saffron-100 text-saffron-800"
-                  }`}>
-                    {homeCount}
-                  </span>
-                )}
+                <span>🪔 Group Puja</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  selectedType === "temple" ? "bg-white/25 text-white" : "bg-saffron-100 text-saffron-800"
+                }`}>
+                  {totalCount}
+                </span>
               </button>
             </div>
           )}

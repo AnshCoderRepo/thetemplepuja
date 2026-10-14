@@ -2,7 +2,8 @@
 
 ## 1. Executive Summary
 
-**The Temple Puja** (`templepujaseva`) is a full-stack Next.js 15 application engineered for booking Vedic Pujas, Chadhava, and Temple Sevas across revered Indian temples. The codebase is organized according to **Feature-Driven Architecture** and **Clean Component Separation**, adhering strictly to SOLID principles, high cohesion, low coupling, and robust backward compatibility.
+**templepujasewa** is a full-stack Next.js 15 application engineered for booking Vedic Pujas, Chadhava, and Temple Sevas across revered Indian temples. The codebase is organized according to **Feature-Driven Architecture** and **Clean Component Separation**, adhering strictly to SOLID principles, high cohesion, low coupling, and robust backward compatibility.
+
 
 ---
 

@@ -1,8 +1,6 @@
-// The persistence contract used by lib/server-store.ts. Real deployments use
-// the MongoDB store (lib/mongo-store.ts); tests and offline fallbacks use the
-// in-memory store below.
 import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
 import type { UserProfile } from "./storage";
+import type { RefundRequest } from "./refund-types";
 import type {
   ChatbotKnowledgeEntry,
   ChatbotSettings,
@@ -55,6 +53,10 @@ export interface PersistenceStore {
   saveUser(user: UserProfile): Promise<void>;
   /** Permanently remove one devotee. Returns true when a doc was removed. */
   deleteUserById(id: string): Promise<boolean>;
+  /** Approval-based refund requests */
+  getRefundRequests(): Promise<RefundRequest[]>;
+  findRefundRequestById(id: string): Promise<RefundRequest | undefined>;
+  saveRefundRequest(req: RefundRequest): Promise<void>;
 }
 
 /** In-memory store — data lives for the lifetime of the process only. */
@@ -63,6 +65,7 @@ export function createMemoryStore(): PersistenceStore {
   let creds: AdminCreds = { email: "", passwordHash: "" };
   let sessions: Record<string, number> = {};
   let users: UserProfile[] = [];
+  let refundRequests: RefundRequest[] = [];
 
   // Mirrors the MongoDB store's saveUser semantics: phone-keyed, appending
   // only bookings that aren't already on the devotee, so concurrent saves on
@@ -88,6 +91,11 @@ export function createMemoryStore(): PersistenceStore {
       if (user.passwordHash) existing.passwordHash = user.passwordHash;
       if (user.generatedPassword) existing.generatedPassword = user.generatedPassword;
       if (user.videos) existing.videos = user.videos;
+      if (typeof user.isActivated === "boolean") existing.isActivated = user.isActivated;
+      if (user.status) existing.status = user.status;
+      if (user.activatedAt) existing.activatedAt = user.activatedAt;
+      if (user.role) existing.role = user.role;
+      if (user.entitlements) existing.entitlements = user.entitlements;
       return;
     }
     const byId = users.findIndex((u) => u.id === user.id);
@@ -127,7 +135,13 @@ export function createMemoryStore(): PersistenceStore {
       return users;
     },
     async findUserByPhone(phone) {
-      return users.find((u) => u.phone === phone.trim());
+      const p = phone.trim();
+      const p10 = p.replace(/\D/g, "").slice(-10);
+      return users.find((u) => {
+        if (u.phone === p) return true;
+        const u10 = u.phone.replace(/\D/g, "").slice(-10);
+        return p10 && u10 && p10 === u10;
+      });
     },
     async findUserById(id) {
       return users.find((u) => u.id === id);
@@ -139,6 +153,17 @@ export function createMemoryStore(): PersistenceStore {
       const before = users.length;
       users = users.filter((u) => u.id !== id);
       return users.length !== before;
+    },
+    async getRefundRequests() {
+      return [...refundRequests];
+    },
+    async findRefundRequestById(id) {
+      return refundRequests.find((r) => r.id === id);
+    },
+    async saveRefundRequest(req) {
+      const idx = refundRequests.findIndex((r) => r.id === req.id);
+      if (idx >= 0) refundRequests[idx] = req;
+      else refundRequests.unshift(req);
     },
   };
 }

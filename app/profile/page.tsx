@@ -3,9 +3,10 @@ import { BookPageHeader } from "@/components/layout";
 import { DevoteeProfileView } from "@/features/devotees";
 
 export const metadata: Metadata = {
-  title: "My Profile | The Temple Puja",
+  title: "My Profile | templepujasewa",
   description: "View your personal details, booking history, live puja video recordings, and receipts.",
 };
+
 
 export default function ProfilePage() {
   return (

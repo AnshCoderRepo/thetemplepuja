@@ -1,14 +1,15 @@
-# The Temple Puja — Platform Handover Document
+# templepujasewa — Platform Handover Document
 
 **Prepared for:** Client  
-**Product:** The Temple Puja — India's digital spiritual platform for booking certified pandits and sacred poojas online  
+**Product:** templepujasewa — India's digital spiritual platform for booking certified pandits and sacred poojas online  
 **Contact:** Configured via `.env` (`NEXT_PUBLIC_WHATSAPP_NUMBER` / `NEXT_PUBLIC_CONTACT_PHONE`)
 
 ---
 
 ## 1. What This Platform Does
 
-The Temple Puja is a complete online pooja-booking platform. Visitors choose a sacred ritual (or a live group-event slot), share their details and the intention behind the pooja (sankalp), pay securely, and receive an instant booking confirmation. Every payment automatically creates a personal devotee profile, and the **admin panel** gives the owner full control over every pooja, event, coupon and devotee — all synced across devices in real time.
+templepujasewa is a complete online pooja-booking platform. Visitors choose a sacred ritual (or a live group-event slot), share their details and the intention behind the pooja (sankalp), pay securely, and receive an instant booking confirmation. Every payment automatically creates a personal devotee profile, and the **admin panel** gives the owner full control over every pooja, event, coupon and devotee — all synced across devices in real time.
+
 
 The site is fully live end-to-end: **home page → booking → payment → confirmation → devotee profile → admin dashboard** — and the same flows work on mobile and desktop.
 

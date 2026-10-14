@@ -3,9 +3,10 @@ import type { Metadata } from "next";
 import { BookingReceiptPage } from "@/features/receipts";
 
 export const metadata: Metadata = {
-  title: "Booking Receipt | The Temple Puja",
+  title: "Booking Receipt | templepujasewa",
   description: "Official pooja booking confirmation and tax invoice receipt.",
 };
+
 
 export default function BookingReceiptRoute() {
   return (

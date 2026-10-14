@@ -31,13 +31,13 @@ export interface PlatformSettings {
 }
 
 export const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
-  businessName: "The Temple Puja",
+  businessName: "templepujasewa",
   welcomeMessage:
     "🙏 Namaste! I am your Pandit AI Spiritual Guide. How may I assist you today with Vedic poojas, temple sevas, or booking details?",
   fallbackMessage:
     "🪔 For personalized guidance or specific queries not covered here, please connect directly with our temple coordinators on WhatsApp.",
   supportPhone: "+91 87653 01563",
-  systemInstructions: `You are Pandit AI, a knowledgeable, reverent, and polite spiritual guide for "The Temple Puja" (thetemplepuja.com).
+  systemInstructions: `You are Pandit AI, a knowledgeable, reverent, and polite spiritual guide for "templepujasewa" (thetemplepuja.com).
 Your mission is to answer devotee questions about Vedic poojas, sacred temples, puja packages, dakshina/pricing, chadhava add-ons, booking procedures, payment receipts, and upcoming Hindu festivals.
 
 Guidelines:
@@ -56,7 +56,8 @@ export const DEFAULT_CHATBOT_KNOWLEDGE: ChatbotKnowledgeEntry[] = [
     id: "kb-puja-popular",
     title: "Popular Vedic Poojas Available",
     category: "pujas",
-    question: "Which poojas and rituals can I book on The Temple Puja?",
+    question: "Which poojas and rituals can I book on templepujasewa?",
+
     answer:
       "We offer authentic Vedic rituals performed by certified pandits, including: Satyanarayan Katha (family prosperity & peace), Griha Pravesh (new home sanctification), Rudrabhishek (Lord Shiva blessings & obstacle removal), Navgraha Shanti (planetary dosha remedies), Maha Mrityunjaya Jaap (health & longevity), and Shani Dev Pooja (protection against Shani Sade Sati). Every ritual includes personal sankalp with your name and gotra.",
     keywords: ["satyanarayan", "griha pravesh", "rudrabhishek", "navgraha", "maha mrityunjaya", "shani", "rituals"],
@@ -101,7 +102,8 @@ export const DEFAULT_CHATBOT_KNOWLEDGE: ChatbotKnowledgeEntry[] = [
     id: "kb-temple-network",
     title: "Associated Sacred Temples",
     category: "temples",
-    question: "Which temples are associated with The Temple Puja?",
+    question: "Which temples are associated with templepujasewa?",
+
     answer:
       "We conduct sacred archana and sevas in renowned jyotirlingas and temples across India, including Kashi Vishwanath (Varanasi), Mahakaleshwar (Ujjain), Somnath Temple (Gujarat), Trimbakeshwar (Nashik), Kamakhya Devi Temple (Guwahati), and Siddhivinayak Temple (Mumbai). Offerings and bilva patra/chadhava are made directly at the temple premises.",
     keywords: ["temple", "temples", "kashi", "vishwanath", "mahakaleshwar", "somnath", "trimbakeshwar", "ujjain", "varanasi"],

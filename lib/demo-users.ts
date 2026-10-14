@@ -44,7 +44,8 @@ export const DEMO_USERS: UserProfile[] = [
         poojaTitle: "Hanuman Pooja",
         date: "Wed, 12 Aug",
         time: "7:00 PM IST",
-        panditName: "Assigned by The Temple Puja",
+        panditName: "Assigned by templepujasewa",
+
         amount: 501,
         discount: 0,
         couponCode: null,
@@ -69,7 +70,8 @@ export const DEMO_USERS: UserProfile[] = [
         poojaTitle: "Satyanarayan Katha",
         date: "Thu, 20 Aug",
         time: "—",
-        panditName: "Assigned by The Temple Puja",
+        panditName: "Assigned by templepujasewa",
+
         reason: "For my son's wedding and family peace",
         amount: 1101,
         discount: 0,
@@ -96,7 +98,8 @@ export const DEMO_USERS: UserProfile[] = [
         poojaTitle: "Hanuman Pooja",
         date: "Fri, 7 Aug",
         time: "—",
-        panditName: "Assigned by The Temple Puja",
+        panditName: "Assigned by templepujasewa",
+
         reason: "Testing the coupon system for the demo booking",
         amount: 351,
         discount: 150,

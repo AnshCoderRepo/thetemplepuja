@@ -13,8 +13,9 @@
 
 export const SITE_CONFIG = {
   // Brand & Domain
-  brandName: "The Temple Puja",
+  brandName: "templepujasewa",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://thetemplepuja.com",
+
 
   // Business Contact Details (Easily replaceable for client handoff)
   contact: {
@@ -45,7 +46,8 @@ export const SITE_CONFIG = {
     // UPI ID to receive client payments (easily configurable via NEXT_PUBLIC_UPI_ID)
     upiId: process.env.NEXT_PUBLIC_UPI_ID || "rajnimaurya875@okicici",
     // Merchant/Payee name displayed on UPI app & QR code
-    payeeName: process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "Rajni Maurya",
+    payeeName: process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "templepujasewa",
+
     // Custom QR image URL (placed in /public)
     qrImageUrl: process.env.NEXT_PUBLIC_UPI_QR_IMAGE || "/payment-qr.jpg",
   },

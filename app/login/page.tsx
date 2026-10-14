@@ -3,9 +3,10 @@ import { BookPageHeader } from "@/components/layout";
 import { DevoteeLoginForm } from "@/features/auth";
 
 export const metadata: Metadata = {
-  title: "Login | The Temple Puja",
+  title: "Login | templepujasewa",
   description: "Sign in to your devotee account to view bookings, history, and sacred seva details.",
 };
+
 
 export default function LoginPage() {
   return (

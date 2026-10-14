@@ -7,7 +7,10 @@ import type {
   PersistenceStore,
 } from "./persistence";
 import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
-import type { BookingRecord, UserProfile } from "./storage";
+import type { BookingRecord, DevoteeEntitlement, UserProfile } from "./storage";
+import type { RefundRequest } from "./refund-types";
+import { getPhoneLookupVariants } from "./phone";
+
 import type {
   ChatbotKnowledgeEntry,
   ChatbotSettings,
@@ -69,11 +72,17 @@ interface UserDoc extends Document {
   city: string;
   phone: string;
   email: string;
+  address?: string;
   createdAt: string;
   bookings: BookingRecord[];
   videos?: any[];
   passwordHash?: string;
   generatedPassword?: string;
+  isActivated?: boolean;
+  status?: "pending_activation" | "active" | "suspended";
+  activatedAt?: string;
+  role?: "devotee" | "admin";
+  entitlements?: DevoteeEntitlement[];
 }
 
 /** The legacy layout (pre per-document migration): one doc holding the array. */
@@ -98,11 +107,17 @@ function toUser(doc: UserDoc): UserProfile {
     city: doc.city,
     phone: doc.phone,
     email: doc.email,
+    address: doc.address,
     createdAt: doc.createdAt,
     bookings: doc.bookings ?? [],
     videos: doc.videos,
     passwordHash: doc.passwordHash,
     generatedPassword: doc.generatedPassword,
+    isActivated: doc.isActivated ?? true,
+    status: doc.status ?? (doc.isActivated === false ? "pending_activation" : "active"),
+    activatedAt: doc.activatedAt,
+    role: doc.role ?? "devotee",
+    entitlements: doc.entitlements ?? [],
   };
 }
 
@@ -222,7 +237,8 @@ export const mongoStore: PersistenceStore = {
   async findUserByPhone(phone): Promise<UserProfile | undefined> {
     const col = await usersCol();
     await migrateUsers(col);
-    const doc = await col.findOne({ phone: phone.trim() });
+    const variants = getPhoneLookupVariants(phone);
+    const doc = await col.findOne({ phone: { $in: variants } });
     return doc ? toUser(doc as unknown as UserDoc) : undefined;
   },
 
@@ -243,9 +259,15 @@ export const mongoStore: PersistenceStore = {
       email: user.email,
       updatedAt: new Date().toISOString(),
     };
+    if (user.address) setFields.address = user.address;
     if (user.passwordHash) setFields.passwordHash = user.passwordHash;
     if (user.generatedPassword) setFields.generatedPassword = user.generatedPassword;
     if (user.videos) setFields.videos = user.videos;
+    if (typeof user.isActivated === "boolean") setFields.isActivated = user.isActivated;
+    if (user.status) setFields.status = user.status;
+    if (user.activatedAt) setFields.activatedAt = user.activatedAt;
+    if (user.role) setFields.role = user.role;
+    if (user.entitlements) setFields.entitlements = user.entitlements;
 
     await col.updateOne(
       { phone: user.phone },
@@ -290,4 +312,183 @@ export const mongoStore: PersistenceStore = {
     const res = await col.deleteOne({ _id: id });
     return res.deletedCount > 0;
   },
+
+  async getRefundRequests(): Promise<RefundRequest[]> {
+    const db = await getDb();
+    const col = db.collection<Document>("refund_requests");
+    const docs = await col.find({}).sort({ requestedAt: -1 }).toArray();
+    return docs.map((d: any) => {
+      const { _id, ...rest } = d;
+      return rest as RefundRequest;
+    });
+  },
+
+  async findRefundRequestById(id: string): Promise<RefundRequest | undefined> {
+    const db = await getDb();
+    const col = db.collection<Document>("refund_requests");
+    const doc = await col.findOne({ id } as any);
+    if (!doc) return undefined;
+    const { _id, ...rest } = doc as any;
+    return rest as RefundRequest;
+  },
+
+  async saveRefundRequest(req: RefundRequest): Promise<void> {
+    const db = await getDb();
+    const col = db.collection<Document>("refund_requests");
+    try {
+      await col.createIndex({ id: 1 }, { unique: true });
+      await col.createIndex({ status: 1 });
+      await col.createIndex({ bookingId: 1 });
+    } catch {}
+    await col.updateOne(
+      { id: req.id } as any,
+      { $set: req },
+      { upsert: true }
+    );
+  },
 };
+
+// ============ ORDERS / PAYMENTS PERSISTENCE ============
+
+export interface OrderDoc extends Document {
+  _id?: string;
+  orderId: string;
+  paymentId?: string;
+  phone: string;
+  customerName?: string;
+  amount: number;
+  currency: string;
+  status: "created" | "verified" | "failed" | "refunded";
+  paymentMethod: "razorpay" | "upi_qr" | "simulated";
+  receipt: string;
+  poojaSlug?: string;
+  poojaTitle?: string;
+  bookingId?: string;
+  createdAt: string;
+  verifiedAt?: string;
+  metadata?: Record<string, any>;
+}
+
+
+export async function ordersCol(): Promise<Collection<OrderDoc>> {
+  const db = await getDb();
+  const col = db.collection<OrderDoc>("orders");
+  try {
+    await col.createIndex({ orderId: 1 }, { unique: true });
+    await col.createIndex({ phone: 1 });
+  } catch {}
+  return col;
+}
+
+export async function saveOrder(order: OrderDoc): Promise<void> {
+  const col = await ordersCol();
+  await col.updateOne(
+    { orderId: order.orderId },
+    { $set: order },
+    { upsert: true }
+  );
+}
+
+export async function findOrderByOrderId(orderId: string): Promise<OrderDoc | null> {
+  const col = await ordersCol();
+  return col.findOne({ orderId });
+}
+
+export async function findOrdersByPhone(phone: string): Promise<OrderDoc[]> {
+  const col = await ordersCol();
+  const variants = getPhoneLookupVariants(phone);
+  return col.find({ phone: { $in: variants } }).sort({ createdAt: -1 }).toArray();
+}
+
+// ============ WEBHOOK IDEMPOTENCY PERSISTENCE ============
+
+export async function recordWebhookEvent(
+  eventId: string,
+  eventType: string
+): Promise<boolean> {
+  if (!eventId) return true;
+  try {
+    const db = await getDb();
+    const col = db.collection("webhook_events");
+    const res = await col.updateOne(
+      { _id: eventId as any },
+      {
+        $setOnInsert: {
+          _id: eventId as any,
+          eventType,
+          processedAt: new Date().toISOString(),
+        },
+      },
+      { upsert: true }
+    );
+    // If upsertedCount is 0, the event already existed -> duplicate!
+    return Boolean(res.upsertedCount > 0);
+  } catch (err: any) {
+    if (err?.code === 11000) return false; // duplicate key error
+    return true; // continue safely on unexpected error
+  }
+}
+
+// ============ OTP CHALLENGES PERSISTENCE ============
+
+export interface OtpChallengeDoc extends Document {
+  _id: string;
+  phone: string;
+  purpose: "activation" | "password_reset";
+  tokenHash: string;
+  expiresAt: Date;
+  attempts: number;
+  maxAttempts: number;
+  isUsed: boolean;
+  resendAfter: Date;
+  createdAt: Date;
+}
+
+export async function otpCol(): Promise<Collection<OtpChallengeDoc>> {
+  const db = await getDb();
+  const col = db.collection<OtpChallengeDoc>("otp_challenges");
+  try {
+    await col.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+    await col.createIndex({ phone: 1, purpose: 1 });
+  } catch {}
+  return col;
+}
+
+export async function saveOtpChallenge(challenge: OtpChallengeDoc): Promise<void> {
+  const col = await otpCol();
+  await col.updateOne(
+    { _id: challenge._id },
+    { $set: challenge },
+    { upsert: true }
+  );
+}
+
+export async function findActiveOtpChallenge(
+  phone: string,
+  purpose: "activation" | "password_reset"
+): Promise<OtpChallengeDoc | null> {
+  const col = await otpCol();
+  const variants = getPhoneLookupVariants(phone);
+  return col.findOne({
+    phone: { $in: variants },
+    purpose,
+    isUsed: false,
+    expiresAt: { $gt: new Date() },
+  });
+}
+
+export async function incrementOtpAttempt(id: string): Promise<number> {
+  const col = await otpCol();
+  const res = await col.findOneAndUpdate(
+    { _id: id },
+    { $inc: { attempts: 1 } },
+    { returnDocument: "after" }
+  );
+  return res?.attempts ?? 0;
+}
+
+export async function markOtpChallengeUsed(id: string): Promise<void> {
+  const col = await otpCol();
+  await col.updateOne({ _id: id }, { $set: { isUsed: true } });
+}
+

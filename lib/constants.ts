@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   CATALOG_POOJA_DATES: "ttp_catalog_pooja_dates_v1",
   /** Catalog override — temples. */
   CATALOG_TEMPLES: "ttp_catalog_temples_v1",
+  /** Incomplete booking drafts for resume checkout. */
+  INCOMPLETE_BOOKINGS: "ttp_incomplete_bookings_v1",
   /** Catalog version counter for cross-tab sync. */
   CATALOG_VERSION: "ttp_catalog_version_v1",
 } as const;

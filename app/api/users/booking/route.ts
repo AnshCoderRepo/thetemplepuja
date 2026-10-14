@@ -54,7 +54,11 @@ export async function POST(req: NextRequest) {
 
   // Rate-limit initial booking creation attempts per phone number (default: 5 per hour).
   // Status transitions (pending -> confirmed / failed) on an existing booking do not consume extra tokens.
-  if (targetStatus === "pending") {
+  if (
+    targetStatus === "pending" ||
+    targetStatus === "checkout_incomplete" ||
+    targetStatus === "pending_payment"
+  ) {
     const rateLimit = bookingRateLimiter.consume(normalizedPhone);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -80,12 +84,17 @@ export async function POST(req: NextRequest) {
   let devoteePassword = body.generatedPassword || body.password;
   let passwordHash: string | undefined;
 
-  if (targetStatus === "pending") {
-    // Booking initiated — pending payment
-    booking.status = "pending";
-  } else if (targetStatus === "failed") {
+  if (
+    targetStatus === "pending" ||
+    targetStatus === "checkout_incomplete" ||
+    targetStatus === "pending_payment" ||
+    targetStatus === "payment_processing"
+  ) {
+    // Booking initiated / draft preserved — pending payment
+    booking.status = targetStatus;
+  } else if (targetStatus === "failed" || targetStatus === "payment_failed") {
     // Booking failed — payment was rejected, expired, or cancelled
-    booking.status = "failed";
+    booking.status = targetStatus;
   } else {
     const isUpiQrPayment =
       booking.paymentMethod === "upi_qr" ||
@@ -196,6 +205,11 @@ export async function POST(req: NextRequest) {
     gotra: typeof body.gotra === "string" ? body.gotra : "",
     city: typeof body.city === "string" ? body.city : "",
     email: typeof body.email === "string" ? body.email : "",
+    address: typeof (body as any).address === "string"
+      ? (body as any).address.trim()
+      : typeof booking.address === "string"
+      ? booking.address.trim()
+      : undefined,
     booking,
     passwordHash,
     generatedPassword: devoteePassword,

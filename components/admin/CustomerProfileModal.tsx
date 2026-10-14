@@ -838,14 +838,10 @@ export default function CustomerProfileModal({
                             <FileText className="h-3 w-3" />
                             View Receipt
                           </Link>
-                          {b.status === "confirmed" && (
-                            <button
-                              type="button"
-                              onClick={() => onRefund(user.id, b.bookingId)}
-                              className="text-red-600 font-semibold hover:underline cursor-pointer"
-                            >
-                              Refund
-                            </button>
+                          {b.status === "refunded" && (
+                            <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                              Refunded
+                            </span>
                           )}
                         </div>
                       </div>

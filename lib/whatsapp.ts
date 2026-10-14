@@ -235,3 +235,27 @@ export function notifyBookingCancelled(info: BookingAlertInfo): void {
   const to = devoteeWhatsAppNumber(info.phone);
   if (to) void sendWhatsApp(to, devoteeCancelAlertText(info));
 }
+
+/** Format an alert message for new messages directed to the CEO */
+export function ceoMessageAlertText(msg: {
+  name: string;
+  contact: string;
+  subject?: string;
+  message: string;
+}): string {
+  const lines = [
+    "📩 New Message to the CEO — templepujasewa",
+    "",
+    `Devotee: ${msg.name}`,
+    `Contact: ${msg.contact}`,
+    msg.subject ? `Subject: ${msg.subject}` : null,
+    "",
+    "Message:",
+    msg.message,
+    "",
+    `Submitted: ${new Date().toLocaleString("en-IN")}`,
+    "— templepujasewa Leadership Desk",
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+

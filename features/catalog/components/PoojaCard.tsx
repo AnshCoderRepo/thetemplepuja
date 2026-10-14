@@ -1,19 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Maximize2 } from "lucide-react";
 import type { Pooja } from "@/lib/data";
 import {
   DEFAULT_POOJA_SLUGS,
   getLocalizedPoojaBenefits,
   getLocalizedPoojaDescription,
-  getLocalizedPoojaDuration,
   getLocalizedPoojaNativeBadge,
   getLocalizedPoojaTitle,
   getPoojaSchedule,
+  getPoojaBannerImage,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
+import { ImagePreviewModal } from "@/components/common";
 
 export interface PoojaCardProps {
   pooja: Pooja;
@@ -22,51 +24,99 @@ export interface PoojaCardProps {
 export default function PoojaCard({ pooja: p }: PoojaCardProps) {
   const { locale, t } = useI18n();
   const router = useRouter();
+  const [previewOpen, setPreviewOpen] = useState(false);
   const schedule = getPoojaSchedule(p);
   const isNewlyAdded = Boolean(p.isNew || !DEFAULT_POOJA_SLUGS.includes(p.slug));
+  const bannerImage = p.imageUrl ? p.imageUrl.trim() : getPoojaBannerImage(p);
 
   const handleNavigateToPooja = () => {
     router.push(`/book/${p.slug}`);
   };
 
   return (
-    <div
-      onClick={handleNavigateToPooja}
-      className="group card-hover flex h-full flex-col overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-soft cursor-pointer transition-all duration-300 hover:border-saffron-300"
-    >
+    <>
       <div
-        className={`relative flex h-44 items-center justify-center bg-gradient-to-br ${p.gradient} p-5 text-white overflow-hidden`}
+        onClick={handleNavigateToPooja}
+        className="group card-hover flex h-full flex-col overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-soft cursor-pointer transition-all duration-300 hover:border-saffron-300"
       >
-        {/* Date badge on top-left of banner */}
-        <span
-          suppressHydrationWarning
-          className="absolute top-3.5 left-3.5 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-semibold text-amber-100 backdrop-blur border border-white/15 flex items-center gap-1"
+        <div
+          onClick={(e) => {
+            if (bannerImage) {
+              e.stopPropagation();
+              setPreviewOpen(true);
+            }
+          }}
+          className={`relative flex h-44 sm:h-48 items-center justify-center bg-slate-950 p-3 text-white overflow-hidden ${
+            !bannerImage ? `bg-gradient-to-br ${p.gradient}` : ""
+          }`}
         >
-          <Calendar className="h-3 w-3 text-amber-300" />
-          <span suppressHydrationWarning>{schedule.date}</span>
-        </span>
-
-        <div className="absolute bottom-3 left-3.5 flex items-center gap-1.5">
-          {p.online !== false && (
-            <span className="rounded-full bg-rose-600/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur shadow-xs flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-              Live Broadcast
+          {bannerImage ? (
+            <>
+              {/* Ambient blurred backdrop to softly fill letterbox without clipping */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={bannerImage}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+              />
+              {/* Fully visible, uncropped foreground image preserving original aspect ratio */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={bannerImage}
+                alt={getLocalizedPoojaTitle(p, locale)}
+                className="relative z-0 h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+            </>
+          ) : (
+            <span className="text-5xl transition-transform duration-300 group-hover:scale-110">
+              {p.emoji}
             </span>
           )}
-          {isNewlyAdded && (
-            <span className="rounded-full bg-emerald-600/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur shadow-xs">
-              ✨ New
-            </span>
+
+          {/* Date badge on top-left of banner */}
+          <span
+            suppressHydrationWarning
+            className="absolute top-3 left-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-amber-100 backdrop-blur border border-white/15 flex items-center gap-1"
+          >
+            <Calendar className="h-3 w-3 text-amber-300" />
+            <span suppressHydrationWarning>{schedule.date}</span>
+          </span>
+
+          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5">
+            {p.online !== false && (
+              <span className="rounded-full bg-rose-600/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur shadow-xs flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                Live Broadcast
+              </span>
+            )}
+            {isNewlyAdded && (
+              <span className="rounded-full bg-emerald-600/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur shadow-xs">
+                ✨ New
+              </span>
+            )}
+          </div>
+
+          <span className="absolute top-3 right-3 z-10 rounded-full bg-black/50 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-amber-100 backdrop-blur">
+            {getLocalizedPoojaNativeBadge(p, locale)}
+          </span>
+
+          {bannerImage && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewOpen(true);
+              }}
+              className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full bg-black/65 hover:bg-black/85 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur border border-white/20 transition-all shadow-sm"
+              title="Preview complete image"
+              aria-label="Enlarge image preview"
+            >
+              <Maximize2 className="h-3 w-3 text-amber-300" />
+              <span>View</span>
+            </button>
           )}
         </div>
-
-        <span className="text-5xl transition-transform duration-300 group-hover:scale-110">
-          {p.emoji}
-        </span>
-        <span className="absolute top-3.5 right-3.5 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold backdrop-blur">
-          {getLocalizedPoojaNativeBadge(p, locale)}
-        </span>
-      </div>
 
       <div className="flex flex-1 flex-col justify-between p-5">
         <div>
@@ -113,9 +163,8 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
         </div>
 
         <div className="mt-6 flex items-center justify-between border-t border-saffron-100/60 pt-4 text-xs">
-          <span className="flex items-center gap-1 text-ink-soft">
-            <Clock className="h-3.5 w-3.5" />
-            {getLocalizedPoojaDuration(p, locale)}
+          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md text-[11px]">
+            🕉️ Authentic Vedic Seva
           </span>
           <button
             type="button"
@@ -130,5 +179,17 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
         </div>
       </div>
     </div>
+
+    {bannerImage && (
+        <ImagePreviewModal
+          isOpen={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          imageUrl={bannerImage}
+          title={getLocalizedPoojaTitle(p, locale)}
+          badge={p.type === "home" ? "HOME PUJA" : "GROUP PUJA"}
+          photoCount="1/1"
+        />
+      )}
+    </>
   );
 }

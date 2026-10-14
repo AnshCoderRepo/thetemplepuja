@@ -7,6 +7,7 @@ export type AdminTab =
   | "temples"
   | "bookings"
   | "orders"
+  | "refunds"
   | "devotees"
   | "dates"
   | "coupons"

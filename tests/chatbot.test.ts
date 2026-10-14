@@ -54,13 +54,14 @@ describe("AI Chatbot Knowledge & Persona System", () => {
 
     const updated = {
       ...current,
-      welcomeMessage: "🙏 Welcome to The Temple Puja!",
+      welcomeMessage: "🙏 Welcome to templepujasewa!",
       supportPhone: "+91 99999 88888",
     };
 
     await saveChatbotSettings(updated);
     const retrieved = await getChatbotSettings();
-    expect(retrieved.welcomeMessage).toBe("🙏 Welcome to The Temple Puja!");
+    expect(retrieved.welcomeMessage).toBe("🙏 Welcome to templepujasewa!");
+
     expect(retrieved.supportPhone).toBe("+91 99999 88888");
 
     // Revert

@@ -9,6 +9,7 @@ export function normalizeAdminTab(section?: string | null): AdminTab {
   if (s === "temples" || s === "temple") return "temples";
   if (s === "bookings" || s === "booking") return "bookings";
   if (s === "orders" || s === "order" || s === "payments") return "orders";
+  if (s === "refunds" || s === "refund" || s === "approvals" || s === "refund-approvals") return "refunds";
   if (
     s === "devotees" ||
     s === "devotee" ||

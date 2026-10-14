@@ -18,6 +18,7 @@ import CouponsManager from "@/components/admin/CouponsManager";
 import AccountManager from "@/components/admin/AccountManager";
 import ChatbotManager from "@/components/admin/ChatbotManager";
 import CustomerProfileModal, { type ProfileTab } from "@/components/admin/CustomerProfileModal";
+import RefundRequestsManager from "@/components/admin/RefundRequestsManager";
 
 interface AdminDashboardProps {
   tab: AdminTab;
@@ -134,7 +135,17 @@ export default function AdminDashboard({
               users={users}
               onRefund={onRefund}
               token={token || ""}
+              adminEmail={adminEmail}
               onRefresh={onRefresh}
+            />
+          )}
+
+          {tab === "refunds" && (
+            <RefundRequestsManager
+              token={token || ""}
+              adminEmail={adminEmail}
+              onRefresh={onRefresh}
+              onAuthError={onAuthError}
             />
           )}
 

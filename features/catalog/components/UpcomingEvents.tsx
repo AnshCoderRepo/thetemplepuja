@@ -20,8 +20,14 @@ import { useCatalog } from "../hooks/useCatalog";
 
 function getSacredImageForEvent(slug: string, title: string): string {
   const s = `${slug} ${title}`.toLowerCase();
-  if (s.includes("durga") || s.includes("navratri") || s.includes("saptashati")) {
-    return "/festivals/durga-puja.jpg";
+  if (
+    s.includes("durga") ||
+    s.includes("navratri") ||
+    s.includes("saptashati") ||
+    s.includes("devi") ||
+    s.includes("jwala")
+  ) {
+    return "/sample-puja.jpg";
   }
   if (s.includes("diwali") || s.includes("deepawali") || s.includes("lakshmi")) {
     return "/festivals/diwali.jpg";
@@ -62,13 +68,14 @@ export default function UpcomingEvents() {
       ? getLocalizedPoojaTitle(matchedPooja, locale)
       : event.title;
     const full = isEventFull(event);
+    const imageSrc =
+      matchedPooja?.imageUrl ||
+      getSacredImageForEvent(event.slug, event.title);
 
     return {
-      src:
-        matchedPooja?.imageUrl ||
-        getSacredImageForEvent(event.slug, event.title),
+      src: imageSrc,
       alt: localizedTitle,
-      emoji: event.emoji,
+      emoji: imageSrc ? undefined : event.emoji,
       gradient: event.gradient,
       live: event.live,
       dateLabel: `${event.date} • ${event.time}`,

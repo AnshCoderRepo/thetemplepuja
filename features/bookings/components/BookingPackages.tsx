@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, User, Users, Users2 } from "lucide-react";
+import { Check, Phone, User, Users, Users2 } from "lucide-react";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
+import { SITE_CONFIG } from "@/lib/config";
 import type { PackageTier, PoojaPackageOption } from "../types/booking.types";
 
 interface BookingPackagesProps {
@@ -163,6 +164,26 @@ export default function BookingPackages({
             </button>
           );
         })}
+      </div>
+
+      {/* VIP Puja Direct Phone Enquiry Notice */}
+      <div className="mt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50/90 to-amber-100/50 p-3.5 text-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-bold text-sm shadow-2xs">
+            👑
+          </span>
+          <div>
+            <p className="font-bold text-ink">Want VIP / Private Individual Sankalp?</p>
+            <p className="text-[11px] text-ink-soft">Exclusive pandit coordination, private muhurat & home prasad delivery.</p>
+          </div>
+        </div>
+        <a
+          href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold px-3.5 py-2 text-xs shadow-xs transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <Phone className="h-3 w-3" />
+          <span>Call for VIP Puja ({SITE_CONFIG.contact.phoneDisplay})</span>
+        </a>
       </div>
     </div>
   );

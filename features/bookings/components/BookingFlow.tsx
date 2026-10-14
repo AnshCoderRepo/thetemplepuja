@@ -20,6 +20,7 @@ import { SITE_CONFIG } from "@/lib/config";
 import {
   defaultChadhavaOfferings,
   getLocalizedPoojaTitle,
+  getPoojaBannerImage,
   getTempleForPooja,
   DEMO_POOJA,
   isDemoSlug,
@@ -29,6 +30,8 @@ import {
 import { formatINR } from "@/lib/format";
 import { isValidIndianPhone } from "@/lib/validation";
 import type { BookingAddonItem, BookingRecord } from "@/lib/storage";
+import { saveIncompleteBooking, removeIncompleteBooking } from "@/lib/incomplete-booking";
+import type { ResumeBookingData } from "@/components/providers/BookingModalContext";
 import { useCatalog } from "@/features/catalog";
 import { useI18n } from "@/components/providers";
 import { loadRazorpayScript } from "@/features/payments/services/razorpayScript";
@@ -64,6 +67,7 @@ export interface BookingFlowProps {
   isModal?: boolean;
   onClose?: () => void;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  resumeData?: ResumeBookingData | null;
 }
 
 export default function BookingFlow({
@@ -74,6 +78,7 @@ export default function BookingFlow({
   isModal = false,
   onClose,
   scrollContainerRef,
+  resumeData,
 }: BookingFlowProps) {
   const { poojas: catalogPoojas, coupons, temples } = useCatalog();
   const { locale, t } = useI18n();
@@ -83,36 +88,79 @@ export default function BookingFlow({
   // Step 2: Select Chadhava (with price and multiple items stepper)
   // Step 3: Enter Name(s) & Gotra(s) + 1 Mobile Number
   // Step 4: Pay via UPI & QR Code / Gateway
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(
+    () => (resumeData?.step as 1 | 2 | 3 | 4) || 1
+  );
 
   const [prayerSlug, setPrayerSlug] = useState<string>(
-    pooja?.slug ?? initialPoojaSlug ?? (catalogPoojas[0]?.slug || "satyanarayan-katha")
+    resumeData?.poojaSlug ?? pooja?.slug ?? initialPoojaSlug ?? (catalogPoojas[0]?.slug || "satyanarayan-katha")
   );
-  const [selectedTier, setSelectedTier] = useState<PackageTier>("single");
-  const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>({});
+  const [selectedTier, setSelectedTier] = useState<PackageTier>(
+    resumeData?.packageTier || "single"
+  );
+  const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>(
+    resumeData?.addons || {}
+  );
 
   // Single Devotee state:
-  const [name, setName] = useState("");
-  const [gotra, setGotra] = useState("");
+  const resolvedPrimaryName =
+    resumeData?.primaryName ||
+    (resumeData as { devoteeName?: string })?.devoteeName ||
+    "";
+  const resolvedGotra =
+    resumeData?.gotra ||
+    (resumeData as { devoteeGotra?: string })?.devoteeGotra ||
+    "";
+
+  const [name, setName] = useState(resolvedPrimaryName);
+  const [gotra, setGotra] = useState(resolvedGotra);
 
   // Couple Partner state (2 names & 2 gotras):
-  const [partnerName, setPartnerName] = useState("");
-  const [partnerGotra, setPartnerGotra] = useState("");
+  const [partnerName, setPartnerName] = useState(resumeData?.partnerName || "");
+  const [partnerGotra, setPartnerGotra] = useState(resumeData?.partnerGotra || "");
 
   // Family dynamic members list (unlimited people with name & gotra):
-  const [familyMembers, setFamilyMembers] = useState<DevoteeMember[]>([
-    { id: "1", name: "", gotra: "" },
-    { id: "2", name: "", gotra: "" },
-  ]);
+  const [familyMembers, setFamilyMembers] = useState<DevoteeMember[]>(
+    resumeData?.familyMembers && resumeData.familyMembers.length > 0
+      ? resumeData.familyMembers
+      : [
+          { id: "1", name: resolvedPrimaryName, gotra: resolvedGotra },
+          { id: "2", name: "", gotra: "" },
+        ]
+  );
 
-  const [phone, setPhone] = useState("");
-  const [activeBookingId, setActiveBookingId] = useState("");
+  const [phone, setPhone] = useState(resumeData?.phone || "");
+  const [activeBookingId, setActiveBookingId] = useState(resumeData?.bookingId || "");
   const [formError, setFormError] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmed, setConfirmed] = useState<ConfirmedBooking | null>(null);
+
+  // Restore fields if resumeData changes dynamically
+  useEffect(() => {
+    if (!resumeData) return;
+    if (resumeData.poojaSlug) setPrayerSlug(resumeData.poojaSlug);
+    if (resumeData.packageTier) setSelectedTier(resumeData.packageTier);
+    if (resumeData.addons) setSelectedAddons(resumeData.addons);
+    const pName =
+      resumeData.primaryName ||
+      (resumeData as { devoteeName?: string })?.devoteeName;
+    if (pName) setName(pName);
+    const pGotra =
+      resumeData.gotra ||
+      (resumeData as { devoteeGotra?: string })?.devoteeGotra;
+    if (pGotra) setGotra(pGotra);
+    if (resumeData.partnerName) setPartnerName(resumeData.partnerName);
+    if (resumeData.partnerGotra) setPartnerGotra(resumeData.partnerGotra);
+    if (resumeData.familyMembers && resumeData.familyMembers.length > 0) {
+      setFamilyMembers(resumeData.familyMembers);
+    }
+    if (resumeData.phone) setPhone(resumeData.phone);
+    if (resumeData.bookingId) setActiveBookingId(resumeData.bookingId);
+    if (resumeData.step) setCurrentStep(resumeData.step as 1 | 2 | 3 | 4);
+  }, [resumeData]);
 
   // Sync primary devotee name & gotra with familyMembers[0]
   const handlePrimaryNameChange = (val: string) => {
@@ -248,6 +296,66 @@ export default function BookingFlow({
     : 0;
   const finalTotal = Math.max(total - discount, 0);
   const phoneValid = isValidIndianPhone(phone);
+
+  // Auto-save incomplete booking progress in background whenever selections or details change
+  useEffect(() => {
+    if (confirmed) return;
+    if (!selectedPooja?.slug) return;
+
+    const bId =
+      activeBookingId ||
+      resumeData?.bookingId ||
+      ("BK-" + Math.random().toString(36).substring(2, 8).toUpperCase());
+
+    if (!activeBookingId) {
+      setActiveBookingId(bId);
+    }
+
+    const temple = getTempleForPooja(selectedPooja, temples);
+    const draftStatus = currentStep === 4 ? "pending_payment" : "checkout_incomplete";
+
+    saveIncompleteBooking({
+      bookingId: bId,
+      poojaSlug: selectedPooja.slug,
+      poojaTitle: selectedPooja.title,
+      poojaImageUrl: selectedPooja.imageUrl || getPoojaBannerImage(selectedPooja),
+      poojaEmoji: selectedPooja.emoji,
+      templeSlug: temple?.slug,
+      templeName: temple?.name,
+      packageTier: selectedTier,
+      amount: finalTotal,
+      discount,
+      couponCode: appliedCoupon?.code ?? null,
+      date: initialDate || selectedPooja.startDate || new Date().toISOString().slice(0, 10),
+      time: initialTime || selectedPooja.eventTime || selectedPooja.bestMuhurat || "06:30 PM IST",
+      primaryName: name.trim() || undefined,
+      gotra: gotra.trim() || undefined,
+      phone: phone.trim() || undefined,
+      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
+      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      familyMembers: selectedTier === "family" ? familyMembers : undefined,
+      addons: selectedAddons,
+      addonItems,
+      step: currentStep,
+      status: draftStatus,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }, [
+    confirmed,
+    selectedPooja,
+    selectedTier,
+    selectedAddons,
+    name,
+    gotra,
+    phone,
+    partnerName,
+    partnerGotra,
+    familyMembers,
+    currentStep,
+    finalTotal,
+    discount,
+  ]);
 
   const couponEligibility = (code: string): string | null =>
     couponProblem(
@@ -764,6 +872,7 @@ export default function BookingFlow({
         email: userEmail,
       },
     });
+    removeIncompleteBooking(bId);
     setIsProcessingPayment(false);
   };
 
@@ -888,6 +997,7 @@ export default function BookingFlow({
         email: userEmail,
       },
     });
+    removeIncompleteBooking(bookingId);
   };
 
   if (confirmed) {

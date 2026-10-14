@@ -8,6 +8,7 @@ import type {
   PersistenceStore,
 } from "./persistence";
 import type { UserProfile } from "./storage";
+import type { RefundRequest } from "./refund-types";
 
 function dataDir(): string {
   return process.env.TTP_DATA_DIR || path.join(process.cwd(), ".data");
@@ -69,7 +70,13 @@ export function createJsonStore(): PersistenceStore {
       return readJson<UserProfile[]>("users.json", []);
     },
     async findUserByPhone(phone): Promise<UserProfile | undefined> {
-      return getUsersFromFile().find((u) => u.phone === phone.trim());
+      const p = phone.trim();
+      const p10 = p.replace(/\D/g, "").slice(-10);
+      return getUsersFromFile().find((u) => {
+        if (u.phone === p) return true;
+        const u10 = u.phone.replace(/\D/g, "").slice(-10);
+        return p10 && u10 && p10 === u10;
+      });
     },
     async findUserById(id): Promise<UserProfile | undefined> {
       return getUsersFromFile().find((u) => u.id === id);
@@ -101,6 +108,11 @@ export function createJsonStore(): PersistenceStore {
         if (user.passwordHash) existing.passwordHash = user.passwordHash;
         if (user.generatedPassword) existing.generatedPassword = user.generatedPassword;
         if (user.videos) existing.videos = user.videos;
+        if (typeof user.isActivated === "boolean") existing.isActivated = user.isActivated;
+        if (user.status) existing.status = user.status;
+        if (user.activatedAt) existing.activatedAt = user.activatedAt;
+        if (user.role) existing.role = user.role;
+        if (user.entitlements) existing.entitlements = user.entitlements;
         writeJson("users.json", users);
         return;
       }
@@ -115,6 +127,20 @@ export function createJsonStore(): PersistenceStore {
       if (next.length === users.length) return false;
       writeJson("users.json", next);
       return true;
+    },
+    async getRefundRequests(): Promise<RefundRequest[]> {
+      return readJson<RefundRequest[]>("refund_requests.json", []);
+    },
+    async findRefundRequestById(id: string): Promise<RefundRequest | undefined> {
+      const list = readJson<RefundRequest[]>("refund_requests.json", []);
+      return list.find((r) => r.id === id);
+    },
+    async saveRefundRequest(req: RefundRequest): Promise<void> {
+      const list = readJson<RefundRequest[]>("refund_requests.json", []);
+      const idx = list.findIndex((r) => r.id === req.id);
+      if (idx >= 0) list[idx] = req;
+      else list.unshift(req);
+      writeJson("refund_requests.json", list);
     },
   };
 }

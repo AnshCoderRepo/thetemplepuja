@@ -8,7 +8,7 @@ import { getLocalizedPoojaTitle, getLocalizedPoojaDescription } from "@/lib/data
 import BookingFlow from "./BookingFlow";
 
 export default function BookingModal() {
-  const { isOpen, selectedPoojaSlug, closeBooking } = useBookingModal();
+  const { isOpen, selectedPoojaSlug, resumeData, closeBooking } = useBookingModal();
   const { poojas } = useCatalog();
   const { locale, t } = useI18n();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +87,7 @@ export default function BookingModal() {
           <BookingFlow
             pooja={selectedPooja}
             initialPoojaSlug={selectedPoojaSlug}
+            resumeData={resumeData}
             isModal={true}
             onClose={closeBooking}
             scrollContainerRef={scrollContainerRef}

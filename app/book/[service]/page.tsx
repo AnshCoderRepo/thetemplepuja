@@ -28,13 +28,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   if (!pooja) {
     return {
-      title: "Pooja Not Found | The Temple Puja",
+      title: "Pooja Not Found | templepujasewa",
       description: "The requested pooja could not be found or is inactive.",
       robots: { index: false, follow: false },
     };
   }
 
-  const title = `Book ${pooja.title} Online | The Temple Puja`;
+  const title = `Book ${pooja.title} Online | templepujasewa`;
+
   const description =
     pooja.description.length > 160
       ? `${pooja.description.slice(0, 157)}...`

@@ -1,7 +1,8 @@
 import { Header, Footer } from "@/components/layout";
-import { JsonLd } from "@/components/common";
+import { JsonLd, ContinueBookingSection } from "@/components/common";
 import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
 import { PoojaCatalog } from "@/features/catalog";
+import MessageCeoSection from "@/components/home/MessageCeoSection";
 import { faqs } from "@/lib/data";
 import { faqPageLd, organizationLd, websiteLd } from "@/lib/seo";
 
@@ -14,6 +15,9 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
+
+        {/* Incomplete Booking Persistence & Resume Payment ("Your Seva Awaits") */}
+        <ContinueBookingSection />
         
         {/* Sacred Poojas Catalog on Landing Page (Shows top 10 with View All link) */}
         <section id="poojas" className="pt-12 pb-12 bg-cream">
@@ -35,6 +39,9 @@ export default function Home() {
         <WhyChooseUs />
         <Testimonials />
         <FAQ />
+
+        {/* Message the CEO Section (Client Feedback Phase 10) */}
+        <MessageCeoSection />
       </main>
       <Footer />
     </>
