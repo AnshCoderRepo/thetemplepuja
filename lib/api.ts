@@ -824,3 +824,210 @@ export async function sendChatMessage(
   }
 }
 
+// ===================== CEO FEEDBACK MESSAGES =====================
+
+export interface CeoMessageRemote {
+  id: string;
+  name: string;
+  contact: string;
+  subject?: string;
+  message: string;
+  createdAt: string;
+  status: "new" | "read" | "responded";
+}
+
+export async function fetchCeoMessagesRemote(token?: string): Promise<{
+  messages: CeoMessageRemote[];
+  status?: number;
+}> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch("/api/admin/ceo-messages", {
+      headers,
+      cache: "no-store",
+    });
+    if (res.status === 401) {
+      return { messages: [], status: 401 };
+    }
+    const data = await res.json();
+    return {
+      messages: data.messages || [],
+      status: res.status,
+    };
+  } catch {
+    return { messages: [] };
+  }
+}
+
+export async function updateCeoMessageStatusRemote(
+  id: string,
+  status: "new" | "read" | "responded",
+  token?: string
+): Promise<{ ok: boolean; status?: number }> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch("/api/admin/ceo-messages", {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ id, status }),
+    });
+    return { ok: res.ok, status: res.status };
+  } catch {
+    return { ok: false };
+  }
+}
+
+// ===================== APPROVAL-BASED REFUNDS =====================
+
+import type { RefundRequest, AdminRole } from "./refund-types";
+
+export interface RefundRequestsResponse {
+  ok: boolean;
+  requests: RefundRequest[];
+  currentAdminEmail?: string;
+  role?: AdminRole;
+  error?: string;
+  status?: number;
+}
+
+export async function fetchRefundRequestsRemote(
+  token?: string,
+  statusFilter?: string,
+  search?: string
+): Promise<RefundRequestsResponse> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const params = new URLSearchParams();
+    if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+    if (search) params.set("search", search);
+
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`/api/admin/refunds${qs}`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (res.status === 401) {
+      return { ok: false, requests: [], status: 401, error: "Unauthorized" };
+    }
+    const data = await res.json().catch(() => ({}));
+    return {
+      ok: res.ok,
+      requests: data.requests || [],
+      currentAdminEmail: data.currentAdminEmail,
+      role: data.role,
+      status: res.status,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      requests: [],
+      error: err instanceof Error ? err.message : "Failed to load refund requests",
+    };
+  }
+}
+
+export async function submitRefundRequestRemote(
+  token: string,
+  input: {
+    bookingId: string;
+    orderId?: string;
+    requestedAmount: number;
+    reason: string;
+  }
+): Promise<{ ok: boolean; request?: RefundRequest; error?: string; status?: number }> {
+  try {
+    const res = await fetch("/api/admin/refunds", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to submit refund request", status: res.status };
+    }
+    return { ok: true, request: data.request, status: res.status };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Network error submitting refund request" };
+  }
+}
+
+export async function approveRefundRemote(
+  token: string,
+  requestId: string
+): Promise<{ ok: boolean; request?: RefundRequest; error?: string; status?: number }> {
+  try {
+    const res = await fetch("/api/admin/refunds/approve", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ requestId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to approve refund", status: res.status };
+    }
+    return { ok: true, request: data.request, status: res.status };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Network error approving refund" };
+  }
+}
+
+export async function rejectRefundRemote(
+  token: string,
+  requestId: string,
+  rejectionReason: string
+): Promise<{ ok: boolean; request?: RefundRequest; error?: string; status?: number }> {
+  try {
+    const res = await fetch("/api/admin/refunds/reject", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ requestId, rejectionReason }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to reject refund", status: res.status };
+    }
+    return { ok: true, request: data.request, status: res.status };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Network error rejecting refund" };
+  }
+}
+
+export async function executeRefundRemote(
+  token: string,
+  requestId: string,
+  manualSettlement?: { settlementReference?: string; executionNotes?: string }
+): Promise<{ ok: boolean; request?: RefundRequest; error?: string; status?: number }> {
+  try {
+    const res = await fetch("/api/admin/refunds/execute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ requestId, manualSettlement }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to execute refund", status: res.status };
+    }
+    return { ok: true, request: data.request, status: res.status };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Network error executing refund" };
+  }
+}
+
+
+

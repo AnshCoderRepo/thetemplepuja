@@ -16,6 +16,7 @@ import {
   Phone,
   Play,
   RefreshCw,
+  RotateCcw,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -28,6 +29,8 @@ import {
 } from "lucide-react";
 import type { BookingRecord, BookingStatus, CustomerMediaRecord, UserProfile } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
+import { downloadCsv, generateBookingsExportCsv } from "@/lib/booking-export";
+import { submitRefundRequestRemote } from "@/lib/api";
 
 function getYouTubeEmbedUrl(url: string): string | null {
   try {
@@ -60,11 +63,13 @@ export default function OrdersManager({
   users,
   onRefund,
   token,
+  adminEmail,
   onRefresh,
 }: {
   users: UserProfile[];
-  onRefund: (userId: string, bookingId: string) => void;
+  onRefund?: (userId: string, bookingId: string) => void;
   token?: string;
+  adminEmail?: string;
   onRefresh?: () => void;
 }) {
   const [search, setSearch] = useState("");
@@ -74,6 +79,72 @@ export default function OrdersManager({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
+
+  // Refund Request State
+  const [refundModalOrder, setRefundModalOrder] = useState<FlatOrder | null>(null);
+  const [refundAmount, setRefundAmount] = useState<number>(0);
+  const [refundReason, setRefundReason] = useState("");
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [refundMsg, setRefundMsg] = useState("");
+  const [refundErr, setRefundErr] = useState("");
+
+  const openRefundModal = (flat: FlatOrder) => {
+    setRefundModalOrder(flat);
+    setRefundAmount(flat.booking.amount);
+    setRefundReason("");
+    setRefundMsg("");
+    setRefundErr("");
+  };
+
+  const handleSubmitRefundRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!refundModalOrder || !token) {
+      if (!token) setRefundErr("Admin authentication token required.");
+      return;
+    }
+    setRefundMsg("");
+    setRefundErr("");
+
+    if (!refundReason.trim()) {
+      setRefundErr("Please provide a reason for the refund request.");
+      return;
+    }
+
+    if (refundAmount <= 0 || refundAmount > refundModalOrder.booking.amount) {
+      setRefundErr(`Requested refund amount must be between ₹1 and ₹${refundModalOrder.booking.amount}.`);
+      return;
+    }
+
+    setRefundLoading(true);
+    try {
+      const res = await submitRefundRequestRemote(
+        token,
+        {
+          bookingId: refundModalOrder.booking.bookingId,
+          orderId: refundModalOrder.orderId,
+          requestedAmount: refundAmount,
+          reason: refundReason.trim(),
+        }
+      );
+
+      setRefundLoading(false);
+      if (res.ok && res.request) {
+        setRefundMsg(
+          `Refund request #${res.request.id} submitted for approval. Status: Pending Approval.`
+        );
+        onRefresh?.();
+        setTimeout(() => {
+          setRefundModalOrder(null);
+          setRefundMsg("");
+        }, 1800);
+      } else {
+        setRefundErr(res.error || "Failed to submit refund request.");
+      }
+    } catch {
+      setRefundLoading(false);
+      setRefundErr("Network error while submitting refund request.");
+    }
+  };
 
   // Video Management State
   const [videoModalOrder, setVideoModalOrder] = useState<FlatOrder | null>(null);
@@ -272,44 +343,9 @@ export default function OrdersManager({
   };
 
   const exportCSV = () => {
-    const headers = [
-      "Order ID",
-      "Booking Reference",
-      "Customer",
-      "Phone",
-      "Email",
-      "Pooja / Item",
-      "Total Amount",
-      "Discount",
-      "Status",
-      "Failure Reason",
-      "Payment Ref",
-      "Date",
-    ];
-
-    const rows = filtered.map(({ orderId, booking, user }) => [
-      `"${orderId}"`,
-      `"${booking.bookingId}"`,
-      `"${user.name}"`,
-      `"${user.phone}"`,
-      `"${user.email || ""}"`,
-      `"${booking.poojaTitle}"`,
-      booking.amount,
-      booking.discount || 0,
-      `"${booking.status}"`,
-      `"${booking.failureReason || ""}"`,
-      `"${booking.upiTransactionId ? `UPI-${booking.upiTransactionId}` : booking.razorpayPaymentId || "Demo"}"`,
-      `"${booking.createdAt}"`,
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `all_orders_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const records = filtered.map(({ booking, user }) => ({ booking, user }));
+    const csvContent = generateBookingsExportCsv(records);
+    downloadCsv(csvContent, `all_orders_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   return (
@@ -747,25 +783,197 @@ export default function OrdersManager({
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm(`Refund order ${selectedOrder.booking.bookingId}?`)) {
-                      onRefund(selectedOrder.user.id, selectedOrder.booking.bookingId);
-                      setSelectedOrder(null);
-                    }
+                    const orderToRefund = selectedOrder;
+                    setSelectedOrder(null);
+                    openRefundModal(orderToRefund);
                   }}
-                  className="text-xs font-semibold text-red-600 hover:underline"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                  title="Submit a formal refund request for administrative approval"
                 >
-                  Process Refund
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Request Refund
                 </button>
-              ) : <div />}
+              ) : selectedOrder.booking.status === "refunded" ? (
+                <div className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Refunded Order (Historical)
+                </div>
+              ) : (
+                <div />
+              )}
 
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                className="rounded-xl bg-saffron-500 px-5 py-2 text-xs font-bold text-white hover:bg-saffron-600"
+                className="rounded-xl bg-saffron-500 px-5 py-2 text-xs font-bold text-white hover:bg-saffron-600 cursor-pointer"
               >
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refund Request Modal */}
+      {refundModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div
+            className="fixed inset-0"
+            onClick={() => !refundLoading && setRefundModalOrder(null)}
+          />
+          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl z-10 border border-saffron-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-saffron-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 font-bold">
+                  <RotateCcw className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="font-display font-bold text-ink text-base">
+                    Submit Refund Request
+                  </h3>
+                  <p className="text-[11px] text-ink-soft">
+                    Approval-based workflow · Two-tier authorization
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={refundLoading}
+                onClick={() => setRefundModalOrder(null)}
+                className="text-ink-soft/60 hover:text-ink transition-colors p-1 cursor-pointer disabled:opacity-50"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Order Summary Box */}
+            <div className="rounded-2xl border border-saffron-100 bg-cream/40 p-3.5 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-ink-soft">Order / Booking Ref:</span>
+                <span className="font-mono font-bold text-ink">{refundModalOrder.booking.bookingId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink-soft">Customer Name:</span>
+                <span className="font-bold text-ink">{refundModalOrder.user.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink-soft">Service / Pooja:</span>
+                <span className="text-ink font-semibold">{refundModalOrder.booking.poojaTitle}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink-soft">Original Amount Paid:</span>
+                <span className="font-bold text-saffron-800">{formatINR(refundModalOrder.booking.amount)}</span>
+              </div>
+              {refundModalOrder.booking.razorpayPaymentId && (
+                <div className="flex justify-between text-[11px] text-sky-800">
+                  <span>Razorpay Payment ID:</span>
+                  <span className="font-mono">{refundModalOrder.booking.razorpayPaymentId}</span>
+                </div>
+              )}
+              {refundModalOrder.booking.upiTransactionId && (
+                <div className="flex justify-between text-[11px] text-purple-800">
+                  <span>UPI Transaction Ref (UTR):</span>
+                  <span className="font-mono">{refundModalOrder.booking.upiTransactionId}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Security Notice */}
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-blue-950">
+                <ShieldCheck className="h-4 w-4 text-blue-600" />
+                Separation of Duties & Authorization Notice
+              </div>
+              <p className="text-[11px] text-blue-800 leading-relaxed">
+                Submitting this request will save it as <strong className="font-semibold">pending_approval</strong>. No financial transaction or payment status modification will occur until approved and executed by an authorized approver.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitRefundRequest} className="space-y-3.5">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-ink">
+                    Requested Refund Amount (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setRefundAmount(refundModalOrder.booking.amount)}
+                    className="text-[10px] font-bold text-saffron-600 hover:underline cursor-pointer"
+                  >
+                    Full Amount ({formatINR(refundModalOrder.booking.amount)})
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={refundModalOrder.booking.amount}
+                  step="any"
+                  required
+                  value={refundAmount || ""}
+                  onChange={(e) => setRefundAmount(Number(e.target.value))}
+                  className="w-full rounded-xl border border-saffron-200 px-3.5 py-2 text-xs font-mono font-bold text-ink outline-none focus:border-saffron-500 focus:ring-2 focus:ring-saffron-200"
+                />
+                <p className="text-[10px] text-ink-soft/70 mt-1">
+                  Maximum refundable: {formatINR(refundModalOrder.booking.amount)}. Partial refunds are supported.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-ink mb-1">
+                  Reason for Refund Request <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="e.g. Devotee requested cancellation due to family travel conflict; verified by support team."
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  className="w-full rounded-xl border border-saffron-200 px-3.5 py-2 text-xs text-ink outline-none focus:border-saffron-500 focus:ring-2 focus:ring-saffron-200 resize-none"
+                />
+              </div>
+
+              {refundErr && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-600 flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{refundErr}</span>
+                </div>
+              )}
+
+              {refundMsg && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
+                  <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>{refundMsg}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-saffron-100">
+                <button
+                  type="button"
+                  disabled={refundLoading}
+                  onClick={() => setRefundModalOrder(null)}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={refundLoading || !!refundMsg}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 px-5 py-2 text-xs font-bold text-white shadow-soft hover:from-rose-600 hover:to-rose-700 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {refundLoading ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      Submitting Request...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Submit Refund Request
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -12,7 +12,23 @@ export interface AdminLoginResponse {
 export interface DevoteeLoginResponse {
   ok: boolean;
   error?: string;
+  requireActivation?: boolean;
+  phone?: string;
+  token?: string;
+  user?: any;
 }
+
+export interface OtpChallengeResponse {
+  ok: boolean;
+  message?: string;
+  error?: string;
+  resendAfterSec?: number;
+  expiresInSec?: number;
+  testCode?: string;
+  testCodeNotice?: string;
+  alreadyActive?: boolean;
+}
+
 
 export interface ChangeAdminCredentialsInput {
   currentPassword: string;

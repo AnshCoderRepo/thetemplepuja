@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Calendar,
   Clock,
@@ -13,9 +13,13 @@ import {
   ArrowRight,
   ShieldCheck,
   Video,
+  Phone,
+  Camera,
 } from "lucide-react";
 import { useBookingModal, useI18n } from "@/components/providers";
+import { ImagePreviewModal } from "@/components/common";
 import { PoojaCatalog, useCatalog } from "@/features/catalog";
+import { SITE_CONFIG } from "@/lib/config";
 import {
   DEMO_POOJA,
   isDemoSlug,
@@ -23,7 +27,6 @@ import {
   getLocalizedPoojaTitle,
   getLocalizedPoojaDescription,
   getLocalizedPoojaNativeBadge,
-  getLocalizedPoojaDuration,
   getLocalizedPoojaBestMuhurat,
   getLocalizedPoojaBenefits,
   getPoojaBannerImage,
@@ -45,6 +48,7 @@ function ServiceInner({ service }: { service: string }) {
     ? (poojas.find((p) => p.slug === normalized) ?? null)
     : undefined;
 
+  const [previewOpen, setPreviewOpen] = useState(false);
   const locTitle = pooja ? getLocalizedPoojaTitle(pooja, locale) : "";
   const schedule = pooja ? getPoojaSchedule(pooja) : null;
 
@@ -86,7 +90,6 @@ function ServiceInner({ service }: { service: string }) {
 
   const locBadge = getLocalizedPoojaNativeBadge(pooja, locale);
   const locDesc = getLocalizedPoojaDescription(pooja, locale);
-  const locDuration = getLocalizedPoojaDuration(pooja, locale);
   const locMuhurat = getLocalizedPoojaBestMuhurat(pooja, locale);
   const locBenefits = getLocalizedPoojaBenefits(pooja, locale);
   const temple = getTempleForPooja(pooja, temples);
@@ -119,28 +122,50 @@ function ServiceInner({ service }: { service: string }) {
           {/* ── LEFT COLUMN: Banner of the Puja ── */}
           <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
             {/* Puja Banner Card */}
-            <div className="relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/3] w-full overflow-hidden rounded-3xl border border-saffron-200/90 shadow-card bg-gradient-to-br from-saffron-950 via-amber-900 to-saffron-900 group">
-              {/* Sacred Banner Image */}
+            <div className="relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/3] w-full overflow-hidden rounded-3xl border border-saffron-200/90 shadow-card bg-slate-950 group">
+              {/* Sacred Banner Image Ambient Backdrop to fill letterbox gracefully */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={bannerImage}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+              />
+
+              {/* Sacred Banner Image - object-contain preserves 100% full image without cropping */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={bannerImage}
                 alt={locTitle}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                onClick={() => setPreviewOpen(true)}
+                className="relative z-0 h-full w-full object-contain cursor-pointer transition-transform duration-500 group-hover:scale-[1.02]"
               />
 
               {/* Radiant Vignette Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 pointer-events-none" />
 
               {/* Top Badges on Banner */}
-              <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-xs font-bold text-white backdrop-blur border border-white/20">
+              <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2 z-10">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white backdrop-blur border border-white/20">
                   <Sparkles className="h-3 w-3 text-saffron-400" />
                   {locBadge}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3 py-1 text-[11px] font-bold text-white backdrop-blur shadow-xs">
-                  <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                  Live Darshan
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur border border-white/25 transition-all shadow-sm cursor-pointer"
+                    title="View complete image in high resolution"
+                  >
+                    <Camera className="h-3.5 w-3.5 text-amber-300" />
+                    <span>All Photos (1)</span>
+                  </button>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3 py-1 text-[11px] font-bold text-white backdrop-blur shadow-xs">
+                    <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                    Live Darshan
+                  </span>
+                </div>
               </div>
 
               {/* Bottom Info on Banner */}
@@ -314,11 +339,9 @@ function ServiceInner({ service }: { service: string }) {
                     {schedule ? `${schedule.date} • ${schedule.time}` : locMuhurat}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-saffron-800 font-medium">
-                    <span>Muhurat: {locMuhurat}</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-saffron-600" />
-                      <span>{locDuration}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-saffron-50 px-2 py-0.5 text-saffron-800 font-semibold border border-saffron-200/60">
+                      <Sparkles className="h-3 w-3 text-saffron-600" />
+                      <span>Muhurat: {locMuhurat}</span>
                     </span>
                   </div>
                 </div>
@@ -344,12 +367,12 @@ function ServiceInner({ service }: { service: string }) {
               </div>
             </div>
 
-            {/* Book Now Card / Trigger */}
+            {/* Standard Online Group Pooja Booking Card */}
             <div className="rounded-3xl border border-saffron-200 bg-white p-6 shadow-card space-y-3.5 text-center sm:text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-                    Dakshina Starts At
+                    Standard Group Pooja Dakshina
                   </span>
                   <span className="font-display text-2xl font-extrabold text-saffron-700">
                     {formatINR(pooja.price)}
@@ -362,7 +385,7 @@ function ServiceInner({ service }: { service: string }) {
                   onClick={handleBookNowClick}
                   className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3.5 px-8 text-base font-bold text-white shadow-lg shadow-saffron-600/25 transition-all hover:scale-[1.02] hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.98]"
                 >
-                  <span>Book Now — From {formatINR(pooja.price)}</span>
+                  <span>Book Group Puja — From {formatINR(pooja.price)}</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -371,9 +394,46 @@ function ServiceInner({ service }: { service: string }) {
                 ⚡ Select Single / Couple / Family in the next step • Live video darshan & sankalp video included
               </p>
             </div>
+
+            {/* VIP Puja Direct Phone Enquiry Card */}
+            <div className="rounded-3xl border border-amber-300/80 bg-gradient-to-br from-amber-50/90 via-white to-amber-50/60 p-5 sm:p-6 shadow-soft space-y-3 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 border border-amber-300/60">
+                      👑 VIP & Individual Seva
+                    </span>
+                    <span className="text-xs text-amber-800 font-semibold">Direct Acharya Coordination</span>
+                  </div>
+                  <h4 className="font-display text-base font-bold text-ink">
+                    Need an Exclusive VIP Puja or Private Auspicious Muhurat?
+                  </h4>
+                  <p className="text-xs text-ink-soft leading-relaxed">
+                    VIP Pujas are performed individually for your family with dedicated Vedic Acharyas, personalized gotra chanting, and energized prasad dispatched directly to your home.
+                  </p>
+                </div>
+
+                <a
+                  href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-6 py-3.5 text-sm font-bold shadow-md transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Phone className="h-4 w-4" />
+                  <span>Call for VIP Puja ({SITE_CONFIG.contact.phoneDisplay})</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      <ImagePreviewModal
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        imageUrl={bannerImage}
+        title={locTitle}
+        badge={pooja.type === "home" ? "HOME PUJA" : "GROUP PUJA"}
+        photoCount="1/1"
+      />
     </div>
   );
 }

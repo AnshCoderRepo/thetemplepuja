@@ -103,8 +103,9 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
       </div>
 
       <footer className="border-t border-saffron-100 py-4 text-center text-xs text-ink-soft">
-        © {new Date().getFullYear()} The Temple Puja — Admin Security Panel
+        © {new Date().getFullYear()} templepujasewa — Admin Security Panel
       </footer>
+
     </div>
   );
 }

@@ -2,8 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BadgeCheck, Check, Copy, ExternalLink, Play, Printer, UserRound, Video } from "lucide-react";
-import type { BookingRecord } from "@/lib/storage";
+import {
+  BadgeCheck,
+  Check,
+  Copy,
+  Edit3,
+  ExternalLink,
+  MessageSquare,
+  Play,
+  Printer,
+  Send,
+  Star,
+  UserRound,
+  Video,
+} from "lucide-react";
+import { saveBookingReview, type BookingRecord } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
 import type { BookingHolder } from "../types/receipt.types";
 
@@ -22,6 +35,17 @@ const statusStyles: Record<string, string> = {
 export default function BookingReceipt({ booking, holder }: BookingReceiptProps) {
   const [, setCopied] = useState(false);
   const [copiedRcpt, setCopiedRcpt] = useState(false);
+
+  // Devotee Rating & Review State
+  const [currentRating, setCurrentRating] = useState<number>(booking.rating || 0);
+  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [reviewText, setReviewText] = useState<string>(booking.review || "");
+  const [isEditingReview, setIsEditingReview] = useState<boolean>(!booking.rating);
+  const [reviewSubmitting, setReviewSubmitting] = useState<boolean>(false);
+  const [reviewSuccess, setReviewSuccess] = useState<string | null>(
+    booking.rating ? "Your review has been recorded. Thank you for your blessings!" : null
+  );
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const receiptNumber =
     booking.receiptNumber ||
@@ -46,6 +70,44 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
     }
   };
 
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (currentRating < 1 || currentRating > 5) {
+      setReviewError("Please choose a rating between 1 and 5 stars.");
+      return;
+    }
+    setReviewSubmitting(true);
+    setReviewError(null);
+    try {
+      // 1. Client-side local persistence
+      saveBookingReview(booking.bookingId, currentRating, reviewText, holder.phone);
+
+      // 2. Server-side API update
+      const res = await fetch(`/api/bookings/${encodeURIComponent(booking.bookingId)}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: currentRating,
+          review: reviewText,
+          phone: holder.phone,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to submit review.");
+      }
+
+      setReviewSuccess("Thank you! Your sacred experience and rating have been recorded.");
+      setIsEditingReview(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error submitting review";
+      setReviewError(msg);
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   return (
     <div
       id="receipt-card"
@@ -54,11 +116,11 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
       {/* Receipt header */}
       <div className="relative bg-gradient-to-br from-saffron-500 to-maroon-600 px-8 py-8 text-center text-white print:bg-white print:text-ink print:border-b-2 print:border-saffron-600">
         <div className="absolute inset-0 opacity-15 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px] print:hidden" />
-        <span className="relative inline-flex h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-white p-1 shadow-soft shrink-0">
+        <span className="relative inline-flex h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-white p-2 shadow-card shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.jpeg"
-            alt="The Temple Puja"
+            alt="templepujasewa"
             className="h-full w-full object-contain"
           />
         </span>
@@ -66,8 +128,9 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
           Official Pooja Booking Receipt
         </h2>
         <p className="relative mt-0.5 text-xs text-amber-100/90 print:text-ink-soft">
-          The Temple Puja · Verified Spiritual Platform
+          templepujasewa · Verified Spiritual Platform
         </p>
+
 
         <div className="relative mt-4 flex flex-wrap items-center justify-center gap-2">
           <button
@@ -387,8 +450,153 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
 
         {/* Official Footer */}
         <div className="text-center pt-2 text-[11px] text-ink-soft space-y-1">
-          <p className="font-semibold text-ink">Thank you for booking your sacred seva with The Temple Puja.</p>
+          <p className="font-semibold text-ink">Thank you for booking your sacred seva with templepujasewa.</p>
           <p className="text-ink-soft/70">This is an authentic, computer-generated official receipt. No physical signature required.</p>
+        </div>
+
+
+        {/* Devotee Rating & Experience Review (Client Feedback Phase 8) */}
+        <div className="no-print rounded-3xl border border-saffron-200/90 bg-gradient-to-br from-saffron-50/70 via-white to-amber-50/60 p-6 shadow-soft space-y-4 text-left">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-saffron-500 text-white font-bold text-sm shadow-2xs">
+                ⭐
+              </span>
+              <div>
+                <h4 className="font-display text-base font-bold text-ink">
+                  Rate Your Sacred Pooja Experience
+                </h4>
+                <p className="text-xs text-ink-soft">
+                  Share your blessings and feedback on the pandit ji recitation and arrangements
+                </p>
+              </div>
+            </div>
+
+            {!isEditingReview && currentRating > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingReview(true);
+                  setReviewSuccess(null);
+                }}
+                className="inline-flex items-center gap-1 rounded-xl border border-saffron-300 bg-white px-3 py-1.5 text-xs font-semibold text-saffron-800 hover:bg-saffron-50 shadow-2xs transition-all"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-saffron-600" />
+                <span>Edit Review</span>
+              </button>
+            )}
+          </div>
+
+          {reviewSuccess && (
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 font-medium">
+              <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>{reviewSuccess}</span>
+            </div>
+          )}
+
+          {reviewError && (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-700 font-medium">
+              {reviewError}
+            </div>
+          )}
+
+          {isEditingReview ? (
+            <form onSubmit={handleReviewSubmit} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-ink mb-1.5">
+                  Your Overall Experience (1–5 Stars)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setCurrentRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      className="p-1 rounded-lg transition-transform hover:scale-110 focus:outline-none"
+                      aria-label={`${star} Star`}
+                    >
+                      <Star
+                        className={`h-7 w-7 transition-colors ${
+                          (hoverRating || currentRating) >= star
+                            ? "fill-amber-400 text-amber-500 drop-shadow-xs"
+                            : "fill-transparent text-slate-300 hover:text-amber-300"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-xs font-bold text-saffron-900">
+                    {hoverRating || currentRating > 0
+                      ? `${hoverRating || currentRating} of 5 Stars`
+                      : "Tap to rate"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-ink mb-1">
+                  Written Feedback / Testimonial (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  maxLength={1000}
+                  placeholder="Share details about the sankalp recitation, audio clarity, and devotee service..."
+                  className="w-full rounded-2xl border border-saffron-200 bg-white p-3 text-xs text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none focus:ring-2 focus:ring-saffron-300/50 shadow-2xs"
+                />
+                <span className="block text-right text-[10px] text-slate-400 mt-0.5">
+                  {reviewText.length}/1000 characters
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5">
+                {currentRating > 0 && !booking.rating && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingReview(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting || currentRating === 0}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-600 hover:to-saffron-700 disabled:opacity-50 text-white font-bold px-5 py-2.5 text-xs shadow-soft transition-all"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>{reviewSubmitting ? "Submitting..." : "Submit Review"}</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="rounded-2xl border border-saffron-100 bg-white p-4 space-y-2">
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`h-5 w-5 ${
+                      currentRating >= star
+                        ? "fill-amber-400 text-amber-500"
+                        : "fill-transparent text-slate-200"
+                    }`}
+                  />
+                ))}
+                <span className="ml-2 text-xs font-bold text-ink">
+                  {currentRating} out of 5 Stars
+                </span>
+              </div>
+              {reviewText ? (
+                <p className="text-xs text-ink-soft italic leading-relaxed">
+                  &ldquo;{reviewText}&rdquo;
+                </p>
+              ) : (
+                <p className="text-xs text-slate-400 italic">No written comment provided.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Actions */}

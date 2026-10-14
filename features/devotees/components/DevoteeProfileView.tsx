@@ -6,6 +6,7 @@ import { CalendarDays, Play, Video } from "lucide-react";
 import { cancelBookingRemote, rescheduleBookingRemote } from "@/features/bookings";
 import { fetchUserByPhone } from "../api/devoteeApi";
 import type { BookingRecord, UserProfile } from "@/lib/storage";
+import { ContinueBookingSection } from "@/components/common";
 import DevoteeBookingsList from "./DevoteeBookingsList";
 import DevoteeLookupGate from "./DevoteeLookupGate";
 import DevoteeProfileCard from "./DevoteeProfileCard";
@@ -182,6 +183,9 @@ export default function DevoteeProfileView() {
               </div>
             </div>
           )}
+
+          {/* Continue Incomplete Bookings / Resume Payment */}
+          <ContinueBookingSection phone={profile.phone} contained={false} />
 
           <h3 className="mb-4 mt-10 flex items-center gap-2 font-display text-xl font-bold text-ink">
             <CalendarDays className="h-5 w-5 text-saffron-600" />

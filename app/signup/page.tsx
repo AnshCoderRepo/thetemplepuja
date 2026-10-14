@@ -3,9 +3,10 @@ import { BookPageHeader } from "@/components/layout";
 import { DevoteeSignupForm } from "@/features/auth";
 
 export const metadata: Metadata = {
-  title: "Devotee Signup | The Temple Puja",
-  description: "Create your devotee profile on The Temple Puja spiritual platform.",
+  title: "Devotee Signup | templepujasewa",
+  description: "Create your devotee profile on templepujasewa spiritual platform.",
 };
+
 
 export default function SignupPage() {
   return (

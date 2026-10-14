@@ -5,10 +5,15 @@
 export type BookingStatus =
   | "confirmed"
   | "pending"
+  | "checkout_incomplete"
+  | "pending_payment"
+  | "payment_processing"
+  | "payment_failed"
   | "failed"
   | "cancelled"
   | "rescheduled"
-  | "refunded";
+  | "refunded"
+  | "expired";
 
 export interface BookingAddonItem {
   id: string;
@@ -88,7 +93,40 @@ export interface BookingRecord {
   upiTransactionId?: string;
   /** Merchant UPI ID paid to */
   upiId?: string;
+  /** Devotee review rating (1 to 5 stars) */
+  rating?: number;
+  /** Devotee feedback or review text */
+  review?: string;
+  /** ISO timestamp when devotee submitted rating & review */
+  reviewedAt?: string;
+  /** Primary devotee or customer name for this specific booking */
+  primaryDevoteeName?: string;
+  /** Currency of transaction, defaults to INR */
+  currency?: string;
+  /** Address for prasad delivery / devotee location if collected */
+  address?: string;
+  /** City where puja is performed or devotee resides */
+  city?: string;
+  /** Quantity of puja services booked (default 1) */
+  quantity?: number;
 }
+
+export interface DevoteeEntitlement {
+  id: string;
+  poojaSlug?: string;
+  poojaTitle?: string;
+  productType?: "pooja_booking" | "product_licence" | "seva_pass";
+  sku?: string;
+  title?: string;
+  bookingId?: string;
+  paymentId?: string;
+  orderId?: string;
+  amount: number;
+  currency?: string;
+  grantedAt: string; // ISO
+  status: "active" | "completed" | "revoked";
+}
+
 
 export interface UserProfile {
   id: string;
@@ -97,11 +135,17 @@ export interface UserProfile {
   city: string;
   phone: string;
   email: string;
+  address?: string;
   createdAt: string; // ISO
   bookings: BookingRecord[];
   videos?: CustomerMediaRecord[];
   passwordHash?: string;
   generatedPassword?: string;
+  isActivated?: boolean;
+  status?: "pending_activation" | "active" | "suspended";
+  activatedAt?: string;
+  role?: "devotee" | "admin";
+  entitlements?: DevoteeEntitlement[];
 }
 
 import { STORAGE_KEYS } from "./constants";
@@ -143,6 +187,7 @@ export interface BookingInput {
   gotra: string;
   city: string;
   email: string;
+  address?: string;
   booking: BookingRecord;
   password?: string;
   passwordHash?: string;
@@ -169,6 +214,7 @@ export function upsertInto(
       city: input.city,
       phone: input.phone.trim(),
       email: input.email,
+      address: input.address,
       createdAt: new Date().toISOString(),
       bookings: [],
       passwordHash: input.passwordHash,
@@ -176,11 +222,27 @@ export function upsertInto(
     };
     users.push(user);
   } else {
-    // Same devotee — refresh their details with the latest booking info
-    user.name = input.name;
-    user.gotra = input.gotra;
-    user.city = input.city;
-    if (input.email) user.email = input.email;
+    // Same devotee — refresh their details without wiping existing valid information
+    const cleanName = input.name ? input.name.trim() : "";
+    if (cleanName && (cleanName !== "Devotee" || !user.name)) {
+      user.name = cleanName;
+    }
+    const cleanGotra = input.gotra ? input.gotra.trim() : "";
+    if (cleanGotra) {
+      user.gotra = cleanGotra;
+    }
+    const cleanCity = input.city ? input.city.trim() : "";
+    if (cleanCity) {
+      user.city = cleanCity;
+    }
+    const cleanEmail = input.email ? input.email.trim() : "";
+    if (cleanEmail) {
+      user.email = cleanEmail;
+    }
+    const cleanAddress = input.address ? input.address.trim() : "";
+    if (cleanAddress) {
+      user.address = cleanAddress;
+    }
     if (input.passwordHash) user.passwordHash = input.passwordHash;
     if (input.generatedPassword) user.generatedPassword = input.generatedPassword;
   }
@@ -189,13 +251,22 @@ export function upsertInto(
   // (e.g. status transition from pending -> confirmed or pending -> failed).
   const existingIdx = user.bookings.findIndex((b) => b.bookingId === input.booking.bookingId);
   const status = input.booking.status || "confirmed";
+  const enrichedBooking: BookingRecord = {
+    ...input.booking,
+    status,
+    currency: input.booking.currency || "INR",
+    quantity: input.booking.quantity || 1,
+    gotra: input.booking.gotra || (input.gotra ? input.gotra.trim() : undefined) || user.gotra || undefined,
+    city: input.booking.city || (input.city ? input.city.trim() : undefined) || user.city || undefined,
+    address: input.booking.address || (input.address ? input.address.trim() : undefined) || user.address || undefined,
+  };
+
   if (existingIdx === -1) {
-    const booking: BookingRecord = { ...input.booking, status };
-    user.bookings.push(booking);
+    user.bookings.push(enrichedBooking);
   } else {
     user.bookings[existingIdx] = {
       ...user.bookings[existingIdx],
-      ...input.booking,
+      ...enrichedBooking,
       status,
     };
   }
@@ -317,6 +388,31 @@ export function refundIn(
   booking.status = "refunded";
   booking.refundedAt = new Date().toISOString();
   return { users, ok: true, user };
+}
+
+/** Add or update a 1-5 star review and feedback on a confirmed booking. */
+export function reviewIn(
+  users: UserProfile[],
+  bookingId: string,
+  rating: number,
+  reviewText?: string,
+  phone?: string
+): { users: UserProfile[]; ok: boolean; booking?: BookingRecord; user?: UserProfile } {
+  const cleanPhone = phone?.trim();
+  const user = cleanPhone
+    ? users.find((u) => u.phone === cleanPhone)
+    : users.find((u) => u.bookings.some((b) => b.bookingId === bookingId));
+
+  if (!user) return { users, ok: false };
+  const booking = user.bookings.find((b) => b.bookingId === bookingId);
+  if (!booking) return { users, ok: false };
+
+  const boundedRating = Math.max(1, Math.min(5, Math.round(rating)));
+  booking.rating = boundedRating;
+  booking.review = reviewText ? reviewText.trim().slice(0, 1000) : undefined;
+  booking.reviewedAt = new Date().toISOString();
+
+  return { users, ok: true, booking, user };
 }
 
 /** Replace (or insert) a profile with the server's authoritative copy. */
@@ -474,3 +570,92 @@ export function isAdminSession(): boolean {
 export function setAdminSession(active: boolean): void {
   if (!active) clearAdminToken();
 }
+
+// ============ DEVOTEE SESSION MANAGEMENT ============
+const DEVOTEE_PHONE_KEY = "ttp_devotee_phone";
+const DEVOTEE_TOKEN_KEY = "ttp_devotee_token";
+
+export function getDevoteePhone(): string | null {
+  if (typeof window === "undefined") return null;
+  // 1. SessionStorage
+  let phone = window.sessionStorage.getItem(DEVOTEE_PHONE_KEY);
+  if (phone) return phone;
+  // 2. LocalStorage
+  phone = window.localStorage.getItem(DEVOTEE_PHONE_KEY);
+  if (phone) {
+    window.sessionStorage.setItem(DEVOTEE_PHONE_KEY, phone);
+    return phone;
+  }
+  // 3. Cookie
+  phone = getCookie("devotee_phone");
+  if (phone) {
+    window.sessionStorage.setItem(DEVOTEE_PHONE_KEY, phone);
+    window.localStorage.setItem(DEVOTEE_PHONE_KEY, phone);
+    return phone;
+  }
+  return null;
+}
+
+export function getDevoteeToken(): string | null {
+  if (typeof window === "undefined") return null;
+  let token = window.sessionStorage.getItem(DEVOTEE_TOKEN_KEY);
+  if (token) return token;
+  token = window.localStorage.getItem(DEVOTEE_TOKEN_KEY);
+  if (token) {
+    window.sessionStorage.setItem(DEVOTEE_TOKEN_KEY, token);
+    return token;
+  }
+  token = getCookie("devotee_session");
+  if (token) {
+    window.sessionStorage.setItem(DEVOTEE_TOKEN_KEY, token);
+    window.localStorage.setItem(DEVOTEE_TOKEN_KEY, token);
+    return token;
+  }
+  return null;
+}
+
+export function setDevoteeSession(phone: string, token?: string): void {
+  if (typeof window === "undefined") return;
+  const cleanPhone = phone.trim();
+  window.sessionStorage.setItem(DEVOTEE_PHONE_KEY, cleanPhone);
+  window.localStorage.setItem(DEVOTEE_PHONE_KEY, cleanPhone);
+  setCookie("devotee_phone", cleanPhone, 604800); // 7 days
+
+  if (token) {
+    window.sessionStorage.setItem(DEVOTEE_TOKEN_KEY, token);
+    window.localStorage.setItem(DEVOTEE_TOKEN_KEY, token);
+    setCookie("devotee_session", token, 604800);
+  }
+}
+
+export function clearDevoteeSession(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(DEVOTEE_PHONE_KEY);
+  window.localStorage.removeItem(DEVOTEE_PHONE_KEY);
+  window.sessionStorage.removeItem(DEVOTEE_TOKEN_KEY);
+  window.localStorage.removeItem(DEVOTEE_TOKEN_KEY);
+  deleteCookie("devotee_phone");
+  deleteCookie("devotee_session");
+}
+
+export function isDevoteeSession(): boolean {
+  return Boolean(getDevoteePhone() || getDevoteeToken());
+}
+
+/** Save or update a devotee's review in client localStorage */
+export function saveBookingReview(
+  bookingId: string,
+  rating: number,
+  reviewText?: string,
+  phone?: string
+): BookingRecord | null {
+  if (typeof window === "undefined") return null;
+  const current = getUsers();
+  const { users, ok, booking } = reviewIn(current, bookingId, rating, reviewText, phone);
+  if (ok && booking) {
+    saveUsers(users);
+    return booking;
+  }
+  return null;
+}
+

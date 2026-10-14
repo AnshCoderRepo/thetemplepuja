@@ -461,7 +461,8 @@ export default function ChatbotManager({
                 <TextInput
                   value={settings.businessName || ""}
                   onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
-                  placeholder="The Temple Puja"
+                  placeholder="templepujasewa"
+
                 />
               </Field>
 
@@ -505,7 +506,8 @@ export default function ChatbotManager({
                 rows={9}
                 value={settings.systemInstructions || ""}
                 onChange={(e) => setSettings({ ...settings, systemInstructions: e.target.value })}
-                placeholder="You are Pandit AI, a spiritual guide for The Temple Puja..."
+                placeholder="You are Pandit AI, a spiritual guide for templepujasewa..."
+
                 className="font-mono text-xs leading-relaxed"
               />
             </Field>

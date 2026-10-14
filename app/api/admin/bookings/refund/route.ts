@@ -16,26 +16,13 @@ export async function POST(req: NextRequest) {
       { status: 401 }
     );
   }
-  const body = (await req.json().catch(() => ({}))) as {
-    userId?: unknown;
-    bookingId?: unknown;
-  };
-  if (typeof body.userId !== "string" || typeof body.bookingId !== "string") {
-    return NextResponse.json(
-      { error: "Missing user id or booking id." },
-      { status: 400 }
-    );
-  }
-  const res = await refundUserBooking(body.userId, body.bookingId);
-  if (!res.ok) {
-    return NextResponse.json(
-      { error: "This booking can no longer be refunded." },
-      { status: 400 }
-    );
-  }
 
-  broadcastRealtime({ type: "devotee_updated", target: body.userId });
-  broadcastRealtime({ type: "catalog_updated", section: "events" });
-
-  return NextResponse.json({ ok: true, user: res.user });
+  return NextResponse.json(
+    {
+      error:
+        "Direct immediate refunds have been disabled. All refunds now require an approval workflow. Please submit a refund request for review from the Order Details modal.",
+      code: "APPROVAL_REQUIRED",
+    },
+    { status: 403 }
+  );
 }

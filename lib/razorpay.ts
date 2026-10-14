@@ -239,3 +239,65 @@ export function verifyPaymentSignature(input: {
     .digest("hex");
   return expected === input.signature;
 }
+
+export interface RazorpayRefundResponse {
+  id: string;
+  entity: "refund";
+  amount: number; // in paise
+  currency: string;
+  payment_id: string;
+  status: "processed" | "pending" | "failed";
+  speed_processed?: string;
+  speed_requested?: string;
+  receipt?: string;
+  created_at: number;
+}
+
+/**
+ * Initiate an authoritative refund for a captured Razorpay payment.
+ * POST https://api.razorpay.com/v1/payments/{payment_id}/refund
+ */
+export async function createRazorpayRefund(input: {
+  paymentId: string;
+  amount?: number; // In Rupees (optional: if omitted, full refund is initiated)
+  notes?: Record<string, string>;
+  receipt?: string;
+}): Promise<RazorpayRefundResponse> {
+  const c = razorpayConfig();
+  if (!c.keyId || !c.keySecret) {
+    throw new Error("Razorpay is not configured with keyId and keySecret");
+  }
+
+  const payload: Record<string, unknown> = {
+    notes: input.notes ?? {},
+  };
+  if (typeof input.amount === "number" && input.amount > 0) {
+    payload.amount = Math.round(input.amount * 100); // paise
+  }
+  if (input.receipt) {
+    payload.receipt = input.receipt;
+  }
+
+  const res = await fetch(
+    `${RAZORPAY_API}/payments/${encodeURIComponent(input.paymentId)}/refund`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${c.keyId}:${c.keySecret}`).toString("base64"),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(CREATE_TIMEOUT_MS),
+    }
+  );
+
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as {
+      error?: { description?: string; code?: string };
+    } | null;
+    const msg = errorBody?.error?.description || `Razorpay refund API failed (${res.status})`;
+    throw new Error(msg);
+  }
+
+  return (await res.json()) as RazorpayRefundResponse;
+}

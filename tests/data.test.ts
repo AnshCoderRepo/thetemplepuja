@@ -24,7 +24,8 @@ function booking(
     poojaTitle: "Hanuman Pooja",
     date: "Thu, 20 Aug",
     time: "7:00 PM IST",
-    panditName: "Assigned by The Temple Puja",
+    panditName: "Assigned by templepujasewa",
+
     amount: 501,
     discount: 0,
     couponCode: null,

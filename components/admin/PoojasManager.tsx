@@ -1462,14 +1462,23 @@ export default function PoojasManager({
 
                         {/* Image Preview if available */}
                         {draft.imageUrl ? (
-                          <div className="relative rounded-2xl overflow-hidden border border-saffron-200 bg-black/5 aspect-[16/7] max-h-48 group">
+                          <div className="relative rounded-2xl overflow-hidden border border-saffron-200 bg-slate-950 aspect-[16/7] max-h-48 group flex items-center justify-center">
+                            {/* Ambient backdrop */}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={draft.imageUrl}
+                              alt=""
+                              aria-hidden="true"
+                              className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+                            />
+                            {/* Uncropped unzoomed preview */}
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={draft.imageUrl}
                               alt="Banner Preview"
-                              className="h-full w-full object-cover"
+                              className="relative z-0 h-full w-full object-contain"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end justify-between p-3 text-white">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end justify-between p-3 text-white pointer-events-none">
                               <span className="text-xs font-bold bg-black/50 backdrop-blur px-2.5 py-1 rounded-lg border border-white/20">
                                 🖼️ Active Banner Preview
                               </span>

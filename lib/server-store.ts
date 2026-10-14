@@ -34,6 +34,7 @@ import {
   refundIn,
   remindIn,
   rescheduleIn,
+  reviewIn,
   upsertInto,
   type BookingInput,
   type BookingRecord,
@@ -107,7 +108,7 @@ let mongoDownUntil = 0;
 const MONGO_RETRY_MS = 30_000;
 
 /** Runs an operation against the chain, degrading to the next tier on failure. */
-async function withFallback<T>(
+export async function withFallback<T>(
   fn: (s: PersistenceStore) => Promise<T>
 ): Promise<T> {
   let lastError: unknown;
@@ -312,12 +313,29 @@ export async function adminCredsAreDefault(): Promise<boolean> {
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export async function createSessionToken(): Promise<string> {
+const sessionEmailMap = new Map<string, string>();
+
+export async function createSessionToken(adminEmail?: string): Promise<string> {
   const token = "tok_" + randomBytes(24).toString("hex");
   const sessions = await withFallback((s) => s.getSessions());
   sessions[token] = Date.now() + SESSION_TTL_MS;
   await withFallback((s) => s.saveSessions(sessions));
+  if (adminEmail) {
+    sessionEmailMap.set(token, adminEmail.trim().toLowerCase());
+  }
   return token;
+}
+
+export async function getAdminEmailFromToken(
+  token: string | null | undefined
+): Promise<string | null> {
+  if (!token) return null;
+  const valid = await isValidSessionToken(token);
+  if (!valid) return null;
+  const cached = sessionEmailMap.get(token);
+  if (cached) return cached;
+  const creds = await getAdminCreds();
+  return creds.email || getDefaultAdminEmail();
 }
 
 export async function isValidSessionToken(
@@ -338,6 +356,7 @@ export async function isValidSessionToken(
 export async function invalidateSessionToken(token: string): Promise<void> {
   const sessions = await withFallback((s) => s.getSessions());
   delete sessions[token];
+  sessionEmailMap.delete(token);
   await withFallback((s) => s.saveSessions(sessions));
 }
 
@@ -398,6 +417,7 @@ export async function updateUserProfile(
     email?: string;
     gotra?: string;
     city?: string;
+    address?: string;
     password?: string;
   }
 ): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
@@ -416,6 +436,9 @@ export async function updateUserProfile(
   }
   if (updates.city !== undefined) {
     user.city = updates.city.trim();
+  }
+  if (updates.address !== undefined) {
+    user.address = updates.address.trim();
   }
   if (updates.email !== undefined) {
     user.email = updates.email.trim();
@@ -452,6 +475,11 @@ export async function findBookingById(
     if (booking) return { user, booking };
   }
   return undefined;
+}
+
+/** Retrieve all devotee profiles including historical bookings. */
+export async function getAllDevotees(): Promise<UserProfile[]> {
+  return withFallback((s) => s.getUsers());
 }
 
 /** Create/refresh a devotee profile and append their booking. Reads and writes
@@ -527,6 +555,37 @@ export async function refundUserBooking(
   if (!ok) return { ok: false };
   await withFallback((s) => s.saveUser(users[0]));
   return { ok: true, user: users[0] };
+}
+
+/** Record or update a devotee's rating & review on a booking (server-side). */
+export async function saveBookingReview(
+  bookingId: string,
+  rating: number,
+  reviewText?: string,
+  phone?: string
+): Promise<{ ok: boolean; booking?: BookingRecord; user?: UserProfile }> {
+  let targetUser: UserProfile | undefined;
+  if (phone) {
+    targetUser = await withFallback((s) => s.findUserByPhone(phone));
+  }
+  if (!targetUser) {
+    const found = await findBookingById(bookingId);
+    if (found) targetUser = found.user;
+  }
+
+  if (!targetUser) return { ok: false };
+
+  const { users, ok, booking, user } = reviewIn(
+    [targetUser],
+    bookingId,
+    rating,
+    reviewText,
+    targetUser.phone
+  );
+  if (!ok || !booking) return { ok: false };
+
+  await withFallback((s) => s.saveUser(users[0]));
+  return { ok: true, booking, user };
 }
 
 // ===================== USER PASSWORD & CREDENTIALS =====================
@@ -654,4 +713,305 @@ export async function deleteCustomerMediaRecord(
   await withFallback((s) => s.saveUser(user));
   return { ok: true, user };
 }
+
+// ===================== DEVOTEE ACTIVATION & SESSIONS =====================
+
+import crypto from "crypto";
+import type { DevoteeEntitlement } from "./storage";
+import {
+  saveOrder as mongoSaveOrder,
+  findOrderByOrderId as mongoFindOrderByOrderId,
+  findOrdersByPhone as mongoFindOrdersByPhone,
+  recordWebhookEvent as mongoRecordWebhookEvent,
+  type OrderDoc,
+} from "./mongo-store";
+import { getPhoneLookupVariants } from "./phone";
+
+const inMemoryOrders = new Map<string, OrderDoc>();
+const inMemoryWebhooks = new Set<string>();
+
+export async function saveOrder(order: OrderDoc): Promise<void> {
+  inMemoryOrders.set(order.orderId, order);
+  if (process.env.TTP_STORE === "memory" || !process.env.MONGODB_URI) return;
+  try {
+    await mongoSaveOrder(order);
+  } catch {}
+}
+
+export async function findOrderByOrderId(orderId: string): Promise<OrderDoc | null> {
+  if (process.env.TTP_STORE === "memory" || !process.env.MONGODB_URI) {
+    return inMemoryOrders.get(orderId) || null;
+  }
+  try {
+    const doc = await mongoFindOrderByOrderId(orderId);
+    if (doc) return doc;
+  } catch {}
+  return inMemoryOrders.get(orderId) || null;
+}
+
+export async function findOrdersByPhone(phone: string): Promise<OrderDoc[]> {
+  const variants = getPhoneLookupVariants(phone);
+  if (process.env.TTP_STORE === "memory" || !process.env.MONGODB_URI) {
+    return Array.from(inMemoryOrders.values()).filter((o) => variants.includes(o.phone));
+  }
+  try {
+    const list = await mongoFindOrdersByPhone(phone);
+    if (list && list.length > 0) return list;
+  } catch {}
+  return Array.from(inMemoryOrders.values()).filter((o) => variants.includes(o.phone));
+}
+
+export async function recordWebhookEvent(
+  eventId: string,
+  eventType: string
+): Promise<boolean> {
+  if (!eventId) return true;
+  if (inMemoryWebhooks.has(eventId)) return false;
+  inMemoryWebhooks.add(eventId);
+
+  if (process.env.TTP_STORE === "memory" || !process.env.MONGODB_URI) {
+    return true;
+  }
+  try {
+    return await mongoRecordWebhookEvent(eventId, eventType);
+  } catch {
+    return true;
+  }
+}
+
+
+/** Check if devotee account is active. Pre-existing accounts default to active. */
+export async function isAccountActivated(phone: string): Promise<boolean> {
+  const user = await findUserByPhone(phone);
+  if (!user) return false;
+  if (typeof user.isActivated === "boolean") return user.isActivated;
+  return Boolean(user.passwordHash || user.bookings?.length);
+}
+
+/** Activate a devotee account and optionally set permanent password */
+export async function activateUserAccount(
+  phone: string,
+  newPassword?: string
+): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+  const user = await findUserByPhone(phone);
+  if (!user) {
+    return { ok: false, error: "Account not found." };
+  }
+
+  user.isActivated = true;
+  user.status = "active";
+  user.activatedAt = new Date().toISOString();
+
+  if (newPassword && newPassword.trim().length >= 6) {
+    const hash = await hashPassword(newPassword.trim());
+    user.passwordHash = hash;
+    delete user.generatedPassword;
+    if (!user.email || user.email.startsWith("pw:")) {
+      user.email = `pw:${hash}`;
+    }
+  }
+
+  await withFallback((s) => s.saveUser(user));
+  return { ok: true, user };
+}
+
+/** Append an entitlement to a devotee profile */
+export async function addDevoteeEntitlement(
+  phone: string,
+  entitlement: DevoteeEntitlement
+): Promise<void> {
+  const user = await findUserByPhone(phone);
+  if (!user) return;
+  const existing = user.entitlements || [];
+  const exists = existing.some(
+    (e) => e.id === entitlement.id || (e.orderId && e.orderId === entitlement.orderId)
+  );
+  if (!exists) {
+    user.entitlements = [entitlement, ...existing];
+    await withFallback((s) => s.saveUser(user));
+  }
+}
+
+const DEVOTEE_SESSION_SECRET =
+  process.env.SESSION_SECRET ||
+  process.env.ADMIN_PASSWORD ||
+  "thetemplepuja_devotee_secret_salt_2026";
+
+/** Issue an HMAC-signed session token for a devotee */
+export function createDevoteeSessionToken(phone: string): string {
+  const ts = Date.now();
+  const payload = `${phone.trim()}:${ts}`;
+  const sig = crypto.createHmac("sha256", DEVOTEE_SESSION_SECRET).update(payload).digest("hex");
+  return Buffer.from(`${payload}:${sig}`).toString("base64");
+}
+
+/** Verify devotee session token and return verified phone number */
+export function verifyDevoteeSessionToken(token: string): string | null {
+  try {
+    const raw = Buffer.from(token, "base64").toString("utf8");
+    const [phone, tsStr, sig] = raw.split(":");
+    if (!phone || !tsStr || !sig) return null;
+    const ts = parseInt(tsStr, 10);
+    // Session valid for 30 days
+    if (isNaN(ts) || Date.now() - ts > 30 * 24 * 60 * 60 * 1000) return null;
+    const expected = crypto.createHmac("sha256", DEVOTEE_SESSION_SECRET).update(`${phone}:${tsStr}`).digest("hex");
+    if (expected !== sig) return null;
+    return phone;
+  } catch {
+    return null;
+  }
+}
+
+// ===================== MESSAGE THE CEO =====================
+
+export interface CeoMessage {
+  id: string;
+  name: string;
+  contact: string;
+  subject?: string;
+  message: string;
+  createdAt: string;
+  status: "new" | "read" | "responded";
+}
+
+const inMemoryCeoMessages: CeoMessage[] = [];
+
+export async function saveCeoMessage(input: {
+  name: string;
+  contact: string;
+  subject?: string;
+  message: string;
+}): Promise<CeoMessage> {
+  const msg: CeoMessage = {
+    id: `CEO-${Date.now().toString(36)}-${randomBytes(3).toString("hex")}`,
+    name: input.name.trim(),
+    contact: input.contact.trim(),
+    subject: input.subject?.trim() || undefined,
+    message: input.message.trim(),
+    createdAt: new Date().toISOString(),
+    status: "new",
+  };
+
+  inMemoryCeoMessages.unshift(msg);
+
+  // If MongoDB is configured, persist to ceo_messages collection
+  if (process.env.MONGODB_URI) {
+    try {
+      const { MongoClient } = await import("mongodb");
+      const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+      await client.connect();
+      const db = client.db(process.env.MONGODB_DB || "templepuja");
+      await db.collection("ceo_messages").insertOne({ ...msg });
+      await client.close();
+    } catch (e) {
+      console.warn("[server-store] Mongo saveCeoMessage fallback used:", e);
+    }
+  }
+
+  // Also persist to local .data/ceo_messages.json
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const dir = process.env.TTP_DATA_DIR || path.join(process.cwd(), ".data");
+    const filePath = path.join(dir, "ceo_messages.json");
+    fs.mkdirSync(dir, { recursive: true });
+    let existing: CeoMessage[] = [];
+    if (fs.existsSync(filePath)) {
+      try {
+        existing = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      } catch {
+        existing = [];
+      }
+    }
+    existing.unshift(msg);
+    fs.writeFileSync(filePath, JSON.stringify(existing.slice(0, 500), null, 2), "utf8");
+  } catch {
+    // ignore filesystem errors
+  }
+
+  return msg;
+}
+
+export async function listCeoMessages(): Promise<CeoMessage[]> {
+  if (process.env.MONGODB_URI) {
+    try {
+      const { MongoClient } = await import("mongodb");
+      const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+      await client.connect();
+      const db = client.db(process.env.MONGODB_DB || "templepuja");
+      const docs = await db.collection("ceo_messages").find({}).sort({ createdAt: -1 }).limit(200).toArray();
+      await client.close();
+      if (docs && docs.length > 0) {
+        return docs.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          contact: d.contact,
+          subject: d.subject,
+          message: d.message,
+          createdAt: d.createdAt,
+          status: d.status || "new",
+        }));
+      }
+    } catch (e) {
+      console.warn("[server-store] Mongo listCeoMessages fallback used:", e);
+    }
+  }
+
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const dir = process.env.TTP_DATA_DIR || path.join(process.cwd(), ".data");
+    const filePath = path.join(dir, "ceo_messages.json");
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    }
+  } catch {
+    // fallback
+  }
+  return inMemoryCeoMessages;
+}
+
+export async function updateCeoMessageStatus(
+  id: string,
+  status: "new" | "read" | "responded"
+): Promise<boolean> {
+  const inMem = inMemoryCeoMessages.find((m) => m.id === id);
+  if (inMem) {
+    inMem.status = status;
+  }
+
+  if (process.env.MONGODB_URI) {
+    try {
+      const { MongoClient } = await import("mongodb");
+      const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+      await client.connect();
+      const db = client.db(process.env.MONGODB_DB || "templepuja");
+      await db.collection("ceo_messages").updateOne({ id }, { $set: { status } });
+      await client.close();
+    } catch (e) {
+      console.warn("[server-store] Mongo updateCeoMessageStatus fallback used:", e);
+    }
+  }
+
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const dir = process.env.TTP_DATA_DIR || path.join(process.cwd(), ".data");
+    const filePath = path.join(dir, "ceo_messages.json");
+    if (fs.existsSync(filePath)) {
+      const list: CeoMessage[] = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      const target = list.find((m) => m.id === id);
+      if (target) {
+        target.status = status;
+        fs.writeFileSync(filePath, JSON.stringify(list, null, 2), "utf8");
+        return true;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  return Boolean(inMem);
+}
+
 

@@ -1142,9 +1142,10 @@ export function getPoojaBannerImage(p: { slug?: string; title?: string; imageUrl
     s.includes("saptashati") ||
     s.includes("devi") ||
     s.includes("baglamukhi") ||
-    s.includes("kali")
+    s.includes("kali") ||
+    s.includes("jwala")
   ) {
-    return "/festivals/durga-puja.jpg";
+    return "/sample-puja.jpg";
   }
   if (
     s.includes("diwali") ||
@@ -1703,6 +1704,7 @@ export const poojas: Pooja[] = [
     category: "Festival Special",
     type: "temple",
     online: true,
+    imageUrl: "/sample-puja.jpg",
     deities: ["Maa Durga"],
     description:
       "Complete recitation of the 700 verses of Devi Mahatmya over seven days — the ultimate shield against negativity and fear.",

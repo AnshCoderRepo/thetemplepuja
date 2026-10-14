@@ -6,10 +6,11 @@ import { activePoojas, poojas } from "@/lib/data";
 import { itemListLd } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Book Pooja Online | The Temple Puja",
+  title: "Book Pooja Online | templepujasewa",
   description:
-    "Choose from 50+ poojas — Satyanarayan Katha, Rudrabhishek, Griha Pravesh, Shani Dev Pooja, Navgraha Shanti and more. Book certified pandits online with secure Razorpay payment.",
+    "Choose from 50+ poojas — Satyanarayan Katha, Rudrabhishek, Griha Pravesh, Shani Dev Pooja, Navgraha Shanti and more. Book certified pandits online with secure payment.",
 };
+
 
 import Link from "next/link";
 

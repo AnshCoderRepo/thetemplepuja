@@ -10,9 +10,10 @@ import LanguageToggle from "@/components/common/LanguageToggle/LanguageToggle";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
 
 export const navLinks = [
-  { label: "Home", href: "#home" },
-  { label: "Pujas", href: "#poojas" },
-  { label: "Contact Us", href: "#contact" },
+  { label: "Home", href: "/#home" },
+  { label: "Pujas", href: "/#poojas" },
+  { label: "Blog", href: "/blog" },
+  { label: "Contact Us", href: "/#contact" },
 ];
 
 export default function Navbar() {
@@ -20,9 +21,10 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const activeNavLinks = [
-    { label: t("nav.home"), href: "#home" },
-    { label: t("nav.bookPooja"), href: "#poojas" },
-    { label: t("nav.contact"), href: "#contact" },
+    { label: t("nav.home"), href: "/#home" },
+    { label: t("nav.bookPooja"), href: "/#poojas" },
+    { label: "Blog", href: "/blog" },
+    { label: t("nav.contact"), href: "/#contact" },
   ];
 
   return (
@@ -39,14 +41,9 @@ export default function Navbar() {
             <Image
               src="/logo.jpeg"
               alt={SITE_CONFIG.brandName}
-              width={300}
-              height={90}
-              className="h-10 w-auto sm:h-11 md:h-12 lg:h-14 max-w-[145px] sm:max-w-[175px] md:max-w-[205px] lg:max-w-[230px] rounded-lg bg-white object-contain p-1 sm:p-1.5 shadow-soft transition-transform duration-300 group-hover:scale-105 shrink-0 select-none"
-              style={{
-                height: "clamp(2.5rem, 4vw + 1.25rem, 3.75rem)",
-                maxWidth: "clamp(145px, 18vw + 80px, 230px)",
-                width: "auto",
-              }}
+              width={240}
+              height={240}
+              className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22 xl:h-24 xl:w-24 rounded-2xl bg-white object-contain p-1.5 sm:p-2 shadow-card border border-saffron-200/90 transition-transform duration-300 group-hover:scale-105 shrink-0 select-none"
               priority
             />
           </div>

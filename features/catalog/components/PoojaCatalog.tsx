@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Phone } from "lucide-react";
 import { Reveal } from "@/components/common";
+import { SITE_CONFIG } from "@/lib/config";
 import {
   activePoojas,
   getLocalizedPoojaDescription,
@@ -215,6 +216,35 @@ export default function PoojaCatalog({
                 <PoojaCard pooja={pooja} />
               </Reveal>
             ))}
+          </div>
+
+          {/* VIP Puja Direct Phone Enquiry Banner */}
+          <div className="mt-8 rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-white to-amber-50/70 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white text-xl font-bold shadow-xs">
+                👑
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-display text-sm sm:text-base font-bold text-ink">
+                    VIP & Personalized Seva
+                  </h4>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900 border border-amber-300/50">
+                    Phone Enquiry Only
+                  </span>
+                </div>
+                <p className="text-xs text-ink-soft leading-relaxed mt-0.5">
+                  Looking for individual family sankalp, private pandit recitation, or custom Vedic muhurat? Call our Acharyas directly.
+                </p>
+              </div>
+            </div>
+            <a
+              href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              <span>Call for VIP Puja ({SITE_CONFIG.contact.phoneDisplay})</span>
+            </a>
           </div>
 
           {showViewAll && !hasActiveFilters && (

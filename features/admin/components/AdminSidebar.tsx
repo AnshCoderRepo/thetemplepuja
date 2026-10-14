@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Sparkles,
   Users,
+  RotateCcw,
 } from "lucide-react";
 import type { AdminTab, NavItem } from "../types/admin.types";
 
@@ -25,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "chatbot", label: "AI Chatbot Training", icon: Bot, group: "Management" },
   { id: "bookings", label: "Successful Bookings", icon: ShieldCheck, group: "Orders & Sevas" },
   { id: "orders", label: "All Orders & Payments", icon: ShoppingBag, group: "Orders & Sevas" },
+  { id: "refunds", label: "Refund Approvals", icon: RotateCcw, group: "Orders & Sevas" },
   { id: "devotees", label: "Devotee Profiles", icon: Users, group: "Community" },
   { id: "coupons", label: "Coupons", icon: Gift, group: "Settings" },
   { id: "account", label: "Admin Account & Settings", icon: KeyRound, group: "Settings" },
@@ -62,8 +64,9 @@ export default function AdminSidebar({
           </span>
           <div>
             <span className="text-sm font-extrabold text-ink tracking-tight block">
-              The Temple Puja
+              templepujasewa
             </span>
+
             <span className="text-[10px] font-bold text-saffron-600 tracking-wider uppercase">
               Admin Portal
             </span>

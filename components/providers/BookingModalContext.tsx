@@ -2,10 +2,15 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
+import type { IncompleteBooking } from "@/lib/incomplete-booking";
+
+export type ResumeBookingData = Partial<IncompleteBooking>;
+
 interface BookingModalContextType {
   isOpen: boolean;
   selectedPoojaSlug: string | null;
-  openBooking: (poojaSlug?: string) => void;
+  resumeData: ResumeBookingData | null;
+  openBooking: (poojaSlug?: string, resumeData?: ResumeBookingData | null) => void;
   closeBooking: () => void;
 }
 
@@ -14,15 +19,18 @@ const BookingModalContext = createContext<BookingModalContextType | undefined>(u
 export function BookingModalProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPoojaSlug, setSelectedPoojaSlug] = useState<string | null>(null);
+  const [resumeData, setResumeData] = useState<ResumeBookingData | null>(null);
 
-  const openBooking = useCallback((poojaSlug?: string) => {
-    setSelectedPoojaSlug(poojaSlug || null);
+  const openBooking = useCallback((poojaSlug?: string, draftData?: ResumeBookingData | null) => {
+    setSelectedPoojaSlug(poojaSlug || draftData?.poojaSlug || null);
+    setResumeData(draftData || null);
     setIsOpen(true);
   }, []);
 
   const closeBooking = useCallback(() => {
     setIsOpen(false);
     setSelectedPoojaSlug(null);
+    setResumeData(null);
   }, []);
 
   // Sync body overflow when modal is opened/closed
@@ -52,6 +60,7 @@ export function BookingModalProvider({ children }: { children: React.ReactNode }
       value={{
         isOpen,
         selectedPoojaSlug,
+        resumeData,
         openBooking,
         closeBooking,
       }}

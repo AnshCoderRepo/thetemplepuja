@@ -21,7 +21,8 @@ function booking(over: Partial<BookingRecord> = {}): BookingRecord {
     poojaTitle: "Hanuman Pooja",
     date: "Fri, 14 Aug",
     time: "7:00 PM IST",
-    panditName: "Assigned by The Temple Puja",
+    panditName: "Assigned by templepujasewa",
+
     amount: 501,
     discount: 0,
     couponCode: null,

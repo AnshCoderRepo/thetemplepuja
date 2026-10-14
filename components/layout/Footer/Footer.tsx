@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useI18n } from "@/components/providers";
 import { SITE_CONFIG, getWhatsAppChannelUrl } from "@/lib/config";
 import { useCatalog } from "@/features/catalog";
@@ -25,11 +26,13 @@ export default function Footer() {
   const channelUrl = platformSettings?.whatsappChannelUrl || getWhatsAppChannelUrl();
 
   const navLinks = [
-    { label: t("nav.home"), href: "#home" },
-    { label: t("nav.bookPooja"), href: "#poojas" },
-    { label: t("nav.whyUs"), href: "#why-us" },
-    { label: t("nav.reviews"), href: "#testimonials" },
-    { label: t("nav.faq"), href: "#faq" },
+    { label: t("nav.home"), href: "/#home" },
+    { label: t("nav.bookPooja"), href: "/#poojas" },
+    { label: "Spiritual Blog", href: "/blog" },
+    { label: "Message CEO", href: "/#message-ceo" },
+    { label: t("nav.whyUs"), href: "/#why-us" },
+    { label: t("nav.reviews"), href: "/#testimonials" },
+    { label: t("nav.faq"), href: "/#faq" },
   ];
   return (
     <footer id="contact" className="relative overflow-hidden bg-ink pt-16 text-cream">
@@ -46,12 +49,18 @@ export default function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-saffron-600 text-xl font-bold text-white shadow-soft">
-                🪔
+            <Link href="/" className="flex items-center gap-3 group">
+              <span className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-white p-1.5 shadow-soft shrink-0 border border-saffron-300/40">
+                <Image
+                  src="/logo.jpeg"
+                  alt={SITE_CONFIG.brandName}
+                  width={80}
+                  height={80}
+                  className="h-full w-full object-contain"
+                />
               </span>
               <div className="flex flex-col">
-                <span className="font-display text-lg font-bold tracking-tight text-white">
+                <span className="font-display text-lg sm:text-xl font-bold tracking-tight text-white group-hover:text-saffron-300 transition-colors">
                   {SITE_CONFIG.brandName}
                 </span>
                 <span className="text-[10px] font-semibold text-saffron-400 tracking-wider uppercase">
