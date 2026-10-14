@@ -1029,5 +1029,62 @@ export async function executeRefundRemote(
   }
 }
 
+export async function exportDevoteesExcelRemote(
+  token: string,
+  filters: {
+    puja?: string;
+    status?: string;
+    search?: string;
+    title?: string;
+  } = {}
+): Promise<{ ok: boolean; error?: string; distinctCount?: number }> {
+  try {
+    const params = new URLSearchParams();
+    if (filters.puja) params.set("puja", filters.puja);
+    if (filters.status) params.set("status", filters.status);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.title) params.set("title", filters.title);
+
+    const res = await fetch(`/api/admin/devotees/export?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return { ok: false, error: errJson.error || "Failed to export devotees list" };
+    }
+
+    const countHeader = res.headers.get("X-Distinct-Count");
+    const distinctCount = countHeader ? parseInt(countHeader, 10) : undefined;
+
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition");
+    let filename = `devotees-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    if (disposition) {
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      if (match && match[1]) filename = match[1];
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    return { ok: true, distinctCount };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Network error generating Excel export",
+    };
+  }
+}
+
 
 

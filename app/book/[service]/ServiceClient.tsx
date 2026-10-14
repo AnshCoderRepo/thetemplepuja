@@ -17,7 +17,7 @@ import {
   Camera,
 } from "lucide-react";
 import { useBookingModal, useI18n } from "@/components/providers";
-import { ImagePreviewModal } from "@/components/common";
+import { ImagePreviewModal, PoojaImage } from "@/components/common";
 import { PoojaCatalog, useCatalog } from "@/features/catalog";
 import { SITE_CONFIG } from "@/lib/config";
 import {
@@ -123,22 +123,14 @@ function ServiceInner({ service }: { service: string }) {
           <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
             {/* Puja Banner Card */}
             <div className="relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/3] w-full overflow-hidden rounded-3xl border border-saffron-200/90 shadow-card bg-slate-950 group">
-              {/* Sacred Banner Image Ambient Backdrop to fill letterbox gracefully */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={bannerImage}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-              />
-
-              {/* Sacred Banner Image - object-contain preserves 100% full image without cropping */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <PoojaImage
                 src={bannerImage}
                 alt={locTitle}
-                onClick={() => setPreviewOpen(true)}
-                className="relative z-0 h-full w-full object-contain cursor-pointer transition-transform duration-500 group-hover:scale-[1.02]"
+                fallbackSize="lg"
+                onClick={() => {
+                  if (bannerImage) setPreviewOpen(true);
+                }}
+                imgClassName="cursor-pointer transition-transform duration-500 group-hover:scale-[1.02]"
               />
 
               {/* Radiant Vignette Overlay */}

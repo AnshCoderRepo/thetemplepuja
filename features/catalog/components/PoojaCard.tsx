@@ -15,7 +15,7 @@ import {
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
-import { ImagePreviewModal } from "@/components/common";
+import { ImagePreviewModal, PoojaImage } from "@/components/common";
 
 export interface PoojaCardProps {
   pooja: Pooja;
@@ -46,33 +46,14 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
               setPreviewOpen(true);
             }
           }}
-          className={`relative flex h-44 sm:h-48 items-center justify-center bg-slate-950 p-3 text-white overflow-hidden ${
-            !bannerImage ? `bg-gradient-to-br ${p.gradient}` : ""
-          }`}
+          className="relative flex h-44 sm:h-48 items-center justify-center bg-slate-950 text-white overflow-hidden"
         >
-          {bannerImage ? (
-            <>
-              {/* Ambient blurred backdrop to softly fill letterbox without clipping */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={bannerImage}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-              />
-              {/* Fully visible, uncropped foreground image preserving original aspect ratio */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={bannerImage}
-                alt={getLocalizedPoojaTitle(p, locale)}
-                className="relative z-0 h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-              />
-            </>
-          ) : (
-            <span className="text-5xl transition-transform duration-300 group-hover:scale-110">
-              {p.emoji}
-            </span>
-          )}
+          <PoojaImage
+            src={bannerImage}
+            alt={getLocalizedPoojaTitle(p, locale)}
+            fallbackSize="md"
+            imgClassName="transition-transform duration-300 group-hover:scale-[1.02]"
+          />
 
           {/* Date badge on top-left of banner */}
           <span
@@ -162,8 +143,8 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-saffron-100/60 pt-4 text-xs">
-          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md text-[11px]">
+        <div className="mt-auto pt-4 flex items-center justify-between border-t border-saffron-100/60 text-xs">
+          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md text-[11px] shrink-0">
             🕉️ Authentic Vedic Seva
           </span>
           <button
@@ -172,9 +153,16 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
               e.stopPropagation();
               handleNavigateToPooja();
             }}
-            className="inline-flex items-center gap-1 font-bold text-saffron-600 group-hover:text-saffron-700 hover:underline"
+            aria-label={`${t("book.bookNow")}: ${getLocalizedPoojaTitle(p, locale)}`}
+            className="group/btn inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-600 hover:to-saffron-700 active:from-saffron-700 active:to-saffron-800 text-white font-bold text-xs px-3.5 sm:px-4 py-2 shadow-xs hover:shadow-md hover:shadow-saffron-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2 shrink-0"
           >
-            {t("book.bookNow")} →
+            <span>{t("book.bookNow")}</span>
+            <span
+              aria-hidden="true"
+              className="transition-transform duration-200 group-hover/btn:translate-x-0.5"
+            >
+              →
+            </span>
           </button>
         </div>
       </div>

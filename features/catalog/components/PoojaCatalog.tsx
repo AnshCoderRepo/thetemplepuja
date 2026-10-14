@@ -10,6 +10,7 @@ import {
   getLocalizedPoojaDescription,
   getLocalizedPoojaTitle,
 } from "@/lib/data";
+import { sortPoojasChronologically } from "@/lib/puja-sort";
 import { useI18n } from "@/components/providers";
 import { useCatalog } from "../hooks/useCatalog";
 import PoojaCard from "./PoojaCard";
@@ -128,13 +129,17 @@ export default function PoojaCatalog({
 
     if (sortBy === "price-asc") {
       result.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+      return result;
     } else if (sortBy === "price-desc") {
       result.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+      return result;
     } else if (sortBy === "name-asc") {
       result.sort((a, b) => a.title.localeCompare(b.title));
+      return result;
     }
 
-    return result;
+    // Default & "recommended": Sort chronologically by upcoming date and time (today first, tomorrow next, later dates in ascending order, same-day sorted by start time)
+    return sortPoojasChronologically(result);
   }, [list, search, selectedCategory, selectedType, selectedDeity, sortBy, locale]);
 
   // When filters are active, do not cap by homepage limit so devotee sees complete results

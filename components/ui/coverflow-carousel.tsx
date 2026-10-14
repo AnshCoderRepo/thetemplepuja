@@ -4,6 +4,7 @@ import * as React from "react";
 import { CalendarDays } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import PoojaImage from "@/components/common/PoojaImage";
 
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
@@ -335,28 +336,12 @@ export function CoverflowCarousel({
                     </span>
                   </div>
                 ) : (
-                  <div className="relative h-full w-full overflow-hidden bg-slate-950 flex items-center justify-center">
-                    {/* Ambient blurred backdrop to softly fill letterbox without clipping banner */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={slide.src}
-                      alt=""
-                      aria-hidden="true"
-                      draggable={false}
-                      className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-                    />
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={slide.src}
-                      alt={slide.alt}
-                      draggable={false}
-                      onError={(event) => {
-                        // Fall back to the muted tile if the image ever fails.
-                        event.currentTarget.style.display = "none";
-                      }}
-                      className="relative z-0 h-full w-full select-none object-contain transition-transform duration-300"
-                    />
-                  </div>
+                  <PoojaImage
+                    src={slide.src}
+                    alt={slide.alt}
+                    fallbackSize="md"
+                    imgClassName="select-none transition-transform duration-300"
+                  />
                 )}
 
                 {slide.live && (

@@ -79,6 +79,19 @@ export default function OrdersManager({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh?.();
+    } catch {
+      // ignore
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   // Refund Request State
   const [refundModalOrder, setRefundModalOrder] = useState<FlatOrder | null>(null);
@@ -361,15 +374,28 @@ export default function OrdersManager({
             Audit all incoming transactions across all fulfillment states
           </p>
         </div>
-        <button
-          type="button"
-          onClick={exportCSV}
-          disabled={filtered.length === 0}
-          className="inline-flex items-center gap-2 rounded-xl border border-saffron-200 bg-saffron-50 px-4 py-2 text-xs font-bold text-saffron-800 shadow-sm hover:bg-saffron-100 disabled:opacity-50"
-        >
-          <Download className="h-4 w-4 text-saffron-600" />
-          Export Orders ({filtered.length})
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs font-bold text-ink-soft hover:bg-saffron-50 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+            title="Reload latest order data without reloading the page"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={exportCSV}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl border border-saffron-200 bg-saffron-50 px-4 py-2 text-xs font-bold text-saffron-800 shadow-sm hover:bg-saffron-100 disabled:opacity-50 cursor-pointer"
+          >
+            <Download className="h-4 w-4 text-saffron-600" />
+            Export Orders ({filtered.length})
+          </button>
+        </div>
       </div>
 
       {/* Status Filter Tabs */}

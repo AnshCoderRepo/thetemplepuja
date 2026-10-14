@@ -242,7 +242,7 @@ export default function PoojaFilters({
                 onChange={(e) => onSortChange(e.target.value)}
                 className="appearance-none rounded-2xl border border-saffron-200 bg-white px-3.5 py-2 pr-8 text-xs font-bold text-ink transition-all shadow-2xs cursor-pointer hover:border-saffron-400 focus:outline-none focus:ring-2 focus:ring-saffron-200"
               >
-                <option value="recommended">✨ Recommended</option>
+                <option value="recommended">📅 Upcoming Dates (Today First)</option>
                 <option value="price-asc">💰 Price: Low to High</option>
                 <option value="price-desc">💎 Price: High to Low</option>
                 <option value="name-asc">🔤 Name: A to Z</option>

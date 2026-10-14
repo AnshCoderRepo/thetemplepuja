@@ -11,6 +11,7 @@ import {
 import { formatINR } from "@/lib/format";
 import { getDevoteePhone, getUsers } from "@/lib/storage";
 import { getPoojaBannerImage } from "@/lib/data";
+import PoojaImage from "./PoojaImage";
 
 interface ContinueBookingSectionProps {
   phone?: string | null;
@@ -143,39 +144,12 @@ export default function ContinueBookingSection({
 
                 {/* Top Image Thumbnail Area (Aspect ratio preserved, object-contain) */}
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-slate-950 flex items-center justify-center">
-                  {(() => {
-                    const fallbackImg = getPoojaBannerImage({ slug: draft.poojaSlug });
-                    const displayImg = draft.poojaImageUrl || fallbackImg;
-                    return (
-                      <>
-                        {/* Ambient blurred backdrop */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={displayImg}
-                          alt=""
-                          aria-hidden="true"
-                          className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-                          onError={(e) => {
-                            if (e.currentTarget.src !== fallbackImg) {
-                              e.currentTarget.src = fallbackImg;
-                            }
-                          }}
-                        />
-                        {/* Uncropped foreground image */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={displayImg}
-                          alt={draft.poojaTitle}
-                          className="relative z-0 h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-                          onError={(e) => {
-                            if (e.currentTarget.src !== fallbackImg) {
-                              e.currentTarget.src = fallbackImg;
-                            }
-                          }}
-                        />
-                      </>
-                    );
-                  })()}
+                  <PoojaImage
+                    src={draft.poojaImageUrl || getPoojaBannerImage({ slug: draft.poojaSlug, title: draft.poojaTitle })}
+                    alt={draft.poojaTitle}
+                    fallbackSize="md"
+                    imgClassName="transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
 
                   {/* Top-Left Puja Badge */}
                   <div className="absolute top-2.5 left-2.5 z-10">
