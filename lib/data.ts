@@ -26,13 +26,19 @@ export const navLinks = [
 // already passed, and returns them closest-first.
 
 const eventDateFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Kolkata",
   weekday: "short",
   month: "short",
   day: "numeric",
 });
 
 function toISODate(d: Date): string {
-  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
 function addDays(base: Date, days: number): Date {
@@ -1171,7 +1177,10 @@ export function getPoojaBannerImage(p: { slug?: string; title?: string; imageUrl
   ) {
     return "/festivals/shivratri.jpg";
   }
-  return "/festivals/ganesha-altar.jpg";
+  if (s.includes("ganesha") || s.includes("ganesh")) {
+    return "/festivals/ganesha-altar.jpg";
+  }
+  return "";
 }
 
 /** Get localized benefits for a pooja based on active locale */

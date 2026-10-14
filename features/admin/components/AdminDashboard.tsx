@@ -110,7 +110,11 @@ export default function AdminDashboard({
           )}
 
           {tab === "poojas" && (
-            <PoojasManager token={token || ""} onAuthError={onAuthError} />
+            <PoojasManager
+              token={token || ""}
+              onAuthError={onAuthError}
+              onRefresh={onRefresh}
+            />
           )}
 
           {tab === "festivals" && (
@@ -118,7 +122,11 @@ export default function AdminDashboard({
           )}
 
           {tab === "temples" && (
-            <TemplesManager token={token || ""} onAuthError={onAuthError} />
+            <TemplesManager
+              token={token || ""}
+              onAuthError={onAuthError}
+              onRefresh={onRefresh}
+            />
           )}
 
           {tab === "bookings" && (
@@ -152,6 +160,8 @@ export default function AdminDashboard({
           {tab === "devotees" && (
             <AdminDevoteesTab
               users={users}
+              token={token || ""}
+              onRefresh={onRefresh}
               onSelectDevotee={(u, tab = "overview") => {
                 setSelectedDevotee(u);
                 setSelectedDevoteeTab(tab);

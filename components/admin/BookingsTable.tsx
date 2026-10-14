@@ -14,6 +14,7 @@ import {
   Phone,
   Play,
   Printer,
+  RefreshCw,
   Search,
   ShieldCheck,
   Trash2,
@@ -64,6 +65,19 @@ export default function BookingsTable({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh?.();
+    } catch {
+      // ignore
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   // Video Management State
   const [videoModalBooking, setVideoModalBooking] = useState<FlatBooking | null>(null);
@@ -236,6 +250,17 @@ export default function BookingsTable({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs font-bold text-ink-soft hover:bg-saffron-50 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+            title="Reload latest booking data without reloading the page"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+          </button>
+
           <button
             type="button"
             onClick={exportCSV}

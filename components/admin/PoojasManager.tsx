@@ -10,6 +10,7 @@ import {
   Check,
   ChevronDown,
   Clock,
+  Copy,
   Eye,
   EyeOff,
   Filter,
@@ -40,7 +41,9 @@ import {
 } from "lucide-react";
 import { fetchCatalog, saveCatalogSection } from "@/lib/api";
 import { isPoojaActive, type Pooja, type PoojaPackage, type Temple } from "@/lib/data";
+import { duplicatePooja } from "@/lib/pooja-duplicate";
 import { formatINR } from "@/lib/format";
+import { PoojaImage, PoojaImageFallback } from "@/components/common";
 import ConfirmDialog from "./ConfirmDialog";
 import {
   DateInput,
@@ -70,16 +73,7 @@ const CATEGORIES = [
   "Family & Home",
 ];
 
-const GRADIENTS = [
-  { label: "Saffron Gold", value: "from-saffron-500 to-saffron-700" },
-  { label: "Amber Orange", value: "from-amber-400 to-orange-600" },
-  { label: "Sacred Blue", value: "from-indigo-500 to-purple-600" },
-  { label: "Vedic Green", value: "from-emerald-500 to-teal-600" },
-  { label: "Shani Dark", value: "from-slate-600 to-gray-900" },
-  { label: "Devi Crimson", value: "from-red-500 to-rose-700" },
-  { label: "Royal Gold", value: "from-yellow-400 to-amber-600" },
-  { label: "Mahadev Sky", value: "from-sky-500 to-blue-700" },
-];
+
 
 const AVAILABLE_DEITIES = [
   "Lord Shiva",
@@ -216,9 +210,11 @@ function getUniqueSlug(
 export default function PoojasManager({
   token,
   onAuthError,
+  onRefresh,
 }: {
   token: string;
   onAuthError: () => void;
+  onRefresh?: () => void;
 }) {
   const [list, setList] = useState<Pooja[]>([]);
   const [temples, setTemples] = useState<Temple[]>([]);
@@ -233,6 +229,9 @@ export default function PoojasManager({
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [sourcePoojaTitle, setSourcePoojaTitle] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [draft, setDraft] = useState<PoojaDraft>(emptyDraft);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
@@ -593,6 +592,8 @@ export default function PoojasManager({
 
   const startAdd = () => {
     setEditingSlug(null);
+    setIsDuplicating(false);
+    setSourcePoojaTitle("");
     setSlugManuallyEdited(false);
     setDraft(emptyDraft);
     setCurrentStep(1);
@@ -602,6 +603,8 @@ export default function PoojasManager({
 
   const startEdit = (p: Pooja) => {
     setEditingSlug(p.slug);
+    setIsDuplicating(false);
+    setSourcePoojaTitle("");
     setSlugManuallyEdited(true);
     setDraft({
       slug: p.slug,
@@ -621,10 +624,10 @@ export default function PoojasManager({
       hindiDescription: p.hindiDescription ?? "",
       teluguDescription: p.teluguDescription ?? "",
       tamilDescription: p.tamilDescription ?? "",
-      benefits: p.benefits ?? [],
-      hindiBenefits: p.hindiBenefits ?? [],
-      teluguBenefits: p.teluguBenefits ?? [],
-      tamilBenefits: p.tamilBenefits ?? [],
+      benefits: p.benefits ? [...p.benefits] : [],
+      hindiBenefits: p.hindiBenefits ? [...p.hindiBenefits] : [],
+      teluguBenefits: p.teluguBenefits ? [...p.teluguBenefits] : [],
+      tamilBenefits: p.tamilBenefits ? [...p.tamilBenefits] : [],
       emoji: p.emoji ?? "🪔",
       gradient: p.gradient ?? "from-saffron-500 to-saffron-700",
       imageUrl: p.imageUrl ?? "",
@@ -633,17 +636,87 @@ export default function PoojasManager({
       seats: p.seats ?? "20 spots open",
       capacity: p.capacity !== undefined ? String(p.capacity) : "",
       live: p.live ?? false,
-      deities: p.deities ?? ["Lord Shiva"],
-      templeSlugs: p.templeSlugs ?? [],
-      chadhavaOptions: p.chadhavaOptions ?? [],
-      packages: p.packages ?? [
-        { name: "Individual Sankalp", price: p.price, description: "1 Devotee name in Sankalp" },
-      ],
+      deities: p.deities ? [...p.deities] : ["Lord Shiva"],
+      templeSlugs: p.templeSlugs ? [...p.templeSlugs] : [],
+      chadhavaOptions: p.chadhavaOptions ? [...p.chadhavaOptions] : [],
+      packages: p.packages && p.packages.length > 0
+        ? p.packages.map((pkg) => ({ ...pkg }))
+        : [
+            { name: "Individual Sankalp", price: p.price, description: "1 Devotee name in Sankalp" },
+          ],
       active: isPoojaActive(p),
     });
     setCurrentStep(1);
     setError("");
     setIsWizardOpen(true);
+  };
+
+  const startDuplicate = (p: Pooja) => {
+    const duplicated = duplicatePooja(p, list, { activeDefault: false });
+    setEditingSlug(null); // CRITICAL: null ensures saving appends a brand-new, separate puja record
+    setIsDuplicating(true);
+    setSourcePoojaTitle(p.title);
+    setSlugManuallyEdited(true);
+
+    setDraft({
+      slug: duplicated.slug,
+      title: duplicated.title,
+      hindiTitle: duplicated.hindiTitle ?? "",
+      teluguTitle: duplicated.teluguTitle ?? "",
+      tamilTitle: duplicated.tamilTitle ?? "",
+      category: duplicated.category ?? "Rashifal Pooja",
+      type: duplicated.type ?? "temple",
+      online: duplicated.online ?? true,
+      liveStreamUrl: duplicated.liveStreamUrl ?? "",
+      price: String(duplicated.price),
+      duration: duplicated.duration ?? "1.5 hours",
+      bestMuhurat: duplicated.bestMuhurat ?? "",
+      startDate: toISODateString(duplicated.startDate) || duplicated.startDate || "2026-10-04",
+      description: duplicated.description ?? "",
+      hindiDescription: duplicated.hindiDescription ?? "",
+      teluguDescription: duplicated.teluguDescription ?? "",
+      tamilDescription: duplicated.tamilDescription ?? "",
+      benefits: duplicated.benefits ? [...duplicated.benefits] : [],
+      hindiBenefits: duplicated.hindiBenefits ? [...duplicated.hindiBenefits] : [],
+      teluguBenefits: duplicated.teluguBenefits ? [...duplicated.teluguBenefits] : [],
+      tamilBenefits: duplicated.tamilBenefits ? [...duplicated.tamilBenefits] : [],
+      emoji: duplicated.emoji ?? "🪔",
+      gradient: duplicated.gradient ?? "from-saffron-500 to-saffron-700",
+      imageUrl: duplicated.imageUrl ?? "",
+      daysFromToday: duplicated.daysFromToday !== undefined ? String(duplicated.daysFromToday) : "",
+      eventTime: duplicated.eventTime ?? "7:00 PM IST",
+      seats: duplicated.seats ?? "20 spots open",
+      capacity: duplicated.capacity !== undefined ? String(duplicated.capacity) : "",
+      live: duplicated.live ?? false,
+      deities: duplicated.deities ? [...duplicated.deities] : ["Lord Shiva"],
+      templeSlugs: duplicated.templeSlugs ? [...duplicated.templeSlugs] : [],
+      chadhavaOptions: duplicated.chadhavaOptions ? [...duplicated.chadhavaOptions] : [],
+      packages: duplicated.packages && duplicated.packages.length > 0
+        ? duplicated.packages.map((pkg) => ({ ...pkg }))
+        : [
+            { name: "Individual Sankalp", price: duplicated.price, description: "1 Devotee name in Sankalp" },
+          ],
+      active: false, // SAFE DEFAULT: Hidden / Draft by default
+    });
+
+    setCurrentStep(1);
+    setError("");
+    setIsWizardOpen(true);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const c = await fetchCatalog();
+      if (c.poojas) setList(c.poojas);
+      if (c.temples) setTemples(c.temples);
+      onRefresh?.();
+      showNotification("Puja Catalog refreshed with latest server data.");
+    } catch (err) {
+      console.error("Refresh catalog error:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const toggleStatus = async (slug: string) => {
@@ -808,6 +881,8 @@ export default function PoojasManager({
       chadhavaOptions: draft.chadhavaOptions,
       packages: draft.packages.length > 0 ? draft.packages : undefined,
       active: draft.active,
+      createdAt: isDuplicating ? new Date().toISOString() : undefined,
+      isNew: isDuplicating ? true : undefined,
     };
 
     if (draft.daysFromToday.trim() && !Number.isNaN(Number(draft.daysFromToday))) {
@@ -838,12 +913,22 @@ export default function PoojasManager({
       return;
     }
 
+    const wasDuplicating = isDuplicating;
+    const duplicatedTitle = pooja.title;
     setList(next);
     setIsWizardOpen(false);
     setDraft(emptyDraft);
     setEditingSlug(null);
+    setIsDuplicating(false);
+    setSourcePoojaTitle("");
     setSlugManuallyEdited(false);
-    showNotification(editingSlug ? "Puja updated successfully!" : "New Puja ceremony published!");
+    showNotification(
+      editingSlug
+        ? "Puja updated successfully!"
+        : wasDuplicating
+        ? `📋 Duplicated puja "${duplicatedTitle}" created as a Hidden Draft! You can review or activate it anytime.`
+        : "New Puja ceremony published!"
+    );
   };
 
   const dynamicCategories = useMemo(() => {
@@ -958,16 +1043,28 @@ export default function PoojasManager({
               </button>
               <div>
                 <h2 className="text-lg font-bold text-ink">
-                  {editingSlug ? "Edit Puja Ceremony" : "Create New Puja"}
+                  {editingSlug
+                    ? "Edit Puja Ceremony"
+                    : isDuplicating
+                    ? "Duplicate Puja Ceremony (Draft)"
+                    : "Create New Puja"}
                 </h2>
                 <p className="text-xs text-ink-soft">
-                  Add or update a puja ceremony in your digital catalog
+                  {editingSlug
+                    ? "Update an existing puja ceremony in your digital catalog"
+                    : isDuplicating
+                    ? "Review and customize copied details before saving as a separate draft puja"
+                    : "Add or update a puja ceremony in your digital catalog"}
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => setIsWizardOpen(false)}
+              onClick={() => {
+                setIsWizardOpen(false);
+                setIsDuplicating(false);
+                setSourcePoojaTitle("");
+              }}
               className="text-ink-soft/60 hover:text-ink"
             >
               <X className="h-5 w-5" />
@@ -1018,6 +1115,25 @@ export default function PoojasManager({
                 {/* ── STEP 1: Basic Info ── */}
                 {currentStep === 1 && (
                   <div className="space-y-5">
+                    {/* Duplication Banner */}
+                    {isDuplicating && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-purple-200 bg-purple-50/90 p-3.5 text-xs text-purple-900 font-medium shadow-xs animate-fadeIn">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-purple-200 text-purple-800 shrink-0 mt-0.5">
+                          <Copy className="h-4 w-4" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-purple-950">
+                            Duplicating Ceremony from &quot;{sourcePoojaTitle}&quot;
+                          </div>
+                          <p className="text-purple-800 text-[11px] leading-relaxed">
+                            A unique slug has been generated and publish status defaults to{" "}
+                            <span className="font-bold underline decoration-purple-400">Hidden (Draft)</span>.
+                            Original bookings and transaction counts are excluded. You can modify any details across all 8 steps before saving.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-saffron-100">
                       <div>
                         <h3 className="text-base font-bold text-ink">Basic Info & Multilingual Content</h3>
@@ -1373,7 +1489,7 @@ export default function PoojasManager({
                   <div className="space-y-5">
                     <div>
                       <h3 className="text-base font-bold text-ink">Media & Visual Aesthetics</h3>
-                      <p className="text-xs text-ink-soft">Step 2 of 8 — Images, icons, and theme gradients</p>
+                      <p className="text-xs text-ink-soft">Step 2 of 8 — Banner image, sacred fallback, and icon</p>
                     </div>
 
                     <div className="space-y-4">
@@ -1492,34 +1608,27 @@ export default function PoojasManager({
                             </div>
                           </div>
                         ) : (
-                          <div className="rounded-xl bg-amber-50/80 border border-amber-200/70 p-3 text-[11px] text-amber-950 flex items-start gap-2">
-                            <span className="text-sm">💡</span>
-                            <div className="space-y-0.5">
-                              <p className="font-bold">Storage & API Keys Info:</p>
-                              <p className="text-amber-900/80 leading-relaxed">
-                                Uploading directly from your computer requires <strong>no API keys</strong> — photos are safely embedded into your catalog. If you wish to use remote storage like AWS S3 or Cloudinary, you can paste the hosted URL or configure storage keys in your project.
-                              </p>
+                          <div className="space-y-3">
+                            {/* Live Fallback Preview */}
+                            <div className="relative rounded-2xl overflow-hidden border border-saffron-200 aspect-[16/7] max-h-48 flex items-center justify-center">
+                              <PoojaImageFallback size="md" />
+                              <div className="absolute top-2.5 left-2.5 z-20">
+                                <span className="rounded-lg bg-black/60 backdrop-blur px-2.5 py-1 text-[10px] font-bold text-amber-200 border border-white/20 flex items-center gap-1 shadow-xs">
+                                  <span>ॐ</span> Default Sacred Fallback Active (Om + TPS Logo)
+                                </span>
+                              </div>
+                            </div>
+                            <div className="rounded-xl bg-amber-50/80 border border-amber-200/70 p-3 text-[11px] text-amber-950 flex items-start gap-2">
+                              <span className="text-sm">💡</span>
+                              <div className="space-y-0.5">
+                                <p className="font-bold">Sacred Fallback Active:</p>
+                                <p className="text-amber-900/80 leading-relaxed">
+                                  Uploading a photo is optional. When no custom banner image is provided, devotees will automatically see the sacred <strong>Om (ॐ) symbol with the official TPS logo</strong> across the catalog and booking pages.
+                                </p>
+                              </div>
                             </div>
                           </div>
                         )}
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-ink mb-2">Theme Gradient</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                          {GRADIENTS.map((g) => (
-                            <button
-                              key={g.value}
-                              type="button"
-                              onClick={() => setDraft({ ...draft, gradient: g.value })}
-                              className={`h-12 rounded-xl bg-gradient-to-r ${g.value} flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform ${
-                                draft.gradient === g.value ? "ring-4 ring-saffron-400 scale-105" : "opacity-85 hover:opacity-100"
-                              }`}
-                            >
-                              {g.label}
-                            </button>
-                          ))}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -2294,7 +2403,11 @@ export default function PoojasManager({
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setIsWizardOpen(false)}
+                    onClick={() => {
+                      setIsWizardOpen(false);
+                      setIsDuplicating(false);
+                      setSourcePoojaTitle("");
+                    }}
                     className="rounded-xl px-4 py-2 text-xs font-medium text-ink-soft hover:bg-slate-100"
                   >
                     Cancel
@@ -2314,7 +2427,13 @@ export default function PoojasManager({
                       disabled={saving}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-6 py-2.5 text-xs font-bold text-white hover:from-saffron-600 hover:to-saffron-700 shadow-md shadow-saffron-500/20 disabled:opacity-50"
                     >
-                      {saving ? "Saving..." : editingSlug ? "Save Changes" : "Publish Ceremony"}
+                      {saving
+                        ? "Saving..."
+                        : editingSlug
+                        ? "Save Changes"
+                        : isDuplicating
+                        ? "Save Duplicate (Draft)"
+                        : "Publish Ceremony"}
                     </button>
                   )}
                 </div>
@@ -2335,14 +2454,26 @@ export default function PoojasManager({
                 Manage your puja ceremonies with advanced filtering and bulk actions
               </p>
             </div>
-            <button
-              type="button"
-              onClick={startAdd}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-saffron-500/20 hover:from-saffron-600 hover:to-saffron-700"
-            >
-              <Plus className="h-4 w-4" />
-              + New Puja
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-ink-soft shadow-xs hover:bg-saffron-50 hover:text-saffron-800 disabled:opacity-50 transition-colors"
+                title="Refresh Puja Catalog in place"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
+                <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={startAdd}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-saffron-500/20 hover:from-saffron-600 hover:to-saffron-700"
+              >
+                <Plus className="h-4 w-4" />
+                + New Puja
+              </button>
+            </div>
           </div>
 
           {success && (
@@ -2652,9 +2783,20 @@ export default function PoojasManager({
                           }`}
                         >
                           <td className="px-4 py-3.5 text-center">
-                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-100 text-lg shadow-sm">
-                              {pooja.emoji}
-                            </span>
+                            {pooja.imageUrl ? (
+                              <div className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-saffron-200/90 shadow-2xs bg-white">
+                                <PoojaImage
+                                  src={pooja.imageUrl}
+                                  alt={pooja.title}
+                                  fallbackSize="sm"
+                                  showBrandText={false}
+                                />
+                              </div>
+                            ) : (
+                              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-100 text-lg shadow-sm">
+                                {pooja.emoji}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3.5 max-w-xs">
                             <div className="flex items-center gap-1.5">
@@ -2726,6 +2868,16 @@ export default function PoojasManager({
                           </td>
                           <td className="px-4 py-3.5 text-right relative">
                             <div className="flex items-center justify-end gap-1.5">
+                              {/* Duplicate Button */}
+                              <button
+                                type="button"
+                                onClick={() => startDuplicate(pooja)}
+                                className="p-1.5 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors"
+                                title="Duplicate Puja Ceremony"
+                                aria-label={`Duplicate ${pooja.title}`}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </button>
                               {/* Edit Button */}
                               <button
                                 type="button"

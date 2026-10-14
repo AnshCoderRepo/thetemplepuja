@@ -9,6 +9,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Sparkles,
   Trash2,
@@ -54,9 +55,11 @@ const emptyDraft: TempleDraft = {
 export default function TemplesManager({
   token,
   onAuthError,
+  onRefresh,
 }: {
   token: string;
   onAuthError: () => void;
+  onRefresh?: () => void;
 }) {
   const [list, setList] = useState<Temple[]>([]);
   const [search, setSearch] = useState("");
@@ -68,6 +71,25 @@ export default function TemplesManager({
   const [success, setSuccess] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Temple | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    setError("");
+    try {
+      const c = await fetchCatalog();
+      if (Array.isArray(c.temples)) {
+        setList(c.temples);
+      }
+      await onRefresh?.();
+      showNotification("Temples reloaded with latest catalog data.");
+    } catch {
+      setError("Failed to reload temple data.");
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   useEffect(() => {
     let live = true;
@@ -250,16 +272,29 @@ export default function TemplesManager({
             Manage sacred temples, locations, deity relationships, and pilgrimage shrines.
           </p>
         </div>
-        {!adding && !editing && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={startAdd}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-saffron-500/20 transition-all hover:from-saffron-600 hover:to-saffron-700 hover:shadow-lg"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2.5 text-xs font-bold text-ink-soft hover:bg-saffron-50 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+            title="Reload latest temple catalog data from server without reloading the page"
           >
-            <Plus className="h-4 w-4" />
-            Add New Temple
+            <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
           </button>
-        )}
+
+          {!adding && !editing && (
+            <button
+              type="button"
+              onClick={startAdd}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-saffron-500/20 transition-all hover:from-saffron-600 hover:to-saffron-700 hover:shadow-lg cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Add New Temple
+            </button>
+          )}
+        </div>
       </div>
 
       {success && (

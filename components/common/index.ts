@@ -6,3 +6,5 @@ export { default as LanguageToggle } from "./LanguageToggle";
 export { default as JsonLd } from "./JsonLd";
 export { default as ImagePreviewModal } from "./ImagePreviewModal";
 export { default as ContinueBookingSection } from "./ContinueBookingSection";
+export { default as PoojaImageFallback } from "./PoojaImageFallback";
+export { default as PoojaImage } from "./PoojaImage";
