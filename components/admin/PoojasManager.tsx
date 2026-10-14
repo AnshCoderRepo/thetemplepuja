@@ -1156,7 +1156,7 @@ export default function PoojasManager({
                         <div className="flex items-center gap-2 pt-0.5 text-[11px]">
                           {isSlugConflict ? (
                             <span className="flex items-center gap-1 text-amber-700 font-medium">
-                              <span>⚠️ This slug is used by another puja. Click "⚡ Make Unique" or edit freely.</span>
+                              <span>⚠️ This slug is used by another puja. Click &ldquo;⚡ Make Unique&rdquo; or edit freely.</span>
                             </span>
                           ) : draft.slug.trim() ? (
                             <span className="flex items-center gap-1 text-emerald-700 font-medium">

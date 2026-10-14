@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Bot,
   Plus,
@@ -76,16 +76,7 @@ export default function ChatbotManager({
   const [simInput, setSimInput] = useState("");
   const [simLoading, setSimLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [token]);
-
-  const showToast = (type: "success" | "error", message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 4000);
-  };
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     const res = await fetchChatbotConfigRemote(token);
     if (res.status === 401) {
@@ -97,6 +88,15 @@ export default function ChatbotManager({
       setSettings(res.settings);
     }
     setLoading(false);
+  }, [token, onAuthError]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const showToast = (type: "success" | "error", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 4000);
   };
 
   // Open Add Modal
@@ -417,7 +417,7 @@ export default function ChatbotManager({
                       </h4>
                       {entry.question && entry.question !== entry.title && (
                         <p className="text-[11px] font-medium text-saffron-800/80 mb-2 italic">
-                          "{entry.question}"
+                          &ldquo;{entry.question}&rdquo;
                         </p>
                       )}
 
