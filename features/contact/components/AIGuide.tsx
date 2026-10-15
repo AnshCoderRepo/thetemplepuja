@@ -193,7 +193,7 @@ export default function AIGuide() {
 
   return (
     <>
-      {/* ─── Floating Launcher Button (Bottom-Left to avoid WhatsApp collision) ─── */}
+      {/* ─── Floating Launcher Button (Bottom-Left: small icon button) ─── */}
       <div className="fixed bottom-6 left-6 z-40 flex items-center select-none">
         <button
           type="button"
@@ -201,16 +201,22 @@ export default function AIGuide() {
           aria-expanded={open}
           aria-label="Ask Pandit AI Guide"
           title="Ask Pandit AI"
-          className="group relative flex items-center gap-2.5 rounded-full border border-amber-300/50 bg-gradient-to-r from-saffron-500 via-amber-500 to-saffron-600 px-4 py-3 text-xs font-bold text-white shadow-xl shadow-saffron-500/25 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-saffron-500/35 focus:outline-none focus-visible:ring-4 focus-visible:ring-saffron-300 active:scale-95"
+          className="group relative flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full border border-amber-300/60 bg-gradient-to-tr from-saffron-600 via-amber-500 to-saffron-500 text-white shadow-xl shadow-saffron-500/30 transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-saffron-500/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-saffron-300 active:scale-95"
         >
           {/* Subtle pulsating glow */}
           <span className="absolute -inset-0.5 -z-10 rounded-full bg-gradient-to-r from-saffron-400 to-amber-300 opacity-60 blur-xs transition-opacity duration-300 group-hover:opacity-100 animate-pulse" />
 
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-sm drop-shadow-xs">
-            🪔
+          {/* Active online green status indicator */}
+          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 border border-white" />
           </span>
-          <span className="font-display tracking-wide font-bold">Ask Pandit AI</span>
-          <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white/70" />
+
+          {open ? (
+            <X className="h-5 w-5 text-white transition-transform" />
+          ) : (
+            <span className="text-xl sm:text-2xl drop-shadow-xs select-none">🪔</span>
+          )}
         </button>
       </div>
 

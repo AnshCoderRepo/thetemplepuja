@@ -747,19 +747,19 @@ export const contactInfo = [
   {
     icon: "💬",
     label: "WhatsApp Support",
-    value: "Chat on WhatsApp",
+    value: "+91 96210 14155",
     href: getWhatsAppUrl(),
   },
   {
     icon: "📞",
     label: "Pooja Helpline",
-    value: "Call Us Directly",
+    value: "+91 96210 14155",
     href: `tel:${SITE_CONFIG.contact.phoneRaw}`,
   },
   {
     icon: "✉️",
     label: "Email Support",
-    value: "Send Sacred Email",
+    value: "Infotemplepujasewa@gmail.com",
     href: `mailto:${SITE_CONFIG.contact.email}`,
   },
 ];
