@@ -145,7 +145,7 @@ const emptyDraft: PoojaDraft = {
   online: true,
   liveStreamUrl: "",
   price: "1101",
-  duration: "1.5 hours",
+  duration: "Flexible",
   bestMuhurat: "Shukla Paksha Auspicious Muhurat",
   startDate: "2026-10-04",
   description: "",
@@ -862,7 +862,7 @@ export default function PoojasManager({
       online: draft.online,
       liveStreamUrl: draft.liveStreamUrl.trim() || undefined,
       price: Number(draft.price) || 1101,
-      duration: draft.duration.trim() || "1.5 hours",
+      duration: draft.duration.trim() || "Flexible",
       bestMuhurat: draft.bestMuhurat.trim() || "Auspicious Muhurat",
       startDate: toISODateString(draft.startDate) || draft.startDate.trim() || "2026-10-04",
       description: draft.description.trim(),
@@ -1639,7 +1639,7 @@ export default function PoojasManager({
                   <div className="space-y-5">
                     <div>
                       <h3 className="text-base font-bold text-ink">Pricing & Muhurat Scheduling</h3>
-                      <p className="text-xs text-ink-soft">Step 3 of 8 — Set baseline seva cost, duration, and timings</p>
+                      <p className="text-xs text-ink-soft">Step 3 of 8 — Set baseline seva cost, auspicious timings, and muhurat</p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1654,12 +1654,15 @@ export default function PoojasManager({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-ink mb-1">Ritual Duration</label>
+                        <label className="block text-xs font-bold text-ink mb-1 flex items-center justify-between">
+                          <span>Ritual Duration</span>
+                          <span className="text-[10px] text-ink-soft font-normal">Optional (flexible length)</span>
+                        </label>
                         <input
                           type="text"
                           value={draft.duration}
                           onChange={(e) => setDraft({ ...draft, duration: e.target.value })}
-                          placeholder="e.g. 1.5–2 hours"
+                          placeholder="e.g. Flexible"
                           className="w-full rounded-xl border border-saffron-200 bg-white px-4 py-2.5 text-sm text-ink focus:border-saffron-500 focus:outline-none"
                         />
                       </div>
@@ -2344,8 +2347,8 @@ export default function PoojasManager({
                               : "⏳ Live Link Pending (Shows soothing notice)"}
                           </span>
                         )}
-                        <span className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-ink-soft">
-                          🕒 {draft.duration}
+                        <span className="rounded-md bg-emerald-50 px-2 py-1 font-semibold text-emerald-800 border border-emerald-200/60">
+                          🕉️ Authentic Vedic Seva
                         </span>
                       </div>
 

@@ -38,6 +38,39 @@ describe("translateAnswers", () => {
     expect(out).toEqual([["authSource=admin"]]);
   });
 
+  it("strips presentation quotes from Cloudflare DoH TXT answers", () => {
+    const out = translateAnswers("TXT", [
+      {
+        name: "cluster0.kx3jisi.mongodb.net",
+        type: 16,
+        data: '"authSource=admin&replicaSet=atlas-24kofw-shard-0"',
+      },
+    ]) as string[][];
+    expect(out).toEqual([["authSource=admin&replicaSet=atlas-24kofw-shard-0"]]);
+
+    // Verify MongoDB's parser behavior on the joined record
+    const params = new URLSearchParams(out[0].join(""));
+    expect(params.get("authSource")).toBe("admin");
+    expect(params.get("replicaSet")).toBe("atlas-24kofw-shard-0");
+    expect([...params.keys()]).toEqual(["authSource", "replicaSet"]);
+  });
+
+  it("handles multi-chunk quoted TXT records", () => {
+    const out = translateAnswers("TXT", [
+      {
+        name: "cluster0.kx3jisi.mongodb.net",
+        type: 16,
+        data: '"authSource=admin&" "replicaSet=atlas-24kofw-shard-0"',
+      },
+    ]) as string[][];
+    expect(out).toEqual([
+      ["authSource=admin&", "replicaSet=atlas-24kofw-shard-0"],
+    ]);
+    const params = new URLSearchParams(out[0].join(""));
+    expect(params.get("authSource")).toBe("admin");
+    expect(params.get("replicaSet")).toBe("atlas-24kofw-shard-0");
+  });
+
   it("maps A and AAAA answers to IP strings", () => {
     expect(translateAnswers("A", [{ name: "h", type: 1, data: "1.2.3.4" }])).toEqual([
       "1.2.3.4",

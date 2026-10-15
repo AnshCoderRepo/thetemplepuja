@@ -124,7 +124,7 @@ export const BLOG_POSTS: BlogPost[] = [
     authorRole: "Vedic Scholar & Astrologer",
     publishedAt: "2026-09-28",
     readTime: "6 min read",
-    imageUrl: "https://images.unsplash.com/photo-1518173946687-a4c8a383392e?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1561361058-c24cecae35ca?auto=format&fit=crop&w=1200&q=80",
     relatedPoojaSlug: "rudrabhishek",
     relatedPoojaTitle: "Rudrabhishek Pooja",
     tags: ["Rudrabhishek", "Shiva", "Shukla Paksha", "Panchamrit", "Jyotirlinga"],

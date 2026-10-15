@@ -38,13 +38,36 @@ const g = globalThis as unknown as {
   __ttpMongo?: { client: MongoClient; db: Promise<Db> };
 };
 
+export function resetMongoConnection(): void {
+  try {
+    if (g.__ttpMongo?.client) {
+      void g.__ttpMongo.client.close();
+    }
+  } catch {}
+  delete g.__ttpMongo;
+}
+
+// Discard any previously rejected promise on globalThis so hot-reload immediately retries
+if (g.__ttpMongo) {
+  g.__ttpMongo.db.catch(() => {
+    delete g.__ttpMongo;
+  });
+}
+
 function getDb(): Promise<Db> {
   ensureDnsPatch();
   if (!g.__ttpMongo) {
     const uri = getMongoUri();
     const dbName = getMongoDbName();
     const client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
-    g.__ttpMongo = { client, db: client.connect().then(() => client.db(dbName)) };
+    const dbPromise = client
+      .connect()
+      .then(() => client.db(dbName))
+      .catch((err) => {
+        delete g.__ttpMongo;
+        throw err;
+      });
+    g.__ttpMongo = { client, db: dbPromise };
   }
   return g.__ttpMongo.db;
 }

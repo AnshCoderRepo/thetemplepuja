@@ -102,6 +102,7 @@ export default function Footer() {
                     {isInternal ? (
                       <Link
                         href={item.href}
+                        prefetch={true}
                         className="text-cream/70 transition-colors hover:text-saffron-400"
                       >
                         {item.label}

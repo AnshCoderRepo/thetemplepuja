@@ -25,6 +25,7 @@ import { SITE_URL } from "@/lib/seo";
 import { ScrollToTop, ErrorBoundary } from "@/components/common";
 import { FloatingWhatsApp, AIGuide } from "@/features/contact";
 import { BookingModal } from "@/features/bookings";
+import { PublicHeader } from "@/components/layout";
 import Providers from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
@@ -64,6 +65,7 @@ export default function RootLayout({
       <body className="font-sans" suppressHydrationWarning>
         <Providers>
           <ErrorBoundary>
+            <PublicHeader />
             {children}
             <BookingModal />
             <ScrollToTop />

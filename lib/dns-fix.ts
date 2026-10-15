@@ -46,6 +46,34 @@ const DOH_ENDPOINTS = [
 const cache = new Map<string, { at: number; answers: DoHAnswer[] }>();
 const CACHE_TTL_MS = 60_000;
 
+/** Parse DNS TXT data into string chunks.
+ *
+ * In DNS presentation format (RFC 1035 / BIND format, used by Cloudflare DoH and
+ * standard DNS-over-HTTPS JSON), character-strings are enclosed in double quotes:
+ * e.g. `"authSource=admin&replicaSet=atlas-24kofw-shard-0"`
+ * or split across chunks: `"authSource=admin" "replicaSet=atlas-24kofw-shard-0"`.
+ *
+ * Node's native `dns.promises.resolveTxt` returns raw chunk strings without the
+ * presentation quotes. The MongoDB driver joins these chunks (`record[0].join('')`)
+ * and passes the result to `new URLSearchParams(...)`. If presentation quotes
+ * remain, the first key becomes `"\"authSource"` instead of `"authSource"`,
+ * triggering `MongoParseError: Text record may only set any of: authSource, ...`.
+ */
+export function parseTxtData(data: string): string[] {
+  const trimmed = data.trim();
+  const chunks: string[] = [];
+  const regex = /"((?:[^"\\]|\\.)*)"/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(trimmed)) !== null) {
+    chunks.push(match[1].replace(/\\"/g, '"').replace(/\\\\/g, "\\"));
+  }
+  if (chunks.length > 0) {
+    return chunks;
+  }
+  // Fallback for unquoted responses (e.g. Google DoH)
+  return [trimmed.replace(/^"|"$/g, "")];
+}
+
 /** Translate raw DoH answers into the shape `dns.resolve(name, rrtype)`
  * returns for SRV / TXT / A / AAAA. Other record types yield []. */
 export function translateAnswers(
@@ -66,7 +94,7 @@ export function translateAnswers(
           };
         });
     case "TXT":
-      return answers.filter((a) => a.type === 16).map((a) => [a.data]);
+      return answers.filter((a) => a.type === 16).map((a) => parseTxtData(a.data));
     case "A":
       return answers.filter((a) => a.type === 1).map((a) => a.data);
     case "AAAA":
@@ -134,59 +162,70 @@ function withDohFallback<T>(
   };
 }
 
-let patched = false;
+const gDns = globalThis as unknown as {
+  __ttpNativeResolve?: any;
+  __ttpNativeResolveSrv?: any;
+  __ttpNativeResolveTxt?: any;
+  __ttpNativeResolve4?: any;
+  __ttpNativeResolve6?: any;
+};
 
-/** Apply the DoH fallback to dns.promises resolution. Idempotent, and a no-op
- * unless MONGODB_URI is set (the only case where Mongo needs it). */
+/** Apply the DoH fallback to dns.promises resolution.
+ * Preserves true unpatched Node native resolvers so hot-reloads re-bind cleanly
+ * without stacking wrappers. */
 export function ensureDnsPatch(): void {
-  if (patched) return;
-  patched = true;
-
   const dns = require("dns") as typeof import("dns");
   const promises = dns.promises;
 
-  // Specific resolvers (used by some drivers / code paths).
-  const resolveSrv = promises.resolveSrv;
+  // Stash the true unpatched native functions once
+  if (!gDns.__ttpNativeResolve) {
+    gDns.__ttpNativeResolve = promises.resolve.bind(promises);
+    gDns.__ttpNativeResolveSrv = promises.resolveSrv.bind(promises);
+    gDns.__ttpNativeResolveTxt = promises.resolveTxt.bind(promises);
+    gDns.__ttpNativeResolve4 = promises.resolve4.bind(promises);
+    gDns.__ttpNativeResolve6 = promises.resolve6.bind(promises);
+  }
+
+  // Specific resolvers
   promises.resolveSrv = withDohFallback(
-    resolveSrv,
+    gDns.__ttpNativeResolveSrv!,
     "SRV",
     (answers) => translateAnswers("SRV", answers) as any
-  ) as typeof resolveSrv;
+  ) as typeof promises.resolveSrv;
 
-  const resolveTxt = promises.resolveTxt;
   promises.resolveTxt = withDohFallback(
-    resolveTxt,
+    gDns.__ttpNativeResolveTxt!,
     "TXT",
     (answers) => translateAnswers("TXT", answers) as any
-  ) as typeof resolveTxt;
+  ) as typeof promises.resolveTxt;
 
   for (const type of ["resolve4", "resolve6"] as const) {
-    const native = promises[type];
-    promises[type] = withDohFallback(
+    const native = type === "resolve4" ? gDns.__ttpNativeResolve4! : gDns.__ttpNativeResolve6!;
+    (promises as any)[type] = withDohFallback(
       native,
       type === "resolve4" ? "A" : "AAAA",
       (answers) => translateAnswers(type === "resolve4" ? "A" : "AAAA", answers) as any
-    ) as typeof native;
+    );
   }
 
   // THE critical one: the mongodb driver calls the generic
   // `dns.promises.resolve(host, 'SRV')` / `('TXT')`, and Node's internal
   // `resolve` dispatches to module-internal closures — so patching the
   // specific resolvers above never intercepts it. Patch `resolve` itself.
-  const resolveGeneric = promises.resolve;
+  const nativeGeneric = gDns.__ttpNativeResolve!;
   promises.resolve = (async (
     name: string,
     rrtype: string = "A"
   ): Promise<unknown> => {
     try {
-      return await resolveGeneric(name, rrtype);
+      return await nativeGeneric(name, rrtype);
     } catch (err) {
       if (!isFallbackError(err)) throw err;
       const type = rrtype.toUpperCase() as DoHType;
       if (!["SRV", "TXT", "A", "AAAA"].includes(type)) throw err; // can't answer
       return translateAnswers(type, await dohQuery(name, type));
     }
-  }) as typeof resolveGeneric;
+  }) as typeof promises.resolve;
 
   // Callback-style variants delegate to the patched promise versions, so any
   // consumer using dns.resolveSrv(cb) gets the same fallback.
@@ -205,3 +244,6 @@ export function ensureDnsPatch(): void {
   dns.resolve6 = wrapCallback(promises.resolve6) as typeof dns.resolve6;
   dns.resolve = wrapCallback(promises.resolve) as typeof dns.resolve;
 }
+
+// Auto-run patch on module load so hot module replacement immediately binds
+ensureDnsPatch();

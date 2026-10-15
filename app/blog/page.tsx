@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Calendar, Clock, ArrowRight, BookOpen, Sparkles, UserCheck } from "lucide-react";
-import { Header, Footer } from "@/components/layout";
+import { Footer } from "@/components/layout";
 import { activeBlogPosts, type BlogPost } from "@/lib/blog-data";
 import { getResolvedCatalog } from "@/lib/server-store";
 import { SITE_CONFIG } from "@/lib/config";
@@ -35,8 +35,7 @@ export default async function BlogListingPage() {
 
   return (
     <>
-      <Header />
-      <main className="bg-cream min-h-screen pt-28 pb-20">
+      <main className="bg-cream min-h-screen pt-24 sm:pt-36 md:pt-44 lg:pt-48 pb-20">
         {/* Hero Section */}
         <section className="container-px py-8 sm:py-12 text-center max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-saffron-300/80 bg-saffron-50 px-4 py-1.5 text-xs font-bold text-saffron-800 shadow-2xs mb-4">

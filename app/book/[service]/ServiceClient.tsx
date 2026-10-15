@@ -166,7 +166,7 @@ function ServiceInner({ service }: { service: string }) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FFFDF9] pt-6 pb-28 sm:pt-10 sm:pb-32">
+    <div className="min-h-screen bg-[#FFFDF9] pt-20 pb-28 sm:pt-32 md:pt-40 lg:pt-44 sm:pb-32">
       <div className="container-px mx-auto max-w-6xl space-y-6">
         {/* Breadcrumb Navigation + Global Language Switcher */}
         <div className="flex items-center justify-between gap-3 text-xs text-ink-soft">

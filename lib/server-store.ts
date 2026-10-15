@@ -20,7 +20,7 @@ import {
 } from "./data";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
 import { createMemoryStore, type PersistenceStore } from "./persistence";
-import { mongoStore } from "./mongo-store";
+import { mongoStore, resetMongoConnection } from "./mongo-store";
 import { createJsonStore } from "./json-store";
 import { DEMO_USERS } from "./demo-users";
 import {
@@ -127,6 +127,7 @@ export async function withFallback<T>(
           "[server-store] MongoDB unreachable — falling back to local storage:",
           err instanceof Error ? err.message : err
         );
+        resetMongoConnection();
       }
     }
   }
