@@ -7,6 +7,7 @@ export function normalizeAdminTab(section?: string | null): AdminTab {
   if (s === "poojas" || s === "pujas" || s === "puja" || s === "catalog") return "poojas";
   if (s === "festivals" || s === "events") return "festivals";
   if (s === "temples" || s === "temple") return "temples";
+  if (s === "blogs" || s === "blog" || s === "articles" || s === "article") return "blogs";
   if (s === "bookings" || s === "booking") return "bookings";
   if (s === "orders" || s === "order" || s === "payments") return "orders";
   if (s === "refunds" || s === "refund" || s === "approvals" || s === "refund-approvals") return "refunds";

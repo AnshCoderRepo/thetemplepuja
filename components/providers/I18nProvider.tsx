@@ -17,19 +17,59 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 const LOCALE_KEY = "ttp_locale";
 
+function getStoredLocale(): Locale | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem(LOCALE_KEY);
+    if (saved === "en" || saved === "hi" || saved === "te" || saved === "ta") {
+      return saved as Locale;
+    }
+  } catch {
+    // ignore
+  }
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)ttp_locale=([^;]+)/);
+    if (
+      match &&
+      (match[1] === "en" || match[1] === "hi" || match[1] === "te" || match[1] === "ta")
+    ) {
+      return match[1] as Locale;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
 
-  // Load saved locale from localStorage
+  // Load saved locale from localStorage or cookie on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LOCALE_KEY);
-      if (saved === "en" || saved === "hi" || saved === "te" || saved === "ta") {
-        setLocaleState(saved as Locale);
-      }
-    } catch {
-      // localStorage unavailable — default to English
+    const saved = getStoredLocale();
+    if (saved) {
+      setLocaleState(saved);
+      document.documentElement.lang = saved;
     }
+  }, []);
+
+  // Listen for storage changes across tabs
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === LOCALE_KEY && e.newValue) {
+        if (
+          e.newValue === "en" ||
+          e.newValue === "hi" ||
+          e.newValue === "te" ||
+          e.newValue === "ta"
+        ) {
+          setLocaleState(e.newValue as Locale);
+          document.documentElement.lang = e.newValue;
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const setLocale = useCallback((newLocale: Locale) => {
@@ -39,18 +79,29 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+    try {
+      document.cookie = `${LOCALE_KEY}=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
+    } catch {
+      // ignore
+    }
     // Set html lang attribute for accessibility
-    document.documentElement.lang = newLocale;
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = newLocale;
+    }
   }, []);
 
-  // Set initial html lang
+  // Ensure html lang matches current locale
   useEffect(() => {
-    document.documentElement.lang = locale;
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = locale;
+    }
   }, [locale]);
 
   const t = useCallback(
     (key: TranslationKey): string => {
-      return translations[locale][key] ?? translations.en[key] ?? key;
+      const activeDict = translations[locale] as Record<string, string> | undefined;
+      const enDict = translations.en as Record<string, string>;
+      return activeDict?.[key] ?? enDict[key] ?? key;
     },
     [locale]
   );

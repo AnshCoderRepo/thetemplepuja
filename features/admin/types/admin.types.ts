@@ -5,6 +5,7 @@ export type AdminTab =
   | "poojas"
   | "festivals"
   | "temples"
+  | "blogs"
   | "bookings"
   | "orders"
   | "refunds"

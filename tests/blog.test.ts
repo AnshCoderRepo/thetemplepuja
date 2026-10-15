@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BLOG_POSTS, getBlogPost, getAllBlogSlugs } from "@/lib/blog-data";
+import {
+  BLOG_POSTS,
+  getBlogPost,
+  getAllBlogSlugs,
+  isPostPublished,
+  activeBlogPosts,
+} from "@/lib/blog-data";
 import { poojas } from "@/lib/data";
 
 describe("Spiritual Blog System", () => {
@@ -24,7 +30,9 @@ describe("Spiritual Blog System", () => {
     const catalogSlugs = new Set(poojas.map((p) => p.slug));
 
     for (const post of BLOG_POSTS) {
-      expect(catalogSlugs.has(post.relatedPoojaSlug)).toBe(true);
+      if (post.relatedPoojaSlug) {
+        expect(catalogSlugs.has(post.relatedPoojaSlug)).toBe(true);
+      }
     }
   });
 
@@ -42,5 +50,21 @@ describe("Spiritual Blog System", () => {
     const slugs = getAllBlogSlugs();
     expect(slugs.length).toBe(BLOG_POSTS.length);
     expect(slugs).toContain("satyanarayan-katha-benefits-muhurat-guide");
+  });
+
+  it("correctly identifies published vs draft articles", () => {
+    const publishedPost = { ...BLOG_POSTS[0], status: "published" as const };
+    const draftPost = { ...BLOG_POSTS[0], status: "draft" as const };
+    const archivedPost = { ...BLOG_POSTS[0], status: "archived" as const };
+    const legacyPost = { ...BLOG_POSTS[0], status: undefined };
+
+    expect(isPostPublished(publishedPost)).toBe(true);
+    expect(isPostPublished(draftPost)).toBe(false);
+    expect(isPostPublished(archivedPost)).toBe(false);
+    expect(isPostPublished(legacyPost)).toBe(true);
+
+    const filtered = activeBlogPosts([publishedPost, draftPost, archivedPost, legacyPost]);
+    expect(filtered.length).toBe(2);
+    expect(filtered.map((p: any) => p.status)).toEqual(["published", undefined]);
   });
 });

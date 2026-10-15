@@ -325,7 +325,14 @@ export function CoverflowCarousel({
                 )}
                 style={{ width: "var(--cf-card)" }}
               >
-                {slide.emoji ? (
+                {slide.src ? (
+                  <PoojaImage
+                    src={slide.src}
+                    alt={slide.alt}
+                    fallbackSize="md"
+                    imgClassName="select-none transition-transform duration-300"
+                  />
+                ) : slide.emoji ? (
                   <div
                     className={`flex h-full w-full select-none items-center justify-center bg-gradient-to-br ${slide.gradient ?? "from-saffron-400 to-maroon-600"}`}
                   >
@@ -337,7 +344,7 @@ export function CoverflowCarousel({
                   </div>
                 ) : (
                   <PoojaImage
-                    src={slide.src}
+                    src=""
                     alt={slide.alt}
                     fallbackSize="md"
                     imgClassName="select-none transition-transform duration-300"

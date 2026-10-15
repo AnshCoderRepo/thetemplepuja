@@ -18,6 +18,7 @@ import {
   type Temple,
   type UpcomingEventSpec,
 } from "./data";
+import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
 import { createMemoryStore, type PersistenceStore } from "./persistence";
 import { mongoStore } from "./mongo-store";
 import { createJsonStore } from "./json-store";
@@ -141,6 +142,7 @@ export type CatalogOverrideSection =
   | "coupons"
   | "poojaDates"
   | "temples"
+  | "blogs"
   | "chatbotKnowledge"
   | "chatbotSettings"
   | "platformSettings";
@@ -153,6 +155,7 @@ export async function getResolvedCatalog(): Promise<{
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
+  blogs: BlogPost[];
   chatbotKnowledge: ChatbotKnowledgeEntry[];
   chatbotSettings: ChatbotSettings;
   platformSettings: PlatformSettings;
@@ -165,6 +168,7 @@ export async function getResolvedCatalog(): Promise<{
     coupons: o.coupons ?? staticCoupons,
     poojaDates: o.poojaDates ?? defaultPoojaDates,
     temples: o.temples ?? staticTemples,
+    blogs: o.blogs ?? staticBlogPosts,
     chatbotKnowledge: o.chatbotKnowledge ?? DEFAULT_CHATBOT_KNOWLEDGE,
     chatbotSettings: o.chatbotSettings ?? DEFAULT_CHATBOT_SETTINGS,
     platformSettings: o.platformSettings ?? {
@@ -182,6 +186,7 @@ export async function saveCatalogOverrides(overrides: {
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
   temples?: Temple[];
+  blogs?: BlogPost[];
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;

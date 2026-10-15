@@ -1137,11 +1137,21 @@ export function getLocalizedPoojaDescription(p: Pooja, locale?: string): string 
 }
 
 /** Get visual banner image URL for a pooja */
-export function getPoojaBannerImage(p: { slug?: string; title?: string; imageUrl?: string }): string {
-  if (p.imageUrl && p.imageUrl.trim()) {
-    return p.imageUrl.trim();
+export function getPoojaBannerImage(p: {
+  slug?: string;
+  title?: string;
+  hindiTitle?: string;
+  imageUrl?: string;
+  image?: string;
+  bannerImage?: string;
+  photo?: string;
+  deities?: string[];
+}): string {
+  const explicitImage = p.imageUrl || (p as { image?: string }).image || (p as { bannerImage?: string }).bannerImage || (p as { photo?: string }).photo;
+  if (explicitImage && typeof explicitImage === "string" && explicitImage.trim()) {
+    return explicitImage.trim();
   }
-  const s = `${p.slug || ""} ${p.title || ""}`.toLowerCase();
+  const s = `${p.slug || ""} ${p.title || ""} ${p.hindiTitle || ""} ${(p.deities || []).join(" ")}`.toLowerCase();
   if (
     s.includes("durga") ||
     s.includes("navratri") ||
@@ -1149,7 +1159,10 @@ export function getPoojaBannerImage(p: { slug?: string; title?: string; imageUrl
     s.includes("devi") ||
     s.includes("baglamukhi") ||
     s.includes("kali") ||
-    s.includes("jwala")
+    s.includes("jwala") ||
+    s.includes("दुर्गा") ||
+    s.includes("काली") ||
+    s.includes("सप्तशती")
   ) {
     return "/sample-puja.jpg";
   }
@@ -1161,7 +1174,13 @@ export function getPoojaBannerImage(p: { slug?: string; title?: string; imageUrl
     s.includes("satyanarayan") ||
     s.includes("katha") ||
     s.includes("ram") ||
-    s.includes("hanuman")
+    s.includes("hanuman") ||
+    s.includes("दीपावली") ||
+    s.includes("दिवाली") ||
+    s.includes("लक्ष्मी") ||
+    s.includes("कुबेर") ||
+    s.includes("सत्यनारायण") ||
+    s.includes("हनुमान")
   ) {
     return "/festivals/diwali.jpg";
   }
@@ -1173,11 +1192,23 @@ export function getPoojaBannerImage(p: { slug?: string; title?: string; imageUrl
     s.includes("mrityunjaya") ||
     s.includes("kaal-sarp") ||
     s.includes("mahakaleshwar") ||
-    s.includes("somnath")
+    s.includes("somnath") ||
+    s.includes("someshwar") ||
+    s.includes("indreshwar") ||
+    s.includes("शिव") ||
+    s.includes("रुद्र") ||
+    s.includes("महादेव") ||
+    s.includes("सोमेश्वर") ||
+    s.includes("अभिषेक")
   ) {
     return "/festivals/shivratri.jpg";
   }
-  if (s.includes("ganesha") || s.includes("ganesh")) {
+  if (
+    s.includes("ganesha") ||
+    s.includes("ganesh") ||
+    s.includes("गणेश") ||
+    s.includes("विनायक")
+  ) {
     return "/festivals/ganesha-altar.jpg";
   }
   return "";
@@ -1205,6 +1236,26 @@ export function getLocalizedPoojaDuration(p: Pooja, locale?: string): string {
   if (locale === "te" && p.teluguDuration) return p.teluguDuration;
   if (locale === "ta" && p.tamilDuration) return p.tamilDuration;
   return p.duration;
+}
+
+/**
+ * Determines whether a genuine live stream is configured and available for a pooja.
+ * Returns true only when:
+ * 1. Online format is enabled (p.online !== false).
+ * 2. Live streaming is not explicitly disabled (p.live !== false).
+ * 3. A valid, non-empty HTTP/HTTPS stream URL is present.
+ */
+export function isPoojaLiveStreamAvailable(p?: Pooja | null): boolean {
+  if (!p) return false;
+  if (p.online === false || p.live === false) return false;
+  const rawUrl = p.liveStreamUrl?.trim();
+  if (!rawUrl) return false;
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -1908,16 +1959,37 @@ export interface Temple {
   slug: string;
   name: string;
   hindiName?: string;
+  teluguName?: string;
+  tamilName?: string;
   deity: string;
+  deities?: string[];
   city: string;
   state: string;
+  country?: string;
   address?: string;
   pincode?: string;
+  mapUrl?: string;
   description: string;
+  hindiDescription?: string;
+  teluguDescription?: string;
+  tamilDescription?: string;
+  history?: string;
+  hindiHistory?: string;
+  significance?: string;
+  hindiSignificance?: string;
   image?: string;
+  gallery?: string[];
   timings?: string;
+  openingDays?: string;
+  officialWebsite?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  visitorGuidance?: string;
+  hindiVisitorGuidance?: string;
   active: boolean;
   poojaSlugs?: string[];
+  seoTitle?: string;
+  seoDescription?: string;
 }
 
 export function isTempleActive(t: Temple): boolean {
@@ -1944,102 +2016,325 @@ export function getTempleForPooja(
   return fallback;
 }
 
+/** Get localized temple name based on active locale (supports English, Hindi, Telugu, Tamil) */
+export function getLocalizedTempleName(t?: Temple | null, locale?: string): string {
+  if (!t) return "";
+  if (locale === "hi" && t.hindiName) return t.hindiName;
+  if (locale === "te" && t.teluguName) return t.teluguName;
+  if (locale === "ta" && t.tamilName) return t.tamilName;
+  return t.name;
+}
+
+/** Get localized description for a temple */
+export function getLocalizedTempleDescription(t?: Temple | null, locale?: string): string {
+  if (!t) return "";
+  if (locale === "hi" && t.hindiDescription) return t.hindiDescription;
+  if (locale === "te" && t.teluguDescription) return t.teluguDescription;
+  if (locale === "ta" && t.tamilDescription) return t.tamilDescription;
+  return t.description;
+}
+
+/** Get localized history and background for a temple */
+export function getLocalizedTempleHistory(t?: Temple | null, locale?: string): string {
+  if (!t) return "";
+  if (locale === "hi" && t.hindiHistory) return t.hindiHistory;
+  return t.history || "";
+}
+
+/** Get localized spiritual significance for a temple */
+export function getLocalizedTempleSignificance(t?: Temple | null, locale?: string): string {
+  if (!t) return "";
+  if (locale === "hi" && t.hindiSignificance) return t.hindiSignificance;
+  return t.significance || "";
+}
+
+/** Get localized visitor guidance for a temple */
+export function getLocalizedTempleVisitorGuidance(t?: Temple | null, locale?: string): string {
+  if (!t) return "";
+  if (locale === "hi" && t.hindiVisitorGuidance) return t.hindiVisitorGuidance;
+  return t.visitorGuidance || "";
+}
+
+/** Get all poojas associated with a temple */
+export function getRelatedPoojasForTemple(temple: Temple, allPoojas: Pooja[]): Pooja[] {
+  const slugs = new Set(temple.poojaSlugs || []);
+  return allPoojas.filter(
+    (p) => slugs.has(p.slug) || (p.templeSlugs && p.templeSlugs.includes(temple.slug))
+  );
+}
+
 export const defaultTemples: Temple[] = [
-  {
-    slug: "navagrah-temple",
-    name: "Navagrah Temple",
-    hindiName: "नवग्रह मंदिर",
-    deity: "Navagraha Devatas",
-    city: "Ujjain",
-    state: "Madhya Pradesh",
-    address: "Triveni Ghat, Ujjain",
-    pincode: "456006",
-    description:
-      "Ancient temple dedicated to the nine planetary deities situated on the banks of Triveni. Famous for Rahu-Ketu and Shani Shanti rituals.",
-    image: "/festivals/ganesha-altar.jpg",
-    timings: "5:30 AM – 9:00 PM",
-    active: true,
-    poojaSlugs: ["navgraha-shanti", "shani-dev-pooja"],
-  },
   {
     slug: "kashi-vishwanath",
     name: "Kashi Vishwanath Temple",
     hindiName: "काशी विश्वनाथ मंदिर",
-    deity: "Lord Shiva",
+    teluguName: "కాశీ విశ్వనాథ ఆలయం",
+    tamilName: "காசி விஸ்வநாதர் கோயில்",
+    deity: "Lord Shiva (Vishveshwara)",
+    deities: ["Lord Shiva", "Maa Annapurna", "Kaal Bhairav"],
     city: "Varanasi",
     state: "Uttar Pradesh",
-    address: "Lahori Tola, Varanasi",
+    country: "India",
+    address: "Lahori Tola, Varanasi, Uttar Pradesh",
     pincode: "221001",
+    mapUrl: "https://maps.google.com/?q=Kashi+Vishwanath+Temple+Varanasi",
     description:
-      "One of the most sacred twelve Jyotirlingas, located on the western bank of the holy river Ganga in Kashi.",
+      "One of the most sacred twelve Jyotirlingas, situated on the western bank of the sacred river Ganga in the eternal city of Varanasi.",
+    hindiDescription:
+      "द्वादश ज्योतिर्लिंगों में से एक अत्यंत पावन ज्योतिर्लिंग, जो मोक्षदायिनी माँ गंगा के पावन तट पर काशी की पावन धरा पर सुशोभित है।",
+    history:
+      "Kashi Vishwanath is mentioned extensively in the Skanda Purana (Kashi Khanda). It stands in the spiritual capital of India, continuously worshipped for millennia. The temple was reconstructed by Maharani Ahilyabai Holkar of Indore in 1780 and has recently been expanded into the magnificent Kashi Vishwanath Dham corridor.",
+    hindiHistory:
+      "स्कंद पुराण के काशी खंड में इस पावन तीर्थ का विशद वर्णन है। महारानी अहिल्याबाई होल्कर ने 1780 में इस भव्य मंदिर का जीर्णोद्धार करवाया था। यह सनातन धर्म की सबसे प्राचीन और जीवंत आध्यात्मिक ऊर्जा का केंद्र है।",
+    significance:
+      "Believed to be the place where Lord Shiva whispers the Taraka Mantra into the ears of departing souls, bestowing instant Moksha (liberation). Performing Rudrabhishek and archana here removes past karma and brings supreme spiritual awakening.",
+    hindiSignificance:
+      "मान्यता है कि काशी में देहत्याग करने वाले जीवों को स्वयं देवाधिदेव महादेव तारक मंत्र देकर मोक्ष प्रदान करते हैं। यहाँ रुद्राभिषेक करवाने से जन्म-जन्मांतर के पापों का क्षय और अखंड सुख-शांति की प्राप्ति होती है।",
     image: "https://images.unsplash.com/photo-1561361058-c24cecae35ca?auto=format&fit=crop&w=800&q=80",
-    timings: "3:00 AM – 11:00 PM",
+    gallery: [
+      "https://images.unsplash.com/photo-1561361058-c24cecae35ca?auto=format&fit=crop&w=800&q=80",
+      "/festivals/shivratri.jpg",
+      "/sample-puja.jpg",
+    ],
+    timings: "3:00 AM – 11:00 PM (Mangala Aarti at 3:00 AM, Shringar at 9:00 PM)",
+    openingDays: "Open all 7 days year-round",
+    officialWebsite: "https://shrikashivishwanath.org",
+    contactPhone: "+91 542 2392629",
+    contactEmail: "helpdesk@shrikashivishwanath.org",
+    visitorGuidance:
+      "Traditional Indian attire recommended. Devotees are requested to leave mobile phones and electronic devices in designated locker facilities at the Dham entrance. Wheelchair assistance is available at Gate 4.",
+    hindiVisitorGuidance:
+      "पारंपरिक सात्विक वेशभूषा अनुशंसित है। मोबाइल फोन और इलेक्ट्रॉनिक उपकरण मुख्य द्वार के लॉकर में जमा करवाने होते हैं। गेट नं. 4 पर वरिष्ठ नागरिकों के लिए व्हीलचेयर सुविधा उपलब्ध है।",
     active: true,
     poojaSlugs: ["rudrabhishek", "maha-mrityunjaya-jap"],
+    seoTitle: "Kashi Vishwanath Temple, Varanasi — Divine History, Timings & Sacred Poojas",
+    seoDescription:
+      "Explore Kashi Vishwanath Jyotirlinga in Varanasi. Discover ancient temple lore, daily darshan timings, sacred traditions, and book authentic Vedic Rudrabhishek rituals online.",
   },
   {
     slug: "mahakaleshwar",
     name: "Mahakaleshwar Jyotirlinga",
     hindiName: "महाकालेश्वर ज्योतिर्लिंग",
+    teluguName: "మహాకాళేశ్వర్ జ్యోతిర్లింగం",
+    tamilName: "மகாகாளேஸ்வரர் ஜோதிர்லிங்கம்",
     deity: "Lord Shiva (Mahakal)",
+    deities: ["Lord Mahakal", "Goddess Parvati", "Lord Ganesha", "Lord Kartikeya"],
     city: "Ujjain",
     state: "Madhya Pradesh",
-    address: "Jaisinghpura, Ujjain",
+    country: "India",
+    address: "Jaisinghpura, Ujjain, Madhya Pradesh",
     pincode: "456001",
+    mapUrl: "https://maps.google.com/?q=Mahakaleshwar+Temple+Ujjain",
     description:
-      "Dakshinmukhi Jyotirlinga renowned for its sacred Bhasma Aarti and time-transcending blessings of Mahakal.",
+      "The only Dakshinmukhi (south-facing) Jyotirlinga in the world, renowned for its sacred Bhasma Aarti and time-transcending divine power.",
+    hindiDescription:
+      "विश्व का एकमात्र दक्षिणमुखी ज्योतिर्लिंग, जहाँ प्रातःकाल होने वाली दिव्य भस्म आरती और महाकाल का आशीर्वाद अकाल मृत्यु के भय को मिटाता है।",
+    history:
+      "Located in the ancient holy city of Avantika (Ujjain), Mahakaleshwar temple has been sanctified by sages and described by Kalidasa in Meghaduta. The presiding deity Mahakal transcends time itself (Kaal). Reconstructed in the 18th century by the Scindias, it now features the grand Shri Mahakal Lok corridor.",
+    hindiHistory:
+      "प्राचीन अवंतिकापुरी (उज्जैन) में स्थित यह पावन धाम महाकवि कालिदास के मेघदूत से लेकर स्कंद पुराण के अवंती खंड तक महिमामंडित है। महाकाल स्वयं काल के स्वामी हैं। हाल ही में निर्मित श्री महाकाल लोक कॉरिडोर इस तीर्थ की दिव्यता को और भव्य रूप देता है।",
+    significance:
+      "Worshipping Mahakaleshwar protects against untimely demise (Akaal Mrityu) and grants fearless life. The south-facing idol emits unique cosmic energy favorable for tantric and Vedic transcendence.",
+    hindiSignificance:
+      "महाकालेश्वर के दर्शन और अभिषेक से अकाल मृत्यु का भय समाप्त हो जाता है। 'अकाल मृत्यु वो मरे जो काम करे चांडाल का, काल उसका क्या करे जो भक्त हो महाकाल का।' यहाँ का रुद्राभिषेक जीवन में समस्त संकटों का नाश करता है।",
     image: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=800&q=80",
-    timings: "4:00 AM – 11:00 PM",
+    gallery: [
+      "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=800&q=80",
+      "/festivals/shivratri.jpg",
+    ],
+    timings: "4:00 AM – 11:00 PM (Bhasma Aarti at 4:00 AM, Sandhya Aarti at 7:00 PM)",
+    openingDays: "Open all 7 days year-round",
+    officialWebsite: "https://shrimahakaleshwar.com",
+    contactPhone: "+91 734 2550563",
+    visitorGuidance:
+      "Dhoti-Kurta for men and Saree/Salwar for women is mandatory for Garbhagriha entry and Bhasma Aarti. Advance reservation is recommended for morning Bhasma Aarti.",
+    hindiVisitorGuidance:
+      "गर्भगृह प्रवेश एवं भस्म आरती हेतु पुरुषों के लिए धोती-कुर्ता तथा महिलाओं के लिए साड़ी अनिवार्य है। भस्म आरती दर्शन हेतु पूर्व अनुमति या ऑनलाइन स्लॉट बुकिंग अनुशंसित है।",
     active: true,
     poojaSlugs: ["rudrabhishek", "maha-mrityunjaya-jap"],
+    seoTitle: "Mahakaleshwar Jyotirlinga, Ujjain — Bhasma Aarti, History & Online Poojas",
+    seoDescription:
+      "Complete guide to Mahakaleshwar Temple Ujjain. Timings, Bhasma Aarti details, history, significance, and booking of Vedic pujas and Rudrabhishek.",
   },
   {
     slug: "trimbakeshwar",
     name: "Trimbakeshwar Shiva Temple",
     hindiName: "त्र्यंबकेश्वर ज्योतिर्लिंग",
-    deity: "Lord Shiva",
+    teluguName: "త్ర్యంబకేశ్వర ఆలయం",
+    tamilName: "திரிம்பகேஸ்வரர் கோயில்",
+    deity: "Lord Shiva (Trimbak)",
+    deities: ["Lord Brahma", "Lord Vishnu", "Lord Shiva"],
     city: "Nashik",
     state: "Maharashtra",
-    address: "Trimbak, Nashik",
+    country: "India",
+    address: "Trimbak, Nashik District, Maharashtra",
     pincode: "422212",
+    mapUrl: "https://maps.google.com/?q=Trimbakeshwar+Shiva+Temple+Nashik",
     description:
-      "Sacred Jyotirlinga featuring the three-faced lingam embodying Brahma, Vishnu, and Maheshwar near the origin of river Godavari.",
+      "Sacred Jyotirlinga uniquely featuring a three-faced lingam embodying Brahma, Vishnu, and Maheshwar, near the sacred origin of river Godavari.",
+    hindiDescription:
+      "पवित्र गोदावरी के उद्गम स्थल ब्रह्मगिरि पर्वत की तलहटी में स्थित पावन ज्योतिर्लिंग, जहाँ त्रिदेव (ब्रह्मा, विष्णु, महेश) एक साथ लिंग रूप में विराजित हैं।",
+    history:
+      "Built by Peshwa Balaji Baji Rao (Nana Saheb) in the 18th century using basalt black stone, Trimbakeshwar has immense Vedic significance. Sage Gautama performed penance here, and the sacred river Godavari (Gautami Ganga) descended upon earth at this consecrated site.",
+    hindiHistory:
+      "पेशवा बालाजी बाजीराव ने काले पत्थरों से इस भव्य नागर शैली के मंदिर का निर्माण करवाया था। महर्षि गौतम की तपस्या से प्रसन्न होकर भगवान शिव ने यहाँ गोदावरी नदी को प्रकट किया था।",
+    significance:
+      "Trimbakeshwar is the paramount shrine for mitigating ancestral karmas, Pitra Dosha, and Kaal Sarp Dosha. Because all three supreme deities reside together in the lingam, rituals performed here grant triple divine grace.",
+    hindiSignificance:
+      "यह तीर्थ कालसर्प दोष निवारण, नारायण नागबलि और पितृदोष शांति के लिए संपूर्ण भारत में सर्वोपरि माना गया है। त्रिदेवों की उपस्थिति से समस्त ग्रह जनित कष्ट दूर होते हैं।",
     image: "https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=800&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=800&q=80",
+      "/festivals/shivratri.jpg",
+    ],
     timings: "5:30 AM – 9:00 PM",
+    openingDays: "Open all 7 days year-round",
+    officialWebsite: "https://trimbakeshwartrust.com",
+    contactPhone: "+91 2594 233215",
+    visitorGuidance:
+      "Devotees should wear traditional attire. Special Abhishek rituals take place in the morning hours between 6:00 AM and 11:30 AM.",
+    hindiVisitorGuidance:
+      "पारंपरिक परिधान अनुशंसित। विशेष अभिषेक और पूजा प्रातः 6:00 से 11:30 बजे के मध्य संपन्न की जाती है।",
     active: true,
     poojaSlugs: ["rudrabhishek", "navgraha-shanti"],
+    seoTitle: "Trimbakeshwar Jyotirlinga Nashik — History, Kaal Sarp Rituals & Timings",
+    seoDescription:
+      "Learn about Trimbakeshwar Temple in Nashik, Maharashtra. Ancient history, Godavari origin, darshan timings, and book authenticated Vedic pujas.",
   },
   {
     slug: "siddhivinayak",
     name: "Shree Siddhivinayak Temple",
     hindiName: "श्री सिद्धिविनायक मंदिर",
-    deity: "Lord Ganesha",
+    teluguName: "శ్రీ సిద్ధివినాయక ఆలయం",
+    tamilName: "ஸ்ரீ சித்திவிநாயகர் கோயில்",
+    deity: "Lord Ganesha (Siddhivinayak)",
+    deities: ["Lord Ganesha", "Riddhi", "Siddhi"],
     city: "Mumbai",
     state: "Maharashtra",
-    address: "Prabhadevi, Mumbai",
+    country: "India",
+    address: "SK Bole Marg, Prabhadevi, Mumbai, Maharashtra",
     pincode: "400028",
+    mapUrl: "https://maps.google.com/?q=Siddhivinayak+Temple+Mumbai",
     description:
-      "World-renowned shrine of Lord Ganesha fulfilling sincere wishes and granting success in new ventures.",
+      "World-renowned shrine of Lord Ganesha in Mumbai, beloved for fulfilling sincere wishes (Navas) and blessing devotees with success, intellect, and prosperity.",
+    hindiDescription:
+      "मुंबई का विश्वप्रसिद्ध गणेश मंदिर, जहाँ दाहिनी सूंड वाले सिद्धिविनायक भक्तों की समस्त मनोकामनाएँ पूर्ण करते हैं और शुभ कार्यों में सिद्धि प्रदान करते हैं।",
+    history:
+      "Originally consecrated on 19 November 1801 by Laxman Vithu and Deubai Patil. Over the centuries it has grown into one of India's richest and most beloved shrines, visited by millions from all walks of life.",
+    hindiHistory:
+      "इस पावन मंदिर का निर्माण 19 नवंबर 1801 को लक्ष्मण विठू और देउबाई पाटिल द्वारा कराया गया था। सिद्धिविनायक की यह पावन प्रतिमा स्वयंभू और जाग्रत मानी जाती है।",
+    significance:
+      "Lord Ganesha here has his trunk tilted to the right (Navasacha Ganapati), which requires authentic, strict Vedic devotion. Prayers offered here grant immediate obstacle clearance and success in business, education, and career.",
+    hindiSignificance:
+      "दाहिनी सूंड वाले श्री गणेश 'सिद्धि' प्रदान करने वाले जाग्रत देव हैं। यहाँ की गई पूजा-अर्चना से व्यापार, नौकरी, अध्ययन और वैवाहिक जीवन की हर बाधा दूर हो जाती है।",
     image: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80",
-    timings: "5:30 AM – 10:00 PM",
+    gallery: [
+      "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80",
+      "/festivals/ganesha-altar.jpg",
+    ],
+    timings: "5:30 AM – 10:00 PM (Special Tuesday Darshan from 3:15 AM)",
+    openingDays: "Open all 7 days; Tuesday is especially auspicious",
+    officialWebsite: "https://siddhivinayak.org",
+    contactPhone: "+91 22 24223206",
+    visitorGuidance:
+      "Tuesdays witness massive footfall, so early morning darshan is recommended. Free shoe keeping and cloakroom facilities are available.",
+    hindiVisitorGuidance:
+      "मंगलवार को विशेष भीड़ रहती है, अतः प्रातः काल दर्शन सुविधाजनक रहता है। जूता घर और प्रसादम काउंटर मंदिर परिसर में उपलब्ध हैं।",
     active: true,
     poojaSlugs: ["satyanarayan-katha", "griha-pravesh"],
+    seoTitle: "Shree Siddhivinayak Temple Mumbai — Darshan Timings, History & Sevas",
+    seoDescription:
+      "Visit Shree Siddhivinayak Ganapati Temple in Prabhadevi, Mumbai. Check daily aarti timings, history, significance, and book online personalized poojas.",
   },
   {
     slug: "salasar-balaji",
     name: "Salasar Balaji Temple",
     hindiName: "सालासर बालाजी मंदिर",
-    deity: "Lord Hanuman",
+    teluguName: "సాలాసర్ బాలాజీ ఆలయం",
+    tamilName: "சாலாசர் பாலாஜி கோயில்",
+    deity: "Lord Hanuman (Balaji)",
+    deities: ["Lord Hanuman", "Lord Rama", "Maa Sita"],
     city: "Salasar",
     state: "Rajasthan",
-    address: "Salasar, Churu District",
+    country: "India",
+    address: "Salasar, Churu District, Rajasthan",
     pincode: "331506",
+    mapUrl: "https://maps.google.com/?q=Salasar+Balaji+Temple+Rajasthan",
     description:
-      "Miraculous swayambhu idol of Lord Hanuman with beard and mustache, attracting millions of devotees for courage and protection.",
+      "Miraculous swayambhu shrine of Lord Hanuman featuring a unique beard and mustache idol, renowned for granting profound spiritual protection, courage, and health.",
+    hindiDescription:
+      "राजस्थान के चूरू जिले में स्थित भगवान हनुमान का दिव्य चमत्कारी धाम, जहाँ दाढ़ी-मूंछ वाले बालरूप श्री हनुमान जी भक्तों की मनोकामना पूर्ण करते हैं।",
+    history:
+      "The swayambhu idol of Balaji was found on Shravan Shukla Navami in 1754 by a farmer while ploughing his field in Asota village. Devotee Mohandas Ji Maharaj established the shrine in Salasar, which has since become a prime pilgrimage center.",
+    hindiHistory:
+      "संवत 1811 (1754 ई.) में आसोटा गांव में हल जोतते समय एक किसान को यह पावन मूर्ति मिली थी। भक्त शिरोमणि मोहनदास जी महाराज ने सालासर में इस दिव्य धाम की स्थापना की।",
+    significance:
+      "Known for granting miraculous relief from physical ailments, negative energies, and legal/financial hardships. The sacred Akhand Jyoti (eternal flame) has been continuously burning for over two centuries.",
+    hindiSignificance:
+      "यहाँ प्रज्वलित अखंड धूणा और अखंड ज्योति 250 से अधिक वर्षों से जल रही है। नारियल बांधने की प्रथा (मनौती) और चूरमा भोग अर्पण करने से हर विपदा टल जाती है।",
     image: "https://images.unsplash.com/photo-1598890777032-bde835ba27c2?auto=format&fit=crop&w=800&q=80",
-    timings: "5:00 AM – 10:00 PM",
+    gallery: [
+      "https://images.unsplash.com/photo-1598890777032-bde835ba27c2?auto=format&fit=crop&w=800&q=80",
+      "/festivals/diwali.jpg",
+    ],
+    timings: "5:00 AM – 10:00 PM (Mangala Aarti at 5:00 AM, Shayan Aarti at 10:00 PM)",
+    openingDays: "Open all 7 days year-round; Tuesday and Saturday are peak days",
+    officialWebsite: "https://salasarbalaji.org",
+    contactPhone: "+91 1568 252204",
+    visitorGuidance:
+      "Devotees commonly offer Savamani (Churma prasad) and tie coconuts with moli for wish fulfillment. Comfortable modest clothing is advised.",
+    hindiVisitorGuidance:
+      "सवामणी प्रसाद और लाल चुनरी के साथ नारियल बांधने की प्राचीन परंपरा है। मंगलवार और पूर्णिमा पर श्रद्धालुओं की अधिक संख्या रहती है।",
     active: true,
     poojaSlugs: ["hanuman-pooja"],
+    seoTitle: "Salasar Balaji Temple, Rajasthan — History, Timings & Hanuman Pooja",
+    seoDescription:
+      "Explore the holy shrine of Salasar Balaji in Rajasthan. Discover its miraculous history, daily timings, Akhand Jyoti significance, and book dedicated Hanuman poojas.",
+  },
+  {
+    slug: "navagrah-temple",
+    name: "Navagrah Temple",
+    hindiName: "नवग्रह मंदिर",
+    teluguName: "నవగ్రహ ఆలయం",
+    tamilName: "நவகிரக கோயில்",
+    deity: "Navagraha Devatas",
+    deities: ["Surya", "Chandra", "Mangala", "Budha", "Brihaspati", "Shukra", "Shani", "Rahu", "Ketu"],
+    city: "Ujjain",
+    state: "Madhya Pradesh",
+    country: "India",
+    address: "Triveni Ghat, Ujjain, Madhya Pradesh",
+    pincode: "456006",
+    mapUrl: "https://maps.google.com/?q=Navagrah+Temple+Triveni+Sangam+Ujjain",
+    description:
+      "Ancient temple dedicated to the nine celestial planetary deities situated at the confluence of the sacred Triveni Ghat in Ujjain. World-renowned for astrological pacification rituals.",
+    hindiDescription:
+      "उज्जैन में त्रिवेणी संगम के पावन तट पर स्थित नवग्रह मंदिर, जहाँ नवग्रह शांति, शनि दोष निवारण और राहु-केतु शांति पूजा का विशेष फल प्राप्त होता है।",
+    history:
+      "Ujjain has been the astrological prime meridian of ancient India. This revered temple on the banks of Triveni River was established hundreds of years ago by Vedic astrologers and royal patrons to balance planetary forces.",
+    hindiHistory:
+      "उज्जैन को प्राचीन काल से ही भारत की खगोलीय एवं ज्योतिषीय राजधानी माना गया है। त्रिवेणी संगम पर स्थित यह सिद्ध पीठ नवग्रहों की ऊर्जा को संतुलित करने हेतु स्थापित किया गया था।",
+    significance:
+      "Performing Navagraha Shanti and Shani Telabhishek here neutralizes planetary afflictions (Kundli doshas), promotes good health, and restores balance and prosperity to family life.",
+    hindiSignificance:
+      "कुंडली के नवग्रह दोष, शनि की साढ़ेसाती व ढैय्या तथा राहु-केतु के दुष्प्रभावों की शांति के लिए यहाँ का अभिषेक व हवन अत्यंत प्रभावशाली है।",
+    image: "/festivals/ganesha-altar.jpg",
+    gallery: [
+      "/festivals/ganesha-altar.jpg",
+      "/festivals/shivratri.jpg",
+    ],
+    timings: "5:30 AM – 9:00 PM",
+    openingDays: "Open all 7 days; Saturdays and Amavasya are highly auspicious",
+    officialWebsite: "https://ujjaintourism.in/navagrah-temple",
+    contactPhone: "+91 734 2511224",
+    visitorGuidance:
+      "Devotees participating in planetary rituals should bring mustard oil and black sesame for Shani Dev archana. Pandits are available for individual sankalp.",
+    hindiVisitorGuidance:
+      "शनिवार को शनि देव हेतु सरसों का तेल और काले तिल अर्पण करने का विशेष विधान है। पंडित जी से संकल्प करवाकर पूजा संपन्न कराई जाती है।",
+    active: true,
+    poojaSlugs: ["navgraha-shanti", "shani-dev-pooja"],
+    seoTitle: "Navagrah Temple, Ujjain — Planetary Dosha Shanti & Darshan Timings",
+    seoDescription:
+      "Discover the ancient Navagrah Temple on Triveni Ghat in Ujjain. Information on all 9 planetary deities, timings, significance, and booking of Navagraha Shanti poojas.",
   },
 ];
 

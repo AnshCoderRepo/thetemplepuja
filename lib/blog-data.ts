@@ -1,3 +1,5 @@
+export type BlogStatus = "draft" | "published" | "archived";
+
 export interface BlogPost {
   slug: string;
   title: string;
@@ -8,9 +10,15 @@ export interface BlogPost {
   publishedAt: string; // ISO date YYYY-MM-DD
   readTime: string;
   imageUrl: string;
-  relatedPoojaSlug: string;
-  relatedPoojaTitle: string;
+  relatedPoojaSlug?: string;
+  relatedPoojaTitle?: string;
   tags: string[];
+  status?: BlogStatus;
+  createdAt?: string;
+  updatedAt?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  canonicalUrl?: string;
   content: {
     introduction: string;
     sections: {
@@ -227,10 +235,25 @@ export const BLOG_POSTS: BlogPost[] = [
   },
 ];
 
-export function getBlogPost(slug: string): BlogPost | undefined {
-  return BLOG_POSTS.find((p) => p.slug === slug);
+export function isPostPublished(post: BlogPost): boolean {
+  if (!post) return false;
+  // If status is unspecified (e.g. legacy default posts), treat as published.
+  if (post.status === undefined || post.status === "published") return true;
+  return false;
 }
 
-export function getAllBlogSlugs(): string[] {
-  return BLOG_POSTS.map((p) => p.slug);
+export function activeBlogPosts(list: BlogPost[] = BLOG_POSTS): BlogPost[] {
+  return list.filter(isPostPublished);
 }
+
+export function getBlogPost(
+  slug: string,
+  list: BlogPost[] = BLOG_POSTS
+): BlogPost | undefined {
+  return list.find((p) => p.slug === slug);
+}
+
+export function getAllBlogSlugs(list: BlogPost[] = BLOG_POSTS): string[] {
+  return activeBlogPosts(list).map((p) => p.slug);
+}
+

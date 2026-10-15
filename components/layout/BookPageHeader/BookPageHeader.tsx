@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useI18n } from "@/components/providers";
+import LanguageToggle from "@/components/common/LanguageToggle";
 
 export interface Fact {
   icon: string;
@@ -127,9 +128,12 @@ export default function BookPageHeader({
             )}
           </nav>
 
-          <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-100 backdrop-blur">
-            {displayEyebrow}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-100 backdrop-blur">
+              {displayEyebrow}
+            </span>
+            <LanguageToggle />
+          </div>
         </div>
 
         {/* Title + Facts in one tight, cohesive row */}

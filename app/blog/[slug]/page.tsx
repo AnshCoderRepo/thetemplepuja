@@ -13,14 +13,22 @@ import {
   ShieldCheck,
   ChevronRight,
   Phone,
+  Eye,
 } from "lucide-react";
 import { Header, Footer } from "@/components/layout";
-import { BLOG_POSTS, getBlogPost, getAllBlogSlugs } from "@/lib/blog-data";
+import {
+  activeBlogPosts,
+  getBlogPost,
+  getAllBlogSlugs,
+  isPostPublished,
+} from "@/lib/blog-data";
+import { getResolvedCatalog } from "@/lib/server-store";
 import { SITE_CONFIG } from "@/lib/config";
 import { SITE_URL } from "@/lib/seo";
 
 export async function generateStaticParams() {
-  return getAllBlogSlugs().map((slug) => ({ slug }));
+  const catalog = await getResolvedCatalog();
+  return getAllBlogSlugs(catalog.blogs).map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({
@@ -29,22 +37,25 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const catalog = await getResolvedCatalog();
+  const post = getBlogPost(slug, catalog.blogs);
   if (!post) {
     return { title: "Article Not Found | templepujasewa" };
   }
 
-  const articleUrl = `${SITE_URL}/blog/${post.slug}`;
+  const articleUrl = post.canonicalUrl || `${SITE_URL}/blog/${post.slug}`;
+  const metaTitle = post.seoTitle || `${post.title} | templepujasewa Blog`;
+  const metaDesc = post.seoDescription || post.excerpt;
 
   return {
-    title: `${post.title} | templepujasewa Blog`,
-    description: post.excerpt,
+    title: metaTitle,
+    description: metaDesc,
     alternates: {
       canonical: articleUrl,
     },
     openGraph: {
       title: post.title,
-      description: post.excerpt,
+      description: metaDesc,
       url: articleUrl,
       siteName: "templepujasewa",
       locale: "en_IN",
@@ -64,7 +75,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: post.title,
-      description: post.excerpt,
+      description: metaDesc,
       images: [post.imageUrl],
     },
   };
@@ -72,17 +83,29 @@ export async function generateMetadata({
 
 export default async function BlogPostPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ preview?: string }>;
 }) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const isPreview =
+    resolvedSearchParams?.preview === "true" || resolvedSearchParams?.preview === "1";
+
+  const catalog = await getResolvedCatalog();
+  const post = getBlogPost(slug, catalog.blogs);
 
   if (!post) {
     notFound();
   }
 
-  const articleUrl = `${SITE_URL}/blog/${post.slug}`;
+  // Never display unpublished drafts to ordinary visitors unless explicitly previewing
+  if (!isPostPublished(post) && !isPreview) {
+    notFound();
+  }
+
+  const articleUrl = post.canonicalUrl || `${SITE_URL}/blog/${post.slug}`;
 
   // JSON-LD structured data for Google Search
   const blogPostingLd = {
@@ -92,7 +115,7 @@ export default async function BlogPostPage({
     description: post.excerpt,
     image: post.imageUrl,
     datePublished: post.publishedAt,
-    dateModified: post.publishedAt,
+    dateModified: post.updatedAt || post.publishedAt,
     author: {
       "@type": "Person",
       name: post.author,
@@ -114,7 +137,9 @@ export default async function BlogPostPage({
     keywords: post.tags.join(", "),
   };
 
-  const relatedPosts = BLOG_POSTS.filter((p) => p.slug !== post.slug).slice(0, 2);
+  const relatedPosts = activeBlogPosts(catalog.blogs)
+    .filter((p) => p.slug !== post.slug)
+    .slice(0, 2);
 
   return (
     <>
@@ -152,6 +177,26 @@ export default async function BlogPostPage({
 
         {/* Article Container */}
         <article className="container-px max-w-4xl mx-auto mt-2">
+          {/* Draft Preview Banner */}
+          {isPreview && !isPostPublished(post) && (
+            <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-amber-950 shadow-sm flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-200 text-amber-900">
+                  <Eye className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold leading-tight">Admin Preview Mode</p>
+                  <p className="text-[11px] text-amber-800">
+                    This post is currently in <span className="font-semibold uppercase tracking-wider">{post.status || "draft"}</span> status and is invisible to public visitors.
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-amber-200 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-900 shrink-0">
+                {post.status || "Draft"}
+              </span>
+            </div>
+          )}
+
           {/* Article Header */}
           <header className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">

@@ -9,7 +9,9 @@ import {
   getCatalogPoojaDates,
   getCatalogPoojas,
   getCatalogTemples,
+  getCatalogBlogs,
 } from "./catalog";
+import type { BlogPost } from "./blog-data";
 import {
   withEventBookedSeats,
   type Coupon,
@@ -48,6 +50,7 @@ export interface ResolvedCatalog {
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
+  blogs?: BlogPost[];
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
@@ -129,6 +132,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
             coupons: body.coupons,
             poojaDates: body.poojaDates ?? [],
             temples: body.temples ?? getCatalogTemples(),
+            blogs: body.blogs ?? getCatalogBlogs(),
           };
         }
         throw new Error("unexpected catalog payload");
@@ -146,6 +150,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
           coupons: getCatalogCoupons(),
           poojaDates: getCatalogPoojaDates(),
           temples: getCatalogTemples(),
+          blogs: getCatalogBlogs(),
         };
       }
     })();
@@ -179,7 +184,8 @@ export type CatalogSection =
   | "festivals"
   | "coupons"
   | "poojaDates"
-  | "temples";
+  | "temples"
+  | "blogs";
 
 export async function saveCatalogSection(
   section: CatalogSection,

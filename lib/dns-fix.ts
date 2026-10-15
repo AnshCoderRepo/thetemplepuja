@@ -140,7 +140,6 @@ let patched = false;
  * unless MONGODB_URI is set (the only case where Mongo needs it). */
 export function ensureDnsPatch(): void {
   if (patched) return;
-  if (!process.env.MONGODB_URI) return; // only matters when Mongo is in play
   patched = true;
 
   const dns = require("dns") as typeof import("dns");

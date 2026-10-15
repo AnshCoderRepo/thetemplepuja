@@ -21,6 +21,7 @@ import {
   type Temple,
   type UpcomingEventSpec,
 } from "./data";
+import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
 import { STORAGE_KEYS } from "./constants";
 
 const POOJAS_KEY = STORAGE_KEYS.CATALOG_POOJAS;
@@ -29,6 +30,7 @@ const FESTIVALS_KEY = STORAGE_KEYS.CATALOG_FESTIVALS;
 const COUPONS_KEY = STORAGE_KEYS.CATALOG_COUPONS;
 const POOJA_DATES_KEY = STORAGE_KEYS.CATALOG_POOJA_DATES;
 const TEMPLES_KEY = STORAGE_KEYS.CATALOG_TEMPLES;
+const BLOGS_KEY = STORAGE_KEYS.CATALOG_BLOGS;
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -150,3 +152,22 @@ export function saveCatalogTemples(temples: Temple[]): void {
 export function resetCatalogTemples(): void {
   clear(TEMPLES_KEY);
 }
+
+// ===================== BLOGS =====================
+
+export function getCatalogBlogs(): BlogPost[] {
+  return read<BlogPost[]>(BLOGS_KEY) ?? staticBlogPosts;
+}
+
+export function getCatalogBlog(slug: string): BlogPost | undefined {
+  return getCatalogBlogs().find((b) => b.slug === slug);
+}
+
+export function saveCatalogBlogs(blogs: BlogPost[]): void {
+  write(BLOGS_KEY, blogs);
+}
+
+export function resetCatalogBlogs(): void {
+  clear(BLOGS_KEY);
+}
+

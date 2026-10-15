@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useI18n } from "@/components/providers";
+import { LanguageToggle } from "@/components/common";
 import { SITE_CONFIG, getWhatsAppChannelUrl } from "@/lib/config";
 import { useCatalog } from "@/features/catalog";
 
@@ -28,6 +29,7 @@ export default function Footer() {
   const navLinks = [
     { label: t("nav.home"), href: "/#home" },
     { label: t("nav.bookPooja"), href: "/#poojas" },
+    { label: t("nav.temples"), href: "/temples" },
     { label: "Spiritual Blog", href: "/blog" },
     { label: "Message CEO", href: "/#message-ceo" },
     { label: t("nav.whyUs"), href: "/#why-us" },
@@ -93,16 +95,28 @@ export default function Footer() {
               {t("footer.quickLinks") || "Explore Sevas"}
             </h4>
             <ul className="space-y-2 text-xs">
-              {navLinks.map((item) => (
-                <li key={item.label}>
-                  <a
-                    href={item.href}
-                    className="text-cream/70 transition-colors hover:text-saffron-400"
-                  >
-                    {item.label}
-                  </a>
-                </li>
-              ))}
+              {navLinks.map((item) => {
+                const isInternal = item.href.startsWith("/") && !item.href.startsWith("/#");
+                return (
+                  <li key={item.label}>
+                    {isInternal ? (
+                      <Link
+                        href={item.href}
+                        className="text-cream/70 transition-colors hover:text-saffron-400"
+                      >
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <a
+                        href={item.href}
+                        className="text-cream/70 transition-colors hover:text-saffron-400"
+                      >
+                        {item.label}
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -160,7 +174,7 @@ export default function Footer() {
           <div>
             © {new Date().getFullYear()} {SITE_CONFIG.brandName}. {t("footer.rights")} {t("footer.madeWith")}
           </div>
-          <div className="flex items-center gap-4 text-cream/60">
+          <div className="flex flex-wrap items-center gap-4 text-cream/60">
             <Link href="/privacy" className="hover:text-saffron-400 transition-colors">
               Privacy
             </Link>
@@ -168,6 +182,7 @@ export default function Footer() {
             <Link href="/terms" className="hover:text-saffron-400 transition-colors">
               Terms
             </Link>
+            <LanguageToggle />
           </div>
         </div>
       </div>
