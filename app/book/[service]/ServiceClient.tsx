@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   Calendar,
   Clock,
@@ -17,7 +17,7 @@ import {
   Camera,
 } from "lucide-react";
 import { useBookingModal, useI18n } from "@/components/providers";
-import { ImagePreviewModal, PoojaImage } from "@/components/common";
+import { ImagePreviewModal, LanguageToggle, PoojaImage } from "@/components/common";
 import { PoojaCatalog, useCatalog } from "@/features/catalog";
 import { SITE_CONFIG } from "@/lib/config";
 import {
@@ -32,6 +32,8 @@ import {
   getPoojaBannerImage,
   getPoojaSchedule,
   getTempleForPooja,
+  getLocalizedTempleName,
+  isPoojaLiveStreamAvailable,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 
@@ -49,8 +51,28 @@ function ServiceInner({ service }: { service: string }) {
     : undefined;
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [isMainCtaInView, setIsMainCtaInView] = useState(true);
+  const mainBookingCtaRef = useRef<HTMLDivElement | null>(null);
   const locTitle = pooja ? getLocalizedPoojaTitle(pooja, locale) : "";
   const schedule = pooja ? getPoojaSchedule(pooja) : null;
+
+  useEffect(() => {
+    const element = mainBookingCtaRef.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsMainCtaInView(entry.isIntersecting);
+      },
+      {
+        root: null,
+        threshold: 0.15,
+      }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [pooja?.slug]);
 
   useEffect(() => {
     document.title = locTitle
@@ -99,23 +121,70 @@ function ServiceInner({ service }: { service: string }) {
     openBooking(pooja.slug);
   };
 
+  const hasLiveStream = isPoojaLiveStreamAvailable(pooja);
+  const isOnline = pooja.online !== false;
+
+  const assurances = [
+    {
+      id: "purohit",
+      icon: ShieldCheck,
+      text: t("service.assurance1"),
+    },
+    {
+      id: "sankalp",
+      icon: CheckCircle2,
+      text: t("service.assurance2"),
+    },
+    ...(hasLiveStream
+      ? [
+          {
+            id: "livestream",
+            icon: Video,
+            text: t("service.assurance3"),
+          },
+        ]
+      : isOnline
+      ? [
+          {
+            id: "recorded",
+            icon: Video,
+            text: t("service.assuranceRecorded"),
+          },
+        ]
+      : [
+          {
+            id: "inperson",
+            icon: CheckCircle2,
+            text: t("service.assuranceInPerson"),
+          },
+        ]),
+    {
+      id: "prasad",
+      icon: CheckCircle2,
+      text: t("service.assurance4"),
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#FFFDF9] py-6 sm:py-10">
+    <div className="min-h-screen bg-[#FFFDF9] pt-6 pb-28 sm:pt-10 sm:pb-32">
       <div className="container-px mx-auto max-w-6xl space-y-6">
-        {/* Breadcrumb Navigation - Simple & clean */}
-        <nav className="flex items-center gap-1.5 text-xs text-ink-soft">
-          <Link href="/" className="hover:text-saffron-700 transition-colors">
-            Home
-          </Link>
-          <ChevronRight className="h-3 w-3 text-slate-400" />
-          <Link href="/#poojas" className="hover:text-saffron-700 transition-colors">
-            Poojas
-          </Link>
-          <ChevronRight className="h-3 w-3 text-slate-400" />
-          <span className="font-semibold text-ink truncate max-w-xs">
-            {locTitle}
-          </span>
-        </nav>
+        {/* Breadcrumb Navigation + Global Language Switcher */}
+        <div className="flex items-center justify-between gap-3 text-xs text-ink-soft">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 flex-wrap">
+            <Link href="/" className="hover:text-saffron-700 transition-colors">
+              {t("service.breadcrumbHome")}
+            </Link>
+            <ChevronRight className="h-3 w-3 text-slate-400" />
+            <Link href="/book" className="hover:text-saffron-700 transition-colors">
+              {t("service.breadcrumbPoojas")}
+            </Link>
+            <ChevronRight className="h-3 w-3 text-slate-400" />
+            <span className="font-semibold text-ink truncate max-w-xs">
+              {locTitle}
+            </span>
+          </nav>
+          <LanguageToggle />
+        </div>
 
         {/* Two Column Layout: Banner on Left, Details on Right */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -148,15 +217,17 @@ function ServiceInner({ service }: { service: string }) {
                     type="button"
                     onClick={() => setPreviewOpen(true)}
                     className="inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur border border-white/25 transition-all shadow-sm cursor-pointer"
-                    title="View complete image in high resolution"
+                    title={t("service.allPhotos")}
                   >
                     <Camera className="h-3.5 w-3.5 text-amber-300" />
-                    <span>All Photos (1)</span>
+                    <span>{t("service.allPhotos")}</span>
                   </button>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3 py-1 text-[11px] font-bold text-white backdrop-blur shadow-xs">
-                    <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                    Live Darshan
-                  </span>
+                  {hasLiveStream && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3 py-1 text-[11px] font-bold text-white backdrop-blur shadow-xs">
+                      <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                      {t("service.liveDarshan")}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -167,7 +238,7 @@ function ServiceInner({ service }: { service: string }) {
                     {pooja.emoji || "🪔"}
                   </span>
                   <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">
-                    {temple.name}
+                    {getLocalizedTempleName(temple, locale)}
                   </span>
                 </div>
                 <h2 className="font-display text-lg sm:text-xl font-bold text-white drop-shadow-sm leading-tight">
@@ -191,7 +262,7 @@ function ServiceInner({ service }: { service: string }) {
 
             {/* Live Ceremony Stream or Calming Pre-Live Notice */}
             {pooja.online !== false && (
-              pooja.liveStreamUrl ? (
+              hasLiveStream ? (
                 <a
                   href={pooja.liveStreamUrl}
                   target="_blank"
@@ -205,15 +276,15 @@ function ServiceInner({ service }: { service: string }) {
                     </span>
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-rose-200 font-bold">
-                        Live Ceremony Broadcast
+                        {t("service.liveBroadcastBadge")}
                       </div>
                       <div className="text-sm font-extrabold flex items-center gap-1.5">
-                        Watch Live Pooja Ceremony <ExternalLink className="h-3.5 w-3.5" />
+                        {t("service.watchLive")} <ExternalLink className="h-3.5 w-3.5" />
                       </div>
                     </div>
                   </div>
                   <span className="rounded-xl bg-white/20 px-3 py-1.5 text-xs font-bold backdrop-blur group-hover:bg-white/30 transition-colors">
-                    Join Live ↗
+                    {t("service.joinLive")}
                   </span>
                 </a>
               ) : (
@@ -223,38 +294,46 @@ function ServiceInner({ service }: { service: string }) {
                   </div>
                   <div className="space-y-0.5">
                     <p className="font-bold text-amber-950 text-sm">
-                      We will be live at the time of puja. So stay relaxed.
+                      {t("service.preLiveTitle")}
                     </p>
                     <p className="text-[11px] text-amber-900/80 leading-relaxed">
-                      The live ceremony link will be enabled here and shared directly with you on WhatsApp prior to the scheduled muhurat.
+                      {t("service.preLiveDesc")}
                     </p>
                   </div>
                 </div>
               )
             )}
 
-            {/* Sacred Guarantee Points Below Banner */}
-            <div className="rounded-2xl border border-saffron-200/80 bg-white p-4 shadow-soft space-y-2.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-saffron-800 block">
-                Vedic Assurances & Inclusions
-              </span>
-              <div className="space-y-2 text-xs font-medium text-ink">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>100% Certified Vedic Purohit from Kashi / Ayodhya</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Personalized Vedic Sankalp with your Name & Gotra</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Private Live Stream Link & Recorded Video on WhatsApp</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Prasad & Consecrated Raksha Sutra Delivery</span>
-                </div>
+            {/* Vedic Assurances & Inclusions Section */}
+            <div className="rounded-3xl border border-saffron-200/90 bg-white p-4 sm:p-5 shadow-card space-y-3">
+              <div className="flex items-center justify-between gap-2 border-b border-saffron-100 pb-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-900 flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-saffron-600 shrink-0" />
+                  {t("service.assurancesHeading")}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-700 shrink-0">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  {t("service.verifiedSevaBadge")}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+                {assurances.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-start gap-2.5 rounded-2xl border border-saffron-100/90 bg-saffron-50/35 p-2.5 sm:p-3 text-xs text-ink transition-colors hover:border-saffron-300 hover:bg-saffron-50/70"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 mt-0.5 shadow-2xs">
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="font-semibold text-ink leading-snug break-words">
+                        {item.text}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -272,7 +351,7 @@ function ServiceInner({ service }: { service: string }) {
                     </span>
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
                       <ShieldCheck className="h-3.5 w-3.5" />
-                      Vedic Purohit Verified
+                      {t("service.vedicPurohitVerified")}
                     </span>
                   </div>
                   <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
@@ -282,7 +361,7 @@ function ServiceInner({ service }: { service: string }) {
 
                 <div className="text-right shrink-0">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Starting Dakshina
+                    {t("service.startingDakshina")}
                   </span>
                   <span className="font-display text-xl sm:text-2xl font-extrabold text-saffron-700">
                     {formatINR(pooja.price)}
@@ -298,7 +377,7 @@ function ServiceInner({ service }: { service: string }) {
               {locBenefits.length > 0 && (
                 <div className="pt-3 border-t border-saffron-100 space-y-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-900 block">
-                    Pooja Blessings & Divine Benefits:
+                    {t("service.benefitsHeading")}
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {locBenefits.slice(0, 4).map((b, i) => (
@@ -317,7 +396,7 @@ function ServiceInner({ service }: { service: string }) {
               <div className="flex items-center gap-2 text-saffron-900">
                 <Calendar className="h-5 w-5 text-saffron-600" />
                 <h2 className="font-display text-base sm:text-lg font-bold">
-                  Scheduled Date, Time & Temple
+                  {t("service.scheduleHeading")}
                 </h2>
               </div>
 
@@ -325,7 +404,7 @@ function ServiceInner({ service }: { service: string }) {
                 {/* Date & Time */}
                 <div className="rounded-2xl border border-saffron-200/80 bg-white p-4 space-y-1.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
-                    Scheduled Date & Muhurat
+                    {t("service.dateMuhuratLabel")}
                   </span>
                   <p className="font-display text-base font-bold text-ink">
                     {schedule ? `${schedule.date} • ${schedule.time}` : locMuhurat}
@@ -333,38 +412,55 @@ function ServiceInner({ service }: { service: string }) {
                   <div className="flex flex-wrap items-center gap-2 text-xs text-saffron-800 font-medium">
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-saffron-50 px-2 py-0.5 text-saffron-800 font-semibold border border-saffron-200/60">
                       <Sparkles className="h-3 w-3 text-saffron-600" />
-                      <span>Muhurat: {locMuhurat}</span>
+                      <span>{t("service.muhuratPrefix")}: {locMuhurat}</span>
                     </span>
                   </div>
                 </div>
 
                 {/* Where / Temple Venue */}
-                <div className="rounded-2xl border border-saffron-200/80 bg-white p-4 space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
-                    Sacred Temple Venue
-                  </span>
-                  <p className="font-display text-base font-bold text-ink leading-tight">
-                    {temple.name}
-                  </p>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-                    <MapPin className="h-3.5 w-3.5 text-saffron-600 shrink-0" />
-                    <span>{temple.city}, {temple.state}</span>
+                <div className="rounded-2xl border border-saffron-200/80 bg-white p-4 space-y-2 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+                      {t("service.templeVenueLabel")}
+                    </span>
+                    <p className="font-display text-base font-bold text-ink leading-tight mt-0.5">
+                      {getLocalizedTempleName(temple, locale)}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium mt-1">
+                      <MapPin className="h-3.5 w-3.5 text-saffron-600 shrink-0" />
+                      <span>{temple.city}, {temple.state}</span>
+                    </div>
                   </div>
+                  {temple.slug && (
+                    <div className="pt-1.5 border-t border-saffron-100/80">
+                      <Link
+                        href={`/temples/${temple.slug}`}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-saffron-700 hover:text-saffron-800 hover:underline transition-colors"
+                      >
+                        <span>{t("temples.viewDetails")}</span>
+                        <span aria-hidden="true">→</span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Pre-Scheduled Muhurat Notice */}
               <div className="rounded-xl bg-amber-50/90 border border-amber-200 p-3 text-xs text-amber-950">
-                <span className="font-bold">🗓️ Pre-Scheduled Muhurat:</span> You do not need to choose any date or time. Our Vedic Pandits perform this sacred ritual at this fixed auspicious day & time.
+                <span className="font-bold">🗓️ {t("service.preScheduledNoticePrefix")}</span> {t("service.preScheduledNoticeText")}
               </div>
             </div>
 
             {/* Standard Online Group Pooja Booking Card */}
-            <div className="rounded-3xl border border-saffron-200 bg-white p-6 shadow-card space-y-3.5 text-center sm:text-left">
+            <div
+              ref={mainBookingCtaRef}
+              id="main-booking-cta-card"
+              className="rounded-3xl border border-saffron-200 bg-white p-6 shadow-card space-y-3.5 text-center sm:text-left transition-all"
+            >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-                    Standard Group Pooja Dakshina
+                    {t("service.groupDakshinaLabel")}
                   </span>
                   <span className="font-display text-2xl font-extrabold text-saffron-700">
                     {formatINR(pooja.price)}
@@ -375,15 +471,15 @@ function ServiceInner({ service }: { service: string }) {
                   type="button"
                   id="book-now-main-btn"
                   onClick={handleBookNowClick}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3.5 px-8 text-base font-bold text-white shadow-lg shadow-saffron-600/25 transition-all hover:scale-[1.02] hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3.5 px-8 text-base font-bold text-white shadow-lg shadow-saffron-600/25 transition-all hover:scale-[1.02] hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.98] w-full sm:w-auto"
                 >
-                  <span>Book Group Puja — From {formatINR(pooja.price)}</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <span>{t("book.bookNow")} — {t("service.from")} {formatINR(pooja.price)}</span>
+                  <ArrowRight className="h-4 w-4 shrink-0" />
                 </button>
               </div>
 
               <p className="text-[11px] text-slate-500">
-                ⚡ Select Single / Couple / Family in the next step • Live video darshan & sankalp video included
+                {t("service.nextStepHint")}
               </p>
             </div>
 
@@ -393,15 +489,15 @@ function ServiceInner({ service }: { service: string }) {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 border border-amber-300/60">
-                      👑 VIP & Individual Seva
+                      {t("service.vipBadge")}
                     </span>
-                    <span className="text-xs text-amber-800 font-semibold">Direct Acharya Coordination</span>
+                    <span className="text-xs text-amber-800 font-semibold">{t("service.vipCoordination")}</span>
                   </div>
                   <h4 className="font-display text-base font-bold text-ink">
-                    Need an Exclusive VIP Puja or Private Auspicious Muhurat?
+                    {t("service.vipTitle")}
                   </h4>
                   <p className="text-xs text-ink-soft leading-relaxed">
-                    VIP Pujas are performed individually for your family with dedicated Vedic Acharyas, personalized gotra chanting, and energized prasad dispatched directly to your home.
+                    {t("service.vipDesc")}
                   </p>
                 </div>
 
@@ -410,13 +506,60 @@ function ServiceInner({ service }: { service: string }) {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-6 py-3.5 text-sm font-bold shadow-md transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Phone className="h-4 w-4" />
-                  <span>Call for VIP Puja ({SITE_CONFIG.contact.phoneDisplay})</span>
+                  <span>{t("service.vipCallCta")} ({SITE_CONFIG.contact.phoneDisplay})</span>
                 </a>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Responsive Sticky Booking Bar (Scroll-Aware, Appears only when main CTA is out of view) */}
+      <aside
+        id="book-now-sticky-bar"
+        aria-label="Quick Booking"
+        aria-hidden={isMainCtaInView}
+        className={`fixed bottom-0 inset-x-0 z-40 border-t border-saffron-200/90 bg-white/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_25px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 ease-in-out ${
+          isMainCtaInView
+            ? "translate-y-full opacity-0 pointer-events-none"
+            : "translate-y-0 opacity-100 pointer-events-auto"
+        }`}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 sm:gap-4">
+          {/* Left: Info & Price */}
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <span className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 border border-amber-200/80 text-xl shadow-2xs">
+              {pooja.emoji || "🪔"}
+            </span>
+            <div className="min-w-0">
+              <h3 className="hidden sm:block font-display text-xs sm:text-sm font-bold text-ink truncate max-w-xs md:max-w-md">
+                {locTitle}
+              </h3>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">
+                  {t("service.startingDakshina")}:
+                </span>
+                <span className="font-display text-lg sm:text-xl font-extrabold text-saffron-700">
+                  {formatINR(pooja.price)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Primary Book Now CTA */}
+          <button
+            type="button"
+            id="book-now-sticky-btn"
+            onClick={handleBookNowClick}
+            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-base font-bold text-white shadow-md shadow-saffron-600/25 transition-all hover:scale-[1.02] hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.98] shrink-0"
+          >
+            <span>
+              {t("book.bookNow")} — {t("service.from")} {formatINR(pooja.price)}
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0" />
+          </button>
+        </div>
+      </aside>
 
       <ImagePreviewModal
         isOpen={previewOpen}

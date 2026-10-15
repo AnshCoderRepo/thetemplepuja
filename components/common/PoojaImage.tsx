@@ -12,6 +12,7 @@ export interface PoojaImageProps {
   showBrandText?: boolean;
   onClick?: () => void;
   priority?: boolean;
+  onAspectRatioChange?: (ratio: number) => void;
 }
 
 export default function PoojaImage({
@@ -22,15 +23,40 @@ export default function PoojaImage({
   fallbackSize = "md",
   showBrandText = true,
   onClick,
+  onAspectRatioChange,
 }: PoojaImageProps) {
   const [hasError, setHasError] = useState(false);
+  const cleanSrc = typeof src === "string" ? src.trim() : "";
 
   // Reset error state if the image source changes (e.g. admin uploads a new file)
   useEffect(() => {
     setHasError(false);
   }, [src]);
 
-  const cleanSrc = typeof src === "string" ? src.trim() : "";
+  // Measure natural dimensions as soon as image source is available or loaded
+  useEffect(() => {
+    if (!cleanSrc || !onAspectRatioChange) return;
+    const img = new Image();
+    img.src = cleanSrc;
+    const reportRatio = () => {
+      if (img.naturalWidth && img.naturalHeight) {
+        onAspectRatioChange(img.naturalWidth / img.naturalHeight);
+      }
+    };
+    if (img.complete && img.naturalWidth) {
+      reportRatio();
+    } else {
+      img.onload = reportRatio;
+    }
+  }, [cleanSrc, onAspectRatioChange]);
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    if (naturalWidth && naturalHeight && onAspectRatioChange) {
+      onAspectRatioChange(naturalWidth / naturalHeight);
+    }
+  };
+
   const isValid = Boolean(cleanSrc) && !hasError;
 
   if (!isValid) {
@@ -68,6 +94,7 @@ export default function PoojaImage({
         src={cleanSrc}
         alt={alt}
         className={`relative z-0 h-full w-full object-contain transition-transform duration-300 ${imgClassName}`}
+        onLoad={handleImageLoad}
         onError={() => setHasError(true)}
       />
     </div>

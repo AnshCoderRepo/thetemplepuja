@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { X, Sparkles } from "lucide-react";
 import { useBookingModal, useI18n } from "@/components/providers";
+import { LanguageToggle } from "@/components/common";
 import { useCatalog } from "@/features/catalog";
 import { getLocalizedPoojaTitle, getLocalizedPoojaDescription } from "@/lib/data";
 import BookingFlow from "./BookingFlow";
@@ -69,14 +70,17 @@ export default function BookingModal() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={closeBooking}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-saffron-200/80 bg-white text-ink transition-colors hover:bg-saffron-50 hover:text-saffron-800 active:scale-95"
-            aria-label="Close booking modal"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <button
+              type="button"
+              onClick={closeBooking}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-saffron-200/80 bg-white text-ink transition-colors hover:bg-saffron-50 hover:text-saffron-800 active:scale-95"
+              aria-label="Close booking modal"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body - Scrollable */}

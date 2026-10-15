@@ -12,6 +12,7 @@ import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
 export const navLinks = [
   { label: "Home", href: "/#home" },
   { label: "Pujas", href: "/#poojas" },
+  { label: "Temples", href: "/temples" },
   { label: "Blog", href: "/blog" },
   { label: "Contact Us", href: "/#contact" },
 ];
@@ -23,6 +24,7 @@ export default function Navbar() {
   const activeNavLinks = [
     { label: t("nav.home"), href: "/#home" },
     { label: t("nav.bookPooja"), href: "/#poojas" },
+    { label: t("nav.temples"), href: "/temples" },
     { label: "Blog", href: "/blog" },
     { label: t("nav.contact"), href: "/#contact" },
   ];
@@ -51,21 +53,32 @@ export default function Navbar() {
 
         {/* Desktop Navigation Links */}
         <div className="hidden items-center gap-1 lg:flex">
-          {activeNavLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => {
-                if (link.href === "#contact") {
-                  e.preventDefault();
-                  window.dispatchEvent(new CustomEvent("open-chat-widget"));
-                }
-              }}
-              className="rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-all hover:bg-saffron-50 hover:text-saffron-700"
-            >
-              {link.label}
-            </a>
-          ))}
+          {activeNavLinks.map((link) => {
+            const isInternal = link.href.startsWith("/") && !link.href.startsWith("/#");
+            return isInternal ? (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-all hover:bg-saffron-50 hover:text-saffron-700"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => {
+                  if (link.href === "#contact") {
+                    e.preventDefault();
+                    window.dispatchEvent(new CustomEvent("open-chat-widget"));
+                  }
+                }}
+                className="rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-all hover:bg-saffron-50 hover:text-saffron-700"
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </div>
 
         {/* Desktop Action & Mobile Menu Button */}
@@ -103,22 +116,34 @@ export default function Navbar() {
         }`}
       >
         <div className="container-px flex flex-col gap-2 py-4">
-          {activeNavLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => {
-                setMobileMenuOpen(false);
-                if (link.href === "#contact") {
-                  e.preventDefault();
-                  window.dispatchEvent(new CustomEvent("open-chat-widget"));
-                }
-              }}
-              className="rounded-xl px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-saffron-50 hover:text-saffron-700"
-            >
-              {link.label}
-            </a>
-          ))}
+          {activeNavLinks.map((link) => {
+            const isInternal = link.href.startsWith("/") && !link.href.startsWith("/#");
+            return isInternal ? (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-saffron-50 hover:text-saffron-700"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  if (link.href === "#contact") {
+                    e.preventDefault();
+                    window.dispatchEvent(new CustomEvent("open-chat-widget"));
+                  }
+                }}
+                className="rounded-xl px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-saffron-50 hover:text-saffron-700"
+              >
+                {link.label}
+              </a>
+            );
+          })}
 
           {/* Quick Language Selector for Mobile Drawer */}
           <div className="mt-2 rounded-xl border border-saffron-200/80 bg-white/80 p-2.5">

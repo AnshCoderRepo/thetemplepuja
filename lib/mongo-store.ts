@@ -7,6 +7,7 @@ import type {
   PersistenceStore,
 } from "./persistence";
 import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
+import type { BlogPost } from "./blog-data";
 import type { BookingRecord, DevoteeEntitlement, UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
 import { getPhoneLookupVariants } from "./phone";
@@ -22,8 +23,13 @@ import { ensureDnsPatch } from "./dns-fix";
 // OS resolver works — patch SRV/TXT/A lookups with a DoH fallback first.
 ensureDnsPatch();
 
-const URI = process.env.MONGODB_URI ?? "";
-const DB_NAME = process.env.MONGODB_DB ?? "templepuja";
+function getMongoUri(): string {
+  return (process.env.MONGODB_URI || "").trim();
+}
+
+function getMongoDbName(): string {
+  return (process.env.MONGODB_DB || "templepuja").trim();
+}
 
 // Cache the connection across Next.js dev hot-reloads (globalThis survives
 // module re-evaluation). Connections are lazy — nothing touches Atlas until
@@ -33,9 +39,12 @@ const g = globalThis as unknown as {
 };
 
 function getDb(): Promise<Db> {
+  ensureDnsPatch();
   if (!g.__ttpMongo) {
-    const client = new MongoClient(URI, { serverSelectionTimeoutMS: 8000 });
-    g.__ttpMongo = { client, db: client.connect().then(() => client.db(DB_NAME)) };
+    const uri = getMongoUri();
+    const dbName = getMongoDbName();
+    const client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
+    g.__ttpMongo = { client, db: client.connect().then(() => client.db(dbName)) };
   }
   return g.__ttpMongo.db;
 }
@@ -48,6 +57,7 @@ interface CatalogDoc extends Document {
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
   temples?: Temple[];
+  blogs?: BlogPost[];
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
@@ -167,6 +177,7 @@ export const mongoStore: PersistenceStore = {
     if (doc.coupons) out.coupons = doc.coupons;
     if (doc.poojaDates) out.poojaDates = doc.poojaDates;
     if (doc.temples) out.temples = doc.temples;
+    if (doc.blogs) out.blogs = doc.blogs;
     if (doc.chatbotKnowledge) out.chatbotKnowledge = doc.chatbotKnowledge;
     if (doc.chatbotSettings) out.chatbotSettings = doc.chatbotSettings;
     if (doc.platformSettings) out.platformSettings = doc.platformSettings;

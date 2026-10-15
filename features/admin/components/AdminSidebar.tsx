@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   BarChart3,
+  BookOpen,
   Bot,
   Building2,
   ExternalLink,
@@ -23,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "poojas", label: "Puja Catalog", icon: Flame, group: "Management" },
   { id: "festivals", label: "Festivals & Events", icon: Sparkles, group: "Management" },
   { id: "temples", label: "Temples", icon: Building2, group: "Management" },
+  { id: "blogs", label: "Blog Articles", icon: BookOpen, group: "Management" },
   { id: "chatbot", label: "AI Chatbot Training", icon: Bot, group: "Management" },
   { id: "bookings", label: "Successful Bookings", icon: ShieldCheck, group: "Orders & Sevas" },
   { id: "orders", label: "All Orders & Payments", icon: ShoppingBag, group: "Orders & Sevas" },

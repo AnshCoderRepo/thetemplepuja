@@ -36,6 +36,14 @@ describe("Admin Routing & Session Persistence", () => {
     expect(normalizeAdminTab("account")).toBe("account");
     expect(normalizeAdminTab("settings")).toBe("account");
 
+    // Temples & Blogs
+    expect(normalizeAdminTab("temples")).toBe("temples");
+    expect(normalizeAdminTab("temple")).toBe("temples");
+    expect(normalizeAdminTab("blogs")).toBe("blogs");
+    expect(normalizeAdminTab("blog")).toBe("blogs");
+    expect(normalizeAdminTab("articles")).toBe("blogs");
+    expect(normalizeAdminTab("article")).toBe("blogs");
+
     // Orders & Bookings
     expect(normalizeAdminTab("bookings")).toBe("bookings");
     expect(normalizeAdminTab("orders")).toBe("orders");

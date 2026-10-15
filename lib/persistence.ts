@@ -1,4 +1,5 @@
 import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
+import type { BlogPost } from "./blog-data";
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
 import type {
@@ -14,6 +15,7 @@ export interface CatalogOverrides {
   coupons?: Record<string, Coupon>;
   poojaDates?: PoojaDate[];
   temples?: Temple[];
+  blogs?: BlogPost[];
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
@@ -35,6 +37,7 @@ export interface PersistenceStore {
       | "coupons"
       | "poojaDates"
       | "temples"
+      | "blogs"
       | "chatbotKnowledge"
       | "chatbotSettings"
       | "platformSettings"

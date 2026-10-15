@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Sparkles, ArrowRight, X, Calendar, MapPin, AlertCircle } from "lucide-react";
+import {
+  Sparkles,
+  ArrowRight,
+  X,
+  MapPin,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+} from "lucide-react";
 import { useBookingModal } from "@/components/providers";
 import {
   getIncompleteBookings,
@@ -19,6 +28,8 @@ interface ContinueBookingSectionProps {
   contained?: boolean;
 }
 
+const STORAGE_EXPANDED_KEY = "ttp_continue_booking_expanded";
+
 export default function ContinueBookingSection({
   phone,
   className = "",
@@ -28,6 +39,7 @@ export default function ContinueBookingSection({
   const [drafts, setDrafts] = useState<IncompleteBooking[]>([]);
   const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState<string>("");
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const refreshDrafts = useCallback(() => {
     const activePhone = phone || getDevoteePhone();
@@ -63,6 +75,16 @@ export default function ContinueBookingSection({
     setMounted(true);
     refreshDrafts();
 
+    // Check stored user preference for expansion state (default collapsed)
+    try {
+      const stored = localStorage.getItem(STORAGE_EXPANDED_KEY);
+      if (stored === "true") {
+        setIsExpanded(true);
+      }
+    } catch {
+      // ignore
+    }
+
     const handleUpdate = () => {
       refreshDrafts();
     };
@@ -82,6 +104,18 @@ export default function ContinueBookingSection({
     return null;
   }
 
+  const toggleExpanded = () => {
+    setIsExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_EXPANDED_KEY, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   const handleResume = (draft: IncompleteBooking) => {
     openBooking(draft.poojaSlug, draft);
   };
@@ -94,145 +128,199 @@ export default function ContinueBookingSection({
   return (
     <section
       aria-label="Continue Incomplete Booking"
-      className={`${contained ? "container-px my-6 sm:my-8" : "my-6"} animate-in fade-in duration-300 ${className}`}
+      className={`${contained ? "container-px my-4 sm:my-5" : "my-4"} ${className}`}
     >
-      <div className="rounded-3xl border border-saffron-200/90 bg-gradient-to-br from-white via-amber-50/20 to-white p-5 sm:p-7 shadow-soft">
-        {/* Section Heading & Subheading matching reference design */}
-        <div className="mb-5 sm:mb-6">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">
-              {userName ? (
-                <>
-                  <span className="text-purple-900 capitalize">{userName}</span>
-                  <span className="text-ink">, your seva awaits</span>
-                </>
-              ) : (
-                "Your Seva Awaits"
-              )}
-            </h2>
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-xs sm:text-sm font-semibold text-ink-soft">
-            <span>Continue booking</span>
-            <div className="h-0.5 w-12 rounded-full bg-saffron-500" />
-          </div>
-        </div>
+      <div className="flex flex-col items-start">
+        {/* ─── Compact Collapsed Badge (Default State) ─── */}
+        <button
+          type="button"
+          onClick={toggleExpanded}
+          aria-expanded={isExpanded}
+          aria-label={
+            isExpanded
+              ? "Collapse incomplete bookings panel"
+              : `Complete Your Booking (${drafts.length} resumable seva)`
+          }
+          className="group inline-flex items-center gap-2.5 rounded-full border border-saffron-300/80 bg-gradient-to-r from-amber-50/95 via-white to-amber-50/90 px-3.5 py-1.5 text-xs font-bold text-ink shadow-soft transition-all duration-200 hover:border-saffron-400 hover:bg-white hover:shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 active:scale-[0.98]"
+        >
+          {/* Flame Icon with subtle ping */}
+          <span className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-saffron-500 to-amber-600 text-white text-[11px] shadow-xs">
+            🪔
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-white" />
+          </span>
 
-        {/* Incomplete Booking Cards List */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {drafts.map((draft) => {
-            const isPaymentPending =
-              draft.status === "pending_payment" || draft.status === "payment_processing";
-            const isPaymentFailed =
-              draft.status === "payment_failed" || draft.status === "failed";
+          <span className="tracking-tight font-extrabold text-saffron-950">
+            Complete Your Booking
+          </span>
 
-            return (
-              <div
-                key={draft.bookingId}
-                onClick={() => handleResume(draft)}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-saffron-200/80 bg-white p-3.5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-saffron-400 hover:shadow-card cursor-pointer"
-              >
-                {/* Dismiss Button */}
-                <button
-                  type="button"
-                  onClick={(e) => handleDismiss(e, draft.bookingId)}
-                  className="absolute top-2.5 right-2.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur transition-all"
-                  title="Dismiss this draft"
-                  aria-label="Dismiss draft"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+          {/* Booking count pill */}
+          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-saffron-100 px-1.5 text-[10px] font-extrabold text-saffron-800 border border-saffron-300/60">
+            {drafts.length}
+          </span>
 
-                {/* Top Image Thumbnail Area (Aspect ratio preserved, object-contain) */}
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-slate-950 flex items-center justify-center">
-                  <PoojaImage
-                    src={draft.poojaImageUrl || getPoojaBannerImage({ slug: draft.poojaSlug, title: draft.poojaTitle })}
-                    alt={draft.poojaTitle}
-                    fallbackSize="md"
-                    imgClassName="transition-transform duration-300 group-hover:scale-[1.02]"
-                  />
+          {/* Indicator: Down when collapsed, Up when expanded */}
+          <span className="text-saffron-700 transition-transform duration-200">
+            {isExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 group-hover:translate-y-0.5" />
+            )}
+          </span>
+        </button>
 
-                  {/* Top-Left Puja Badge */}
-                  <div className="absolute top-2.5 left-2.5 z-10">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-purple-900/90 border border-purple-400/30 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-purple-100 backdrop-blur shadow-xs">
-                      <Sparkles className="h-2.5 w-2.5 text-purple-300" />
-                      <span>Puja</span>
-                    </span>
-                  </div>
-
-                  {/* Status Badge */}
-                  <div className="absolute bottom-2 left-2.5 z-10">
-                    {isPaymentFailed ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-rose-600/90 border border-rose-300/40 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur shadow-xs">
-                        <AlertCircle className="h-2.5 w-2.5" />
-                        <span>Payment Retry</span>
-                      </span>
-                    ) : isPaymentPending ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-600/90 border border-amber-300/40 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur shadow-xs">
-                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                        <span>Payment Pending</span>
-                      </span>
+        {/* ─── Expanded Compact Panel ─── */}
+        {isExpanded && (
+          <div className="mt-2.5 w-full max-w-lg rounded-2xl border border-saffron-200/90 bg-white p-3.5 sm:p-4 shadow-card animate-in fade-in slide-in-from-top-2 duration-200">
+            {/* Panel Header */}
+            <div className="flex items-center justify-between border-b border-saffron-100 pb-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🪔</span>
+                <div>
+                  <h3 className="font-display text-sm font-extrabold text-ink leading-tight">
+                    {userName ? (
+                      <>
+                        <span className="text-purple-900 capitalize">{userName}</span>
+                        <span>, your seva awaits</span>
+                      </>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-black/60 border border-white/20 px-2 py-0.5 text-[10px] font-bold text-amber-200 backdrop-blur shadow-xs">
-                        <span>Draft Saved</span>
-                      </span>
+                      "Your Incomplete Bookings"
                     )}
-                  </div>
-                </div>
-
-                {/* Content Area */}
-                <div className="mt-3 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-display text-sm font-bold text-ink leading-snug line-clamp-1 group-hover:text-saffron-800 transition-colors">
-                      {draft.poojaTitle}
-                    </h3>
-
-                    {draft.templeName && (
-                      <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-ink-soft truncate">
-                        <MapPin className="h-3 w-3 text-saffron-600 shrink-0" />
-                        <span className="truncate">{draft.templeName}</span>
-                      </p>
-                    )}
-
-                    {/* Booking Details Pill */}
-                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-amber-50/70 border border-amber-200/60 px-2 py-1 text-[11px]">
-                      <span className="font-semibold text-amber-950 capitalize">
-                        {draft.packageTier} Seva
-                      </span>
-                      <span className="font-bold text-saffron-700">
-                        {formatINR(draft.amount)}
-                      </span>
-                    </div>
-
-                    {draft.primaryName && (
-                      <p className="mt-1.5 text-[11px] text-ink-soft/80 truncate">
-                        Sankalp for: <span className="font-semibold text-ink">{draft.primaryName}</span>
-                        {draft.gotra ? ` (${draft.gotra})` : ""}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Resume CTA Button */}
-                  <div className="mt-3 pt-2.5 border-t border-saffron-100 flex items-center justify-between">
-                    <span className="text-[10px] text-ink-soft/70">
-                      Step {draft.step || 1} of 4
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleResume(draft);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-600 hover:to-saffron-700 text-white px-4 py-1.5 text-xs font-bold shadow-xs hover:shadow-soft transition-all"
-                    >
-                      <span>Resume</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </button>
-                  </div>
+                  </h3>
+                  <p className="text-[10px] text-ink-soft">
+                    {drafts.length === 1
+                      ? "1 seva waiting to be completed"
+                      : `${drafts.length} sevas waiting to be completed`}
+                  </p>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <button
+                type="button"
+                onClick={toggleExpanded}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-ink-soft hover:bg-cream hover:text-ink transition-colors"
+                title="Collapse panel"
+              >
+                <span>Collapse</span>
+                <ChevronUp className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Scrollable Compact List */}
+            <div className="max-h-72 overflow-y-auto space-y-2.5 pr-1">
+              {drafts.map((draft) => {
+                const isPaymentPending =
+                  draft.status === "pending_payment" ||
+                  draft.status === "payment_processing";
+                const isPaymentFailed =
+                  draft.status === "payment_failed" || draft.status === "failed";
+
+                return (
+                  <div
+                    key={draft.bookingId}
+                    onClick={() => handleResume(draft)}
+                    className="group relative flex items-center justify-between gap-3 rounded-xl border border-saffron-100/90 bg-gradient-to-r from-amber-50/30 via-white to-white p-2.5 hover:border-saffron-300 hover:shadow-xs transition-all cursor-pointer"
+                  >
+                    {/* Left: Thumbnail */}
+                    <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl bg-slate-900 flex items-center justify-center">
+                      <PoojaImage
+                        src={
+                          draft.poojaImageUrl ||
+                          getPoojaBannerImage({
+                            slug: draft.poojaSlug,
+                            title: draft.poojaTitle,
+                          })
+                        }
+                        alt={draft.poojaTitle}
+                        fallbackSize="sm"
+                        imgClassName="transition-transform duration-200 group-hover:scale-105"
+                      />
+                    </div>
+
+                    {/* Middle: Details */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-display text-xs font-bold text-ink truncate group-hover:text-saffron-800 transition-colors">
+                        {draft.poojaTitle}
+                      </h4>
+
+                      {draft.templeName && (
+                        <p className="mt-0.5 flex items-center gap-1 text-[10px] text-ink-soft truncate">
+                          <MapPin className="h-2.5 w-2.5 text-saffron-600 shrink-0" />
+                          <span className="truncate">{draft.templeName}</span>
+                        </p>
+                      )}
+
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                        <span className="font-semibold text-amber-950 capitalize bg-amber-100/70 px-1.5 py-0.5 rounded">
+                          {draft.packageTier} Seva
+                        </span>
+                        <span className="font-bold text-saffron-700">
+                          {formatINR(draft.amount)}
+                        </span>
+                      </div>
+
+                      {/* Status indicator */}
+                      <div className="mt-1 flex items-center gap-1 text-[10px]">
+                        {isPaymentFailed ? (
+                          <span className="inline-flex items-center gap-1 text-rose-600 font-bold">
+                            <AlertCircle className="h-2.5 w-2.5" />
+                            <span>Payment Failed</span>
+                          </span>
+                        ) : isPaymentPending ? (
+                          <span className="inline-flex items-center gap-1 text-amber-700 font-bold">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            <span>Payment Pending</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-slate-500 font-medium">
+                            <Clock className="h-2.5 w-2.5 text-slate-400" />
+                            <span>Draft Saved • Step {draft.step || 1} of 4</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDismiss(e, draft.bookingId)}
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        title="Dismiss draft"
+                        aria-label="Dismiss draft"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleResume(draft);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-600 hover:to-saffron-700 text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs hover:shadow-xs transition-all"
+                      >
+                        <span>Resume</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Panel Footer */}
+            <div className="mt-2.5 pt-2 border-t border-saffron-100/70 flex items-center justify-between text-[10px] text-ink-soft">
+              <span>Your sankalp gotra & seva details are preserved.</span>
+              <button
+                type="button"
+                onClick={toggleExpanded}
+                className="font-bold text-saffron-700 hover:underline"
+              >
+                Hide
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -21,6 +21,7 @@ const SECTIONS: CatalogOverrideSection[] = [
   "coupons",
   "poojaDates",
   "temples",
+  "blogs",
   "chatbotKnowledge",
   "chatbotSettings",
   "platformSettings",
@@ -74,11 +75,33 @@ export async function POST(req: NextRequest) {
     await clearCatalogOverrides(sections);
   }
 
-  // Save sections (e.g. { poojas: [...] })
+  // Save sections (e.g. { poojas: [...], blogs: [...] })
   const overrides: Record<string, unknown> = {};
   for (const s of SECTIONS) {
     if (body[s] !== undefined) overrides[s] = body[s];
   }
+
+  // Validate and sanitize blogs if provided
+  if (Array.isArray(overrides.blogs)) {
+    overrides.blogs = overrides.blogs.map((b: any) => {
+      const cleanSlug = String(b.slug || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w-]/g, "")
+        .replace(/--+/g, "-");
+      const cleanTitle = String(b.title || "")
+        .replace(/<[^>]*>?/gm, "")
+        .trim();
+      return {
+        ...b,
+        slug: cleanSlug,
+        title: cleanTitle,
+        status: b.status === "draft" || b.status === "archived" ? b.status : "published",
+        updatedAt: new Date().toISOString(),
+      };
+    }).filter((b: any) => b.title && b.slug);
+  }
+
   if (Object.keys(overrides).length > 0) {
     await saveCatalogOverrides(
       overrides as Parameters<typeof saveCatalogOverrides>[0]
@@ -89,6 +112,8 @@ export async function POST(req: NextRequest) {
   try {
     revalidatePath("/", "layout");
     revalidatePath("/book");
+    revalidatePath("/blog");
+    revalidatePath("/temples");
   } catch {
     // Ignore during test/standalone execution
   }

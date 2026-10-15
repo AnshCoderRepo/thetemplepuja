@@ -3,9 +3,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { Calendar, Clock, ArrowRight, BookOpen, Sparkles, UserCheck } from "lucide-react";
 import { Header, Footer } from "@/components/layout";
-import { BLOG_POSTS } from "@/lib/blog-data";
+import { activeBlogPosts, type BlogPost } from "@/lib/blog-data";
+import { getResolvedCatalog } from "@/lib/server-store";
 import { SITE_CONFIG } from "@/lib/config";
 import { SITE_URL } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Vedic Spiritual Blog & Puja Guides | templepujasewa",
@@ -25,7 +29,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogListingPage() {
+export default async function BlogListingPage() {
+  const catalog = await getResolvedCatalog();
+  const publishedPosts = activeBlogPosts(catalog.blogs);
+
   return (
     <>
       <Header />
@@ -46,8 +53,17 @@ export default function BlogListingPage() {
 
         {/* Featured Article & Grid */}
         <section className="container-px max-w-7xl mx-auto">
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {BLOG_POSTS.map((post) => (
+          {publishedPosts.length === 0 ? (
+            <div className="rounded-3xl border border-saffron-200 bg-white p-12 text-center shadow-soft max-w-md mx-auto">
+              <span className="text-4xl">🪔</span>
+              <h2 className="mt-4 font-display text-xl font-bold text-ink">Articles Updating Soon</h2>
+              <p className="mt-2 text-xs text-ink-soft leading-relaxed">
+                Our Vedic scholars are authoring auspicious spiritual guides. Please check back shortly.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {publishedPosts.map((post) => (
               <article
                 key={post.slug}
                 className="group flex flex-col overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-saffron-300 hover:shadow-card"
@@ -121,6 +137,7 @@ export default function BlogListingPage() {
               </article>
             ))}
           </div>
+          )}
 
           {/* Bottom CTA to Group Pujas */}
           <div className="mt-16 rounded-3xl border border-saffron-200 bg-gradient-to-r from-saffron-500 to-saffron-600 p-8 sm:p-10 text-center text-white shadow-soft">

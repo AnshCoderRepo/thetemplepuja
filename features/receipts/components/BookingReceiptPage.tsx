@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { isValidIndianPhone } from "@/lib/validation";
+import { useI18n } from "@/components/providers";
+import { LanguageToggle } from "@/components/common";
 import { fetchBooking } from "../api/receiptApi";
 import type { ReceiptPageState } from "../types/receipt.types";
 import BookingReceipt from "./BookingReceipt";
@@ -13,15 +15,21 @@ import ReceiptNotFound from "./ReceiptNotFound";
 const inputCls =
   "w-full rounded-xl border border-saffron-100 bg-cream px-4 py-3 text-sm text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200";
 
-const BackButton = () => (
-  <Link
-    href="/"
-    className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-ink-soft transition-colors hover:text-saffron-600"
-  >
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-    Back to Home
-  </Link>
-);
+const ReceiptTopBar = () => {
+  const { t } = useI18n();
+  return (
+    <div className="mb-6 flex items-center justify-between gap-3">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-ink-soft transition-colors hover:text-saffron-600"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+        {t("common.backToHome")}
+      </Link>
+      <LanguageToggle />
+    </div>
+  );
+};
 
 export default function BookingReceiptPage() {
   const params = useParams();
@@ -96,7 +104,7 @@ export default function BookingReceiptPage() {
     return (
       <section id="receipt-page" className="section-pad bg-cream">
         <div className="container-px">
-          <BackButton />
+          <ReceiptTopBar />
           <ReceiptGate
             bookingId={bookingId}
             phone={phone}
@@ -122,7 +130,7 @@ export default function BookingReceiptPage() {
     return (
       <section id="receipt-page" className="section-pad bg-cream">
         <div className="container-px">
-          <BackButton />
+          <ReceiptTopBar />
           <BookingReceipt booking={state.booking} holder={state.holder} />
         </div>
       </section>
@@ -132,7 +140,7 @@ export default function BookingReceiptPage() {
   return (
     <section id="receipt-page" className="section-pad bg-cream">
       <div className="container-px">
-        <BackButton />
+        <ReceiptTopBar />
         <ReceiptNotFound
           bookingId={bookingId}
           idLookup={idLookup}

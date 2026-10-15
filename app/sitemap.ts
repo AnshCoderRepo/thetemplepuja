@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { activePoojas, poojas } from "@/lib/data";
-import { BLOG_POSTS } from "@/lib/blog-data";
+import { activePoojas, activeTemples, defaultTemples, poojas } from "@/lib/data";
+import { BLOG_POSTS, activeBlogPosts } from "@/lib/blog-data";
 import { SITE_URL } from "@/lib/seo";
 
 // sitemap.xml — every indexable public page. Pooja detail pages and spiritual
@@ -15,6 +15,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: "weekly",
       priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/temples`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.85,
     },
     {
       url: `${SITE_URL}/book/form`,
@@ -37,12 +43,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9,
   }));
 
-  const blogPages: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
-    url: `${SITE_URL}/blog/${post.slug}`,
-    lastModified: new Date(post.publishedAt),
+  const templePages: MetadataRoute.Sitemap = activeTemples(defaultTemples).map((t) => ({
+    url: `${SITE_URL}/temples/${t.slug}`,
+    lastModified,
     changeFrequency: "monthly",
     priority: 0.8,
   }));
 
-  return [...staticPages, ...poojaPages, ...blogPages];
+  const blogPages: MetadataRoute.Sitemap = activeBlogPosts(BLOG_POSTS).map((post) => ({
+    url: `${SITE_URL}/blog/${post.slug}`,
+    lastModified: new Date(post.updatedAt || post.publishedAt),
+    changeFrequency: "monthly",
+    priority: 0.8,
+  }));
+
+  return [...staticPages, ...poojaPages, ...templePages, ...blogPages];
 }

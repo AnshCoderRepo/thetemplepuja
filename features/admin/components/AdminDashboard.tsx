@@ -10,6 +10,7 @@ import AdminDevoteesTab from "./AdminDevoteesTab";
 import PoojasManager from "@/components/admin/PoojasManager";
 import EventsManager from "@/components/admin/EventsManager";
 import TemplesManager from "@/components/admin/TemplesManager";
+import BlogsManager from "@/components/admin/BlogsManager";
 import BookingsTable from "@/components/admin/BookingsTable";
 import OrdersManager from "@/components/admin/OrdersManager";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
@@ -123,6 +124,14 @@ export default function AdminDashboard({
 
           {tab === "temples" && (
             <TemplesManager
+              token={token || ""}
+              onAuthError={onAuthError}
+              onRefresh={onRefresh}
+            />
+          )}
+
+          {tab === "blogs" && (
+            <BlogsManager
               token={token || ""}
               onAuthError={onAuthError}
               onRefresh={onRefresh}
