@@ -1,6 +1,6 @@
 "use client";
 
-import type { Coupon } from "@/lib/data";
+import { isCouponActive, type Coupon } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
 import type { AppliedCoupon } from "../types/payment.types";
@@ -83,21 +83,27 @@ export default function CouponInput({
               {couponMsg.text}
             </p>
           )}
-          {Object.keys(couponMap).length > 0 && (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {Object.entries(couponMap).map(([code, c]) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => onQuickApply(code)}
-                  title={c.description}
-                  className="rounded-full border border-gray-200 bg-[#f3f7fa] px-2.5 py-1 text-[10px] font-bold text-gray-600 transition-colors hover:border-[#3395ff]/40 hover:text-[#0b245b]"
-                >
-                  {code}
-                </button>
-              ))}
-            </div>
-          )}
+          {(() => {
+            const activeEntries = Object.entries(couponMap).filter(([, c]) =>
+              isCouponActive(c)
+            );
+            if (activeEntries.length === 0) return null;
+            return (
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {activeEntries.map(([code, c]) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => onQuickApply(code)}
+                    title={c.description}
+                    className="rounded-full border border-gray-200 bg-[#f3f7fa] px-2.5 py-1 text-[10px] font-bold text-gray-600 transition-colors hover:border-[#3395ff]/40 hover:text-[#0b245b]"
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

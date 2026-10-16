@@ -6,6 +6,7 @@ import { useBookingModal, useI18n } from "@/components/providers";
 import { LanguageToggle } from "@/components/common";
 import { useCatalog } from "@/features/catalog";
 import { getLocalizedPoojaTitle, getLocalizedPoojaDescription } from "@/lib/data";
+import { event as trackMetaEvent } from "@/lib/meta-pixel";
 import BookingFlow from "./BookingFlow";
 
 export default function BookingModal() {
@@ -22,6 +23,18 @@ export default function BookingModal() {
       scrollContainerRef.current.scrollTop = 0;
     }
   }, [isOpen, selectedPoojaSlug]);
+
+  // Track Meta Pixel InitiateCheckout event
+  useEffect(() => {
+    if (isOpen && selectedPooja) {
+      trackMetaEvent("InitiateCheckout", {
+        content_name: selectedPooja.title,
+        content_category: "Pooja",
+        value: selectedPooja.price,
+        currency: "INR",
+      });
+    }
+  }, [isOpen, selectedPooja]);
 
   if (!isOpen) return null;
 

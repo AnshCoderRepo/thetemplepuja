@@ -11,6 +11,7 @@ import {
   defaultTemples as staticTemples,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEvents,
+  resolvePoojaTemple,
   type Coupon,
   type FestivalEvent,
   type Pooja,
@@ -163,13 +164,25 @@ export async function getResolvedCatalog(): Promise<{
   platformSettings: PlatformSettings;
 }> {
   const o = await withFallback((s) => s.getCatalogOverrides());
+  const resolvedTemples = o.temples ?? staticTemples;
+  const rawPoojas = o.poojas ?? staticPoojas;
+  const poojas = rawPoojas.map((p) => {
+    const temple = resolvePoojaTemple(p, resolvedTemples);
+    if (!temple) return p;
+    return {
+      ...p,
+      templeId: p.templeId || (temple._id ? String(temple._id) : (temple.id || temple.slug)),
+      templeSlug: p.templeSlug || temple.slug,
+      templeName: p.templeName || temple.name,
+    };
+  });
   return {
-    poojas: o.poojas ?? staticPoojas,
+    poojas,
     events: o.events ?? staticEvents,
     festivals: o.festivals ?? staticFestivals,
     coupons: o.coupons ?? staticCoupons,
     poojaDates: o.poojaDates ?? defaultPoojaDates,
-    temples: o.temples ?? staticTemples,
+    temples: resolvedTemples,
     blogs: o.blogs ?? staticBlogPosts,
     chatbotKnowledge: o.chatbotKnowledge ?? DEFAULT_CHATBOT_KNOWLEDGE,
     chatbotSettings: o.chatbotSettings ?? DEFAULT_CHATBOT_SETTINGS,

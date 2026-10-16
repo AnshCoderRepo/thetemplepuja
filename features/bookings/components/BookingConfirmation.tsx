@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Check, Copy, FileText, MessageCircle, Receipt, UserRound } from "lucide-react";
 import { getWhatsAppUrl } from "@/lib/config";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
+import { event as trackMetaEvent } from "@/lib/meta-pixel";
 import type { ConfirmedBooking } from "../types/booking.types";
 
 interface BookingConfirmationProps {
@@ -21,6 +22,18 @@ export default function BookingConfirmation({
 }: BookingConfirmationProps) {
   const { t } = useI18n();
   const [copiedId, setCopiedId] = useState(false);
+
+  useEffect(() => {
+    if (confirmed?.id) {
+      trackMetaEvent("Purchase", {
+        value: confirmed.total,
+        currency: "INR",
+        content_name: confirmed.poojaTitle,
+        content_type: "product",
+        order_id: confirmed.id,
+      });
+    }
+  }, [confirmed?.id, confirmed?.total, confirmed?.poojaTitle]);
 
   const copyBookingId = async () => {
     try {

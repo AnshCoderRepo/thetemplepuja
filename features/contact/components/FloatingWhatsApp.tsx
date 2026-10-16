@@ -8,6 +8,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
+import { event as trackMetaEvent } from "@/lib/meta-pixel";
 
 function WhatsAppIcon({ className = "h-8 w-8" }: { className?: string }) {
   return (
@@ -90,7 +91,10 @@ export default function FloatingWhatsApp() {
             href={`mailto:${SITE_CONFIG.contact.email}`}
             title="Email Support"
             aria-label="Email Support"
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              trackMetaEvent("Contact", { method: "email" });
+              setIsOpen(false);
+            }}
             className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-amber-600 text-white shadow-xl shadow-saffron-500/30 transition-all duration-200 hover:scale-110 hover:shadow-2xl active:scale-95 border-2 border-white/30"
           >
             <Mail className="h-7 w-7 sm:h-8 sm:w-8 transition-transform group-hover:scale-110" />
@@ -106,7 +110,11 @@ export default function FloatingWhatsApp() {
             href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
             title="Call Helpline"
             aria-label="Call Helpline"
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              trackMetaEvent("Contact", { method: "phone" });
+              trackMetaEvent("Lead");
+              setIsOpen(false);
+            }}
             className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-110 hover:shadow-2xl active:scale-95 border-2 border-white/30"
           >
             <Phone className="h-7 w-7 sm:h-8 sm:w-8 transition-transform group-hover:rotate-12" />
@@ -124,7 +132,11 @@ export default function FloatingWhatsApp() {
             rel="noopener noreferrer"
             title="Chat on WhatsApp"
             aria-label="Chat on WhatsApp"
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              trackMetaEvent("Contact", { method: "whatsapp" });
+              trackMetaEvent("Lead");
+              setIsOpen(false);
+            }}
             className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#128C7E] via-[#25D366] to-[#128C7E] text-white shadow-xl shadow-[#25D366]/35 transition-all duration-200 hover:scale-110 hover:shadow-2xl active:scale-95 border-2 border-white/30"
           >
             <WhatsAppIcon className="h-7 w-7 sm:h-8 sm:w-8 transition-transform group-hover:scale-110" />

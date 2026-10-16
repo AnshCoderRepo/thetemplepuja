@@ -26,8 +26,6 @@ const TICKER_ITEMS = [
   { icon: "📦", label: "Prasad Delivery" },
   { icon: "👥", label: "Trusted by Devotees" },
   { icon: "🪔", label: "Authentic Pooja" },
-  { icon: "🚩", label: "Sacred Tirth Yatra" },
-  { icon: "📦", label: "Pooja Kits Delivered" },
 ];
 
 export default function Hero() {
@@ -394,7 +392,7 @@ export default function Hero() {
       {/* Bottom Golden Promotional Ticker Strip */}
       <div className="relative z-20 w-full overflow-hidden bg-gradient-to-r from-amber-500 via-saffron-500 to-amber-500 py-1.5 sm:py-2 text-slate-950 shadow-inner shrink-0">
         <div className="flex items-center gap-8 whitespace-nowrap animate-marquee">
-          {[...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS].map((item, idx) => (
+          {[...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS].map((item, idx) => (
             <div
               key={`${item.label}-${idx}`}
               className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide text-slate-950 shrink-0"

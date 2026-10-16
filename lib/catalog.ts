@@ -14,6 +14,7 @@ import {
   upcomingEventSpecs as staticEventSpecs,
   DEMO_POOJA,
   isDemoSlug,
+  resolvePoojaTemple,
   type Coupon,
   type FestivalEvent,
   type Pooja,
@@ -63,7 +64,18 @@ function clear(key: string): void {
 // ===================== POOJAS =====================
 
 export function getCatalogPoojas(): Pooja[] {
-  return read<Pooja[]>(POOJAS_KEY) ?? staticPoojas;
+  const poojas = read<Pooja[]>(POOJAS_KEY) ?? staticPoojas;
+  const temples = getCatalogTemples();
+  return poojas.map((p) => {
+    const temple = resolvePoojaTemple(p, temples);
+    if (!temple) return p;
+    return {
+      ...p,
+      templeId: p.templeId || (temple._id ? String(temple._id) : (temple.id || temple.slug)),
+      templeSlug: p.templeSlug || temple.slug,
+      templeName: p.templeName || temple.name,
+    };
+  });
 }
 
 export function getCatalogPooja(slug: string): Pooja | undefined {

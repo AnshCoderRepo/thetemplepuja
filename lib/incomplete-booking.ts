@@ -57,6 +57,7 @@ export function getIncompleteBookings(activePhone?: string | null): IncompleteBo
 
   const draftsMap = new Map<string, IncompleteBooking>();
   const now = Date.now();
+  const phone = (activePhone || getDevoteePhone())?.trim();
 
   // 1. Load from localStorage drafts cache
   try {
@@ -69,6 +70,13 @@ export function getIncompleteBookings(activePhone?: string | null): IncompleteBo
           if (!isIncompleteStatus(item.status)) continue;
           const age = now - new Date(item.updatedAt || item.createdAt).getTime();
           if (age > DRAFT_MAX_AGE_MS) continue;
+
+          // PRIVACY & SECURITY CHECK (Requirement 7):
+          // If an authenticated phone is active, do not expose drafts belonging to other phone numbers!
+          if (phone && item.phone && item.phone.trim() !== phone) {
+            continue;
+          }
+
           draftsMap.set(item.bookingId, item);
         }
       }
@@ -78,11 +86,10 @@ export function getIncompleteBookings(activePhone?: string | null): IncompleteBo
   }
 
   // 2. Load from authenticated devotee profile in storage
-  const phone = activePhone || getDevoteePhone();
   if (phone) {
     try {
       const users = getUsers();
-      const currentUser = users.find((u) => u.phone === phone.trim());
+      const currentUser = users.find((u) => u.phone === phone);
       if (currentUser && Array.isArray(currentUser.bookings)) {
         for (const b of currentUser.bookings) {
           if (!isIncompleteStatus(b.status)) {
@@ -136,7 +143,14 @@ export function getIncompleteBookings(activePhone?: string | null): IncompleteBo
     }
   }
 
-  const result = Array.from(draftsMap.values());
+  // Final privacy filter ensuring strict ownership when authenticated
+  const result = Array.from(draftsMap.values()).filter((item) => {
+    if (phone && item.phone && item.phone.trim() !== phone) {
+      return false;
+    }
+    return true;
+  });
+
   // Sort descending by updated timestamp (most recent first)
   result.sort((a, b) => {
     const timeA = new Date(a.updatedAt || a.createdAt).getTime();
