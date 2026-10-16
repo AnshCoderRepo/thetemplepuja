@@ -31,6 +31,7 @@ export function normalizeAdminTab(section?: string | null): AdminTab {
   }
   if (s === "dates" || s === "muhurats" || s === "muhurat") return "dates";
   if (s === "coupons" || s === "coupon" || s === "discounts") return "coupons";
+  if (s === "addons" || s === "addon" || s === "chadhava" || s === "offerings" || s === "chadhava-offerings") return "addons";
   if (s === "account" || s === "settings" || s === "profile") return "account";
   return "analytics";
 }

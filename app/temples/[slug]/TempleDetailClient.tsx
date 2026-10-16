@@ -90,7 +90,7 @@ export default function TempleDetailClient({
   }, [temple]);
 
   return (
-    <div className="min-h-screen bg-slate-50/70 pb-24">
+    <div className="min-h-screen bg-slate-50/70 pt-20 sm:pt-32 md:pt-40 lg:pt-44 pb-24">
       {/* Breadcrumb Navigation */}
       <div className="bg-white border-b border-saffron-100/90 py-3">
         <div className="container-px mx-auto max-w-6xl">

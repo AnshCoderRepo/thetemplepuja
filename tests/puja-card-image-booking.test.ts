@@ -4,7 +4,6 @@ import { DEMO_POOJA, getLocalizedPoojaNativeBadge, getLocalizedPoojaTitle, type 
 describe("Puja Card Full Banner Display & Direct Booking Navigation", () => {
   const samplePooja: Pooja = {
     ...DEMO_POOJA,
-    id: "test-puja-1",
     slug: "someshwar-mahadev-abhishek",
     title: "Someshwar Mahadev Abhishek",
     hindiTitle: "सोमेश्वर महादेव अभिषेक",

@@ -36,7 +36,7 @@ export const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
     "🙏 Namaste! I am your Pandit AI Spiritual Guide. How may I assist you today with Vedic poojas, temple sevas, or booking details?",
   fallbackMessage:
     "🪔 For personalized guidance or specific queries not covered here, please connect directly with our temple coordinators on WhatsApp.",
-  supportPhone: "+91 87653 01563",
+  supportPhone: "+91 96210 14155",
   systemInstructions: `You are Pandit AI, a knowledgeable, reverent, and polite spiritual guide for "templepujasewa" (thetemplepuja.com).
 Your mission is to answer devotee questions about Vedic poojas, sacred temples, puja packages, dakshina/pricing, chadhava add-ons, booking procedures, payment receipts, and upcoming Hindu festivals.
 
@@ -195,7 +195,7 @@ export const DEFAULT_CHATBOT_KNOWLEDGE: ChatbotKnowledgeEntry[] = [
     category: "faqs",
     question: "How can I contact customer support or get help on WhatsApp?",
     answer:
-      "Our devotee care team is available 7 days a week. You can tap the WhatsApp icon on the screen to chat directly with our temple coordinators, call our helpline at +91 87653 01563, or email support@thetemplepuja.com for any questions regarding bookings, pandit coordination, or customized rituals.",
+      "Our devotee care team is available 7 days a week. You can tap the WhatsApp icon on the screen to chat directly with our temple coordinators, call our helpline at +91 96210 14155, or email Infotemplepujasewa@gmail.com for any questions regarding bookings, pandit coordination, or customized rituals.",
     keywords: ["support", "contact", "whatsapp", "helpline", "phone", "email", "help", "coordinator"],
     updatedAt: "2026-10-14T00:00:00.000Z",
   },

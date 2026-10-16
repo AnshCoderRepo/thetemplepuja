@@ -2,10 +2,13 @@
 
 import { Minus, Plus } from "lucide-react";
 import {
+  getAssignedAddonsForPooja,
   getOtherAddons,
   getLocalizedOfferingName,
   getLocalizedOfferingBadge,
+  type Addon,
   type ChadhavaOffering,
+  type Pooja,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
@@ -16,6 +19,8 @@ interface BookingOtherAddonsSectionProps {
   onUpdateQty: (id: string, delta: number) => void;
   otherAddonItems: BookingAddonItem[];
   otherAddonTotal: number;
+  pooja?: Pooja;
+  assignedAddons?: Addon[];
 }
 
 export default function BookingOtherAddonsSection({
@@ -23,9 +28,20 @@ export default function BookingOtherAddonsSection({
   onUpdateQty,
   otherAddonItems,
   otherAddonTotal,
+  pooja,
+  assignedAddons,
 }: BookingOtherAddonsSectionProps) {
   const { locale } = useI18n();
-  const addons = getOtherAddons();
+  const effectiveAddons: (Addon | ChadhavaOffering)[] = assignedAddons
+    ? assignedAddons.filter((a) => a.active !== false && a.type === "addon")
+    : pooja
+    ? getAssignedAddonsForPooja(pooja).filter((a) => a.active !== false && a.type === "addon")
+    : getOtherAddons();
+
+  if (effectiveAddons.length === 0) {
+    return null;
+  }
+
   const totalCount = otherAddonItems.reduce((acc, a) => acc + a.quantity, 0);
 
   return (
@@ -61,15 +77,16 @@ export default function BookingOtherAddonsSection({
 
       {/* Grid of Other Addons */}
       <div className="grid gap-2.5 sm:grid-cols-2">
-        {addons.map((addon: ChadhavaOffering) => {
-          const qty = selectedAddons[addon.id] || 0;
+        {effectiveAddons.map((addon) => {
+          const addonId = (addon as Addon)._id || addon.id;
+          const qty = selectedAddons[addonId] || 0;
           const isAdded = qty > 0;
-          const name = getLocalizedOfferingName(addon, locale);
-          const badge = getLocalizedOfferingBadge(addon, locale);
+          const name = getLocalizedOfferingName(addon as ChadhavaOffering, locale) || addon.name;
+          const badge = getLocalizedOfferingBadge(addon as ChadhavaOffering, locale) || addon.badge;
 
           return (
             <div
-              key={addon.id}
+              key={addonId}
               className={`flex items-center justify-between rounded-xl border p-3 transition-all ${
                 isAdded
                   ? "border-amber-400 bg-amber-50/50 shadow-xs"
@@ -101,7 +118,7 @@ export default function BookingOtherAddonsSection({
               <div className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-white px-1.5 py-0.5 shrink-0">
                 <button
                   type="button"
-                  onClick={() => onUpdateQty(addon.id, -1)}
+                  onClick={() => onUpdateQty(addonId, -1)}
                   disabled={qty === 0}
                   className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
                     qty > 0
@@ -119,7 +136,7 @@ export default function BookingOtherAddonsSection({
 
                 <button
                   type="button"
-                  onClick={() => onUpdateQty(addon.id, 1)}
+                  onClick={() => onUpdateQty(addonId, 1)}
                   className="flex h-6 w-6 items-center justify-center rounded text-amber-900 hover:bg-amber-50 transition-colors"
                   aria-label={`Increase ${name}`}
                 >

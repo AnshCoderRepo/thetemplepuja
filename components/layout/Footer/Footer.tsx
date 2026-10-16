@@ -102,6 +102,7 @@ export default function Footer() {
                     {isInternal ? (
                       <Link
                         href={item.href}
+                        prefetch={true}
                         className="text-cream/70 transition-colors hover:text-saffron-400"
                       >
                         {item.label}
@@ -137,13 +138,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="hover:text-saffron-400 transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-saffron-400 transition-colors">
-                  Terms of Service
+                <Link href="/privacy-policy" className="hover:text-saffron-400 transition-colors">
+                  Privacy & Policy
                 </Link>
               </li>
             </ul>
@@ -175,14 +171,10 @@ export default function Footer() {
             © {new Date().getFullYear()} {SITE_CONFIG.brandName}. {t("footer.rights")} {t("footer.madeWith")}
           </div>
           <div className="flex flex-wrap items-center gap-4 text-cream/60">
-            <Link href="/privacy" className="hover:text-saffron-400 transition-colors">
-              Privacy
+            <Link href="/privacy-policy" className="hover:text-saffron-400 transition-colors">
+              Privacy & Policy
             </Link>
-            <span>•</span>
-            <Link href="/terms" className="hover:text-saffron-400 transition-colors">
-              Terms
-            </Link>
-            <LanguageToggle />
+
           </div>
         </div>
       </div>

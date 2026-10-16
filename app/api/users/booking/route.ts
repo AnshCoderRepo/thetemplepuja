@@ -50,6 +50,49 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Validate puja existence and addon assignments
+  if (booking.poojaSlug) {
+    const { getResolvedCatalog, getAllAddons } = await import("@/lib/server-store");
+    const { DEMO_POOJA, isDemoSlug, isPoojaActive } = await import("@/lib/data");
+    const catalog = await getResolvedCatalog();
+    const normSlug = booking.poojaSlug.toLowerCase().replace(/_/g, "-");
+    const pooja = isDemoSlug(normSlug) ? DEMO_POOJA : catalog.poojas.find((p) => p.slug === normSlug);
+    if (!pooja || !isPoojaActive(pooja)) {
+      return NextResponse.json(
+        { error: "The selected puja is not available." },
+        { status: 400 }
+      );
+    }
+    if (Array.isArray(booking.addons) && booking.addons.length > 0) {
+      const dbAddons = await getAllAddons();
+      const assignedIds = new Set(pooja.assignedAddonIds || []);
+      const hasExplicitAssignments = Array.isArray(pooja.assignedAddonIds);
+
+      for (const item of booking.addons) {
+        if (!item || !item.id) continue;
+        const match = dbAddons.find((a) => a._id === item.id || a.id === item.id);
+        if (!match) {
+          return NextResponse.json(
+            { error: `Add-on with ID "${item.id}" does not exist.` },
+            { status: 400 }
+          );
+        }
+        if (match.active === false) {
+          return NextResponse.json(
+            { error: `Add-on "${match.name}" is inactive.` },
+            { status: 400 }
+          );
+        }
+        if (hasExplicitAssignments && !assignedIds.has(match._id) && !assignedIds.has(match.id)) {
+          return NextResponse.json(
+            { error: `Add-on "${match.name}" is not assigned to this puja.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+  }
+
   const targetStatus = booking.status || "confirmed";
 
   // Rate-limit initial booking creation attempts per phone number (default: 5 per hour).

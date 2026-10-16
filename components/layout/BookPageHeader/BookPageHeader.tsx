@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { useI18n } from "@/components/providers";
 import LanguageToggle from "@/components/common/LanguageToggle";
@@ -17,6 +18,7 @@ export interface BookPageHeaderProps {
   subtitle?: string;
   facts?: Fact[];
   crumb?: string;
+  className?: string;
 }
 
 export default function BookPageHeader({
@@ -25,8 +27,11 @@ export default function BookPageHeader({
   subtitle,
   facts,
   crumb,
+  className,
 }: BookPageHeaderProps) {
   const { t, locale } = useI18n();
+  const pathname = usePathname();
+  const isAdmin = pathname?.startsWith("/admin");
 
   const displayEyebrow =
     eyebrow ??
@@ -96,8 +101,10 @@ export default function BookPageHeader({
       },
     ];
 
+  const topPadding = isAdmin ? "pt-10 md:pt-12" : "pt-24 sm:pt-36 md:pt-44 lg:pt-48";
+
   return (
-    <header className="relative overflow-hidden bg-gradient-to-r from-saffron-700 via-saffron-800 to-maroon-900 pb-2 pt-10 md:pb-2.5 md:pt-12 text-white">
+    <header className={`relative overflow-hidden bg-gradient-to-r from-saffron-700 via-saffron-800 to-maroon-900 pb-3 ${topPadding} md:pb-4 text-white ${className || ""}`}>
       {/* Subtle background glow */}
       <div className="pointer-events-none absolute inset-0 opacity-20">
         <div className="absolute -top-10 left-1/2 h-32 w-[500px] -translate-x-1/2 rounded-full bg-white/20 blur-2xl" />
@@ -132,7 +139,7 @@ export default function BookPageHeader({
             <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-100 backdrop-blur">
               {displayEyebrow}
             </span>
-            <LanguageToggle />
+            {isAdmin && <LanguageToggle />}
           </div>
         </div>
 

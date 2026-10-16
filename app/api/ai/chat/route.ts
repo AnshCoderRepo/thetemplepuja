@@ -333,7 +333,7 @@ OFFICIAL TRAINED BUSINESS KNOWLEDGE & FAQS:
 ${businessKnowledgePrompt}
 
 WhatsApp Channel: ${platformSettings.whatsappChannelUrl || "Available on website"}
-Customer Support: WhatsApp link or call ${settings.supportPhone || "+91 87653 01563"}
+Customer Support: WhatsApp link or call ${settings.supportPhone || "+91 96210 14155"}
 
 IMPORTANT RULES:
 - Only answer based on the verified business knowledge and catalog above.
@@ -360,7 +360,7 @@ IMPORTANT RULES:
 
   // 7. General Fallback with Direct WhatsApp Support
   const whatsappUrl = getWhatsAppUrl();
-  const fallback = `${settings.fallbackMessage || "🪔 That is a sacred inquiry! For personalized muhurat guidance or questions not covered here, please connect directly with our temple coordinators on WhatsApp."}\n\n👉 [Click here to chat on WhatsApp](${whatsappUrl}) or call us at **${settings.supportPhone || "+91 87653 01563"}**.`;
+  const fallback = `${settings.fallbackMessage || "🪔 That is a sacred inquiry! For personalized muhurat guidance or questions not covered here, please connect directly with our temple coordinators on WhatsApp."}\n\n👉 [Click here to chat on WhatsApp](${whatsappUrl}) or call us at **${settings.supportPhone || "+91 96210 14155"}**.`;
 
   return NextResponse.json({
     reply: fallback,

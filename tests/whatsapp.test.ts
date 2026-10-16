@@ -221,7 +221,7 @@ describe("sendAdminWhatsApp", () => {
 
     await sendAdminWhatsApp("hi");
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(init.body as string).toContain("To=whatsapp%3A%2B917070410031");
+    expect(init.body as string).toContain("To=whatsapp%3A%2B919621014155");
   });
 
   it("sendWhatsApp can address the devotee directly", async () => {

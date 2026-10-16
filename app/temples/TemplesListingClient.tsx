@@ -65,7 +65,7 @@ export default function TemplesListingClient({ initialTemples }: TemplesListingC
   }, [templesList, search, selectedDeity]);
 
   return (
-    <div className="min-h-screen bg-slate-50/60 pb-20 pt-8 sm:pt-12">
+    <div className="min-h-screen bg-slate-50/60 pb-20 pt-24 sm:pt-36 md:pt-44 lg:pt-48">
       <div className="container-px mx-auto max-w-6xl space-y-8">
         {/* Hero / Header Section */}
         <div className="rounded-3xl border border-saffron-200/90 bg-gradient-to-br from-amber-500/10 via-saffron-50 to-orange-50/40 p-6 sm:p-10 shadow-sm relative overflow-hidden">

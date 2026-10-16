@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Navbar from "../Navbar/Navbar";
 import { useI18n } from "@/components/providers";
 
 export default function Header() {
   const { t } = useI18n();
+  const pathname = usePathname();
+  const isHomePage = pathname === "/" || pathname === "";
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -16,11 +19,15 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // On home page, transparent until scrolled so hero looks beautiful.
+  // On all other pages (inner pages), solid cream background with backdrop blur so content beneath is cleanly separated.
+  const hasSolidBackground = scrolled || !isHomePage;
+
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-cream/95 shadow-soft backdrop-blur-md"
+      className={`fixed inset-x-0 top-0 z-40 transition-all duration-300 ${
+        hasSolidBackground
+          ? "bg-cream/95 shadow-soft backdrop-blur-md border-b border-saffron-100/70"
           : "bg-transparent"
       }`}
     >
@@ -45,7 +52,7 @@ export default function Header() {
       </div>
 
       {/* Main Navbar */}
-      <Navbar />
+      <Navbar hasSolidBackground={hasSolidBackground} />
     </header>
   );
 }

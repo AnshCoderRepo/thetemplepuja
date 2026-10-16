@@ -17,10 +17,11 @@ import {
   type PoojaDate,
   type Temple,
   type UpcomingEventSpec,
+  type Addon,
 } from "./data";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
 import { createMemoryStore, type PersistenceStore } from "./persistence";
-import { mongoStore } from "./mongo-store";
+import { mongoStore, resetMongoConnection } from "./mongo-store";
 import { createJsonStore } from "./json-store";
 import { DEMO_USERS } from "./demo-users";
 import {
@@ -127,6 +128,7 @@ export async function withFallback<T>(
           "[server-store] MongoDB unreachable — falling back to local storage:",
           err instanceof Error ? err.message : err
         );
+        resetMongoConnection();
       }
     }
   }
@@ -242,6 +244,52 @@ export async function savePlatformSettings(
   await saveCatalogOverrides({
     platformSettings: { ...current, ...settings },
   });
+}
+
+// ===================== ADD-ONS PERSISTENCE =====================
+
+export async function getAllAddons(): Promise<Addon[]> {
+  return withFallback((s) => s.getAddons());
+}
+
+export async function getActiveAddons(): Promise<Addon[]> {
+  const all = await getAllAddons();
+  return all.filter((a) => a.active !== false);
+}
+
+export async function findAddonById(id: string): Promise<Addon | undefined> {
+  return withFallback((s) => s.findAddonById(id));
+}
+
+export async function saveAddon(addon: Addon): Promise<void> {
+  await withFallback((s) => s.saveAddon(addon));
+}
+
+export async function deleteAddon(id: string): Promise<boolean> {
+  const success = await withFallback((s) => s.deleteAddon(id));
+  if (success) {
+    // Clean up assignment references from all pujas safely without deleting pujas
+    try {
+      const catalog = await getResolvedCatalog();
+      let changed = false;
+      const updatedPoojas = catalog.poojas.map((p) => {
+        if (p.assignedAddonIds && (p.assignedAddonIds.includes(id) || p.assignedAddonIds.includes(String(id)))) {
+          changed = true;
+          return {
+            ...p,
+            assignedAddonIds: p.assignedAddonIds.filter((aid) => aid !== id && aid !== String(id)),
+          };
+        }
+        return p;
+      });
+      if (changed) {
+        await saveCatalogOverrides({ poojas: updatedPoojas });
+      }
+    } catch (e) {
+      console.error("[server-store] error cleaning up addon reference in poojas:", e);
+    }
+  }
+  return success;
 }
 
 // ===================== ADMIN CREDENTIALS =====================

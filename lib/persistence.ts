@@ -1,4 +1,4 @@
-import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
+import { defaultAddons, type Addon, type Coupon, type FestivalEvent, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec } from "./data";
 import type { BlogPost } from "./blog-data";
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
@@ -60,6 +60,11 @@ export interface PersistenceStore {
   getRefundRequests(): Promise<RefundRequest[]>;
   findRefundRequestById(id: string): Promise<RefundRequest | undefined>;
   saveRefundRequest(req: RefundRequest): Promise<void>;
+  /** Independent Add-on management */
+  getAddons(): Promise<Addon[]>;
+  findAddonById(id: string): Promise<Addon | undefined>;
+  saveAddon(addon: Addon): Promise<void>;
+  deleteAddon(id: string): Promise<boolean>;
 }
 
 /** In-memory store — data lives for the lifetime of the process only. */
@@ -69,6 +74,7 @@ export function createMemoryStore(): PersistenceStore {
   let sessions: Record<string, number> = {};
   let users: UserProfile[] = [];
   let refundRequests: RefundRequest[] = [];
+  let addons: Addon[] = defaultAddons.map((a) => ({ ...a }));
 
   // Mirrors the MongoDB store's saveUser semantics: phone-keyed, appending
   // only bookings that aren't already on the devotee, so concurrent saves on
@@ -167,6 +173,30 @@ export function createMemoryStore(): PersistenceStore {
       const idx = refundRequests.findIndex((r) => r.id === req.id);
       if (idx >= 0) refundRequests[idx] = req;
       else refundRequests.unshift(req);
+    },
+    async getAddons() {
+      return [...addons];
+    },
+    async findAddonById(id: string) {
+      return addons.find((a) => a._id === id || a.id === id);
+    },
+    async saveAddon(addon: Addon) {
+      const id = addon._id || addon.id;
+      const clean: Addon = {
+        ...addon,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = addons.findIndex((a) => a._id === id || a.id === id);
+      if (idx >= 0) addons[idx] = clean;
+      else addons.push(clean);
+    },
+    async deleteAddon(id: string) {
+      const before = addons.length;
+      addons = addons.filter((a) => a._id !== id && a.id !== id);
+      return addons.length !== before;
     },
   };
 }

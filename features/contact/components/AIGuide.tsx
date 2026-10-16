@@ -119,11 +119,20 @@ export default function AIGuide() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -132,6 +141,53 @@ export default function AIGuide() {
       setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [open, messages, loading]);
+
+  // Click-outside and keyboard dismissal for top-right anchored panel
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    const handleCloseEvent = () => {
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("close-ai-guide", handleCloseEvent);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("close-ai-guide", handleCloseEvent);
+    };
+  }, [open]);
+
+  const toggleOpen = () => {
+    setOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        window.dispatchEvent(new CustomEvent("close-mobile-menu"));
+      }
+      return next;
+    });
+  };
 
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || input).trim();
@@ -192,31 +248,41 @@ export default function AIGuide() {
   const whatsappSupportUrl = getWhatsAppUrl();
 
   return (
-    <>
-      {/* ─── Floating Launcher Button (Bottom-Left to avoid WhatsApp collision) ─── */}
-      <div className="fixed bottom-6 left-6 z-40 flex items-center select-none">
-        <button
-          type="button"
-          onClick={() => setOpen((prev) => !prev)}
-          aria-expanded={open}
-          aria-label="Ask Pandit AI Guide"
-          title="Ask Pandit AI"
-          className="group relative flex items-center gap-2.5 rounded-full border border-amber-300/50 bg-gradient-to-r from-saffron-500 via-amber-500 to-saffron-600 px-4 py-3 text-xs font-bold text-white shadow-xl shadow-saffron-500/25 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-saffron-500/35 focus:outline-none focus-visible:ring-4 focus-visible:ring-saffron-300 active:scale-95"
-        >
-          {/* Subtle pulsating glow */}
-          <span className="absolute -inset-0.5 -z-10 rounded-full bg-gradient-to-r from-saffron-400 to-amber-300 opacity-60 blur-xs transition-opacity duration-300 group-hover:opacity-100 animate-pulse" />
+    <div className="relative flex items-center select-none shrink-0">
+      {/* ─── Integrated Navbar Launcher Button ─── */}
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={toggleOpen}
+        aria-expanded={open}
+        aria-label="Ask Pandit AI Guide"
+        title="Ask Pandit AI Guide"
+        className="group relative flex h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-full border border-amber-300/70 bg-gradient-to-tr from-saffron-600 via-amber-500 to-saffron-500 text-white shadow-md shadow-saffron-500/25 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-saffron-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 active:scale-95 shrink-0"
+      >
+        {/* Subtle pulsating glow */}
+        <span className="absolute -inset-0.5 -z-10 rounded-full bg-gradient-to-r from-saffron-400 to-amber-300 opacity-60 blur-xs transition-opacity duration-300 group-hover:opacity-100 animate-pulse" />
 
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-sm drop-shadow-xs">
-            🪔
-          </span>
-          <span className="font-display tracking-wide font-bold">Ask Pandit AI</span>
-          <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white/70" />
-        </button>
-      </div>
+        {/* Active online green status indicator */}
+        <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-emerald-500 border border-white" />
+        </span>
 
-      {/* ─── Responsive Chat Modal / Drawer ─── */}
+        {open ? (
+          <X className="h-4 w-4 sm:h-5 sm:w-5 text-white transition-transform" />
+        ) : (
+          <span className="text-base sm:text-lg md:text-xl drop-shadow-xs select-none">🪔</span>
+        )}
+      </button>
+
+      {/* ─── Responsive Chat Modal / Drawer (Anchored below Navbar) ─── */}
       {open && (
-        <div className="fixed bottom-20 left-4 sm:left-6 z-50 flex h-[540px] max-h-[85vh] w-[calc(100vw-32px)] max-w-[390px] flex-col overflow-hidden rounded-3xl border border-saffron-200 bg-white shadow-2xl animate-scale-in">
+        <div
+          ref={panelRef}
+          className={`fixed right-3 sm:right-5 md:right-8 z-50 flex h-[520px] max-h-[calc(100dvh-5rem)] sm:max-h-[calc(100dvh-6rem)] w-[calc(100vw-24px)] max-w-[380px] sm:max-w-[390px] flex-col overflow-hidden rounded-3xl border border-saffron-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 origin-top-right duration-200 text-left transition-all ${
+            scrolled ? "top-16 sm:top-18 md:top-22" : "top-16 sm:top-18 md:top-28"
+          }`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between bg-gradient-to-r from-[#3a0808] via-maroon-900 to-[#3a0808] px-4 py-3.5 text-white shadow-sm border-b border-saffron-500/20">
             <div className="flex items-center gap-2.5">
@@ -374,6 +440,6 @@ export default function AIGuide() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

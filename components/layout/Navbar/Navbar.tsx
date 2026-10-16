@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Globe, Menu, X } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/config";
 import { useI18n } from "@/components/providers";
 import LanguageToggle from "@/components/common/LanguageToggle/LanguageToggle";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
+import AIGuide from "@/features/contact/components/AIGuide";
 
 export const navLinks = [
   { label: "Home", href: "/#home" },
@@ -17,25 +19,46 @@ export const navLinks = [
   { label: "Contact Us", href: "/#contact" },
 ];
 
-export default function Navbar() {
+interface NavbarProps {
+  hasSolidBackground?: boolean;
+}
+
+export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
   const { t, locale, setLocale } = useI18n();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleCloseMobileMenu = () => setMobileMenuOpen(false);
+    window.addEventListener("close-mobile-menu", handleCloseMobileMenu);
+    return () => window.removeEventListener("close-mobile-menu", handleCloseMobileMenu);
+  }, []);
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        window.dispatchEvent(new CustomEvent("close-ai-guide"));
+      }
+      return next;
+    });
+  };
 
   const activeNavLinks = [
     { label: t("nav.home"), href: "/#home" },
     { label: t("nav.bookPooja"), href: "/#poojas" },
     { label: t("nav.temples"), href: "/temples" },
-    { label: "Blog", href: "/blog" },
+    { label: t("nav.blog"), href: "/blog" },
     { label: t("nav.contact"), href: "/#contact" },
   ];
 
   return (
     <>
       {/* Main Navbar */}
-      <nav className="container-px flex items-center justify-between gap-3 py-2.5 sm:py-3.5 md:py-4">
+      <nav className="container-px flex items-center justify-between gap-3 py-2 sm:py-2.5 md:py-3">
         {/* Existing Logo */}
         <Link
-          href="#home"
+          href="/"
           className="group flex items-center shrink-0 min-w-0"
           aria-label={SITE_CONFIG.brandName}
         >
@@ -45,7 +68,7 @@ export default function Navbar() {
               alt={SITE_CONFIG.brandName}
               width={240}
               height={240}
-              className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22 xl:h-24 xl:w-24 rounded-2xl bg-white object-contain p-1.5 sm:p-2 shadow-card border border-saffron-200/90 transition-transform duration-300 group-hover:scale-105 shrink-0 select-none"
+              className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-18 lg:w-18 xl:h-20 xl:w-20 rounded-2xl bg-white object-contain p-1.5 sm:p-2 shadow-card border border-saffron-200/90 transition-transform duration-300 group-hover:scale-105 shrink-0 select-none"
               priority
             />
           </div>
@@ -55,11 +78,32 @@ export default function Navbar() {
         <div className="hidden items-center gap-1 lg:flex">
           {activeNavLinks.map((link) => {
             const isInternal = link.href.startsWith("/") && !link.href.startsWith("/#");
+            const isBookPoojaActive =
+              link.href === "/#poojas" &&
+              (pathname === "/book" || pathname?.startsWith("/book"));
+            const isActive =
+              (isInternal &&
+                (pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href)))) ||
+              isBookPoojaActive;
+
+            const linkStyles = isActive
+              ? "bg-saffron-500 text-white font-bold shadow-xs hover:bg-saffron-600"
+              : hasSolidBackground
+              ? "text-ink-soft hover:bg-saffron-50 hover:text-saffron-700"
+              : "text-amber-100 hover:text-white hover:bg-white/10";
+
             return isInternal ? (
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-all hover:bg-saffron-50 hover:text-saffron-700"
+                prefetch={true}
+                onClick={(e) => {
+                  if (pathname === link.href) {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+                className={`rounded-full px-3.5 py-2 text-sm font-medium transition-all ${linkStyles}`}
               >
                 {link.label}
               </Link>
@@ -68,12 +112,16 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={(e) => {
-                  if (link.href === "#contact") {
+                  if (link.href === "/#contact" || link.href === "#contact") {
                     e.preventDefault();
                     window.dispatchEvent(new CustomEvent("open-chat-widget"));
                   }
                 }}
-                className="rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-all hover:bg-saffron-50 hover:text-saffron-700"
+                className={`rounded-full px-3.5 py-2 text-sm font-medium transition-all ${
+                  hasSolidBackground
+                    ? "text-ink-soft hover:bg-saffron-50 hover:text-saffron-700"
+                    : "text-amber-100 hover:text-white hover:bg-white/10"
+                }`}
               >
                 {link.label}
               </a>
@@ -82,7 +130,7 @@ export default function Navbar() {
         </div>
 
         {/* Desktop Action & Mobile Menu Button */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 mr-30">
           {/* Language Switcher in Navbar */}
           <LanguageToggle />
 
@@ -93,10 +141,13 @@ export default function Navbar() {
             {t("nav.login")}
           </Link>
 
+          {/* AI Spiritual Guide (Integrated directly in single navbar) */}
+          <AIGuide />
+
           {/* Mobile hamburger */}
           <button
             type="button"
-            onClick={() => setMobileMenuOpen((o) => !o)}
+            onClick={toggleMobileMenu}
             className="flex h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-full border border-saffron-200 bg-white text-ink transition-colors hover:bg-saffron-50 lg:hidden shrink-0"
             aria-label="Toggle menu"
           >
@@ -118,12 +169,30 @@ export default function Navbar() {
         <div className="container-px flex flex-col gap-2 py-4">
           {activeNavLinks.map((link) => {
             const isInternal = link.href.startsWith("/") && !link.href.startsWith("/#");
+            const isBookPoojaActive =
+              link.href === "/#poojas" &&
+              (pathname === "/book" || pathname?.startsWith("/book"));
+            const isActive =
+              (isInternal &&
+                (pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href)))) ||
+              isBookPoojaActive;
+
             return isInternal ? (
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-saffron-50 hover:text-saffron-700"
+                prefetch={true}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (pathname === link.href) {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+                className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-saffron-100 text-saffron-800 font-bold"
+                    : "text-ink hover:bg-saffron-50 hover:text-saffron-700"
+                }`}
               >
                 {link.label}
               </Link>
@@ -133,7 +202,7 @@ export default function Navbar() {
                 href={link.href}
                 onClick={(e) => {
                   setMobileMenuOpen(false);
-                  if (link.href === "#contact") {
+                  if (link.href === "/#contact" || link.href === "#contact") {
                     e.preventDefault();
                     window.dispatchEvent(new CustomEvent("open-chat-widget"));
                   }

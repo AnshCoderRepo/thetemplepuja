@@ -5,7 +5,7 @@ import {
   razorpayConfigured,
   razorpayKeyId,
 } from "@/lib/razorpay";
-import { getResolvedCatalog, findUserByPhone } from "@/lib/server-store";
+import { getResolvedCatalog, findUserByPhone, getAllAddons } from "@/lib/server-store";
 import { DEMO_POOJA, isDemoSlug, isPoojaActive } from "@/lib/data";
 
 export async function POST(req: NextRequest) {
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
         (b) => b.status === "confirmed"
       ).length ?? 0)
     : 0;
+  const availableAddons = await getAllAddons();
   const { amount, subtotal, discount, validatedAddons, couponProblem: problem } = computeOrderAmount({
     pooja,
     packageTier,
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
     couponMap: catalog.coupons,
     phone,
     confirmedCount,
+    availableAddons,
   });
   if (problem) {
     return NextResponse.json({ error: problem }, { status: 400 });

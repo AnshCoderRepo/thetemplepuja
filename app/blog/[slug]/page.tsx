@@ -15,7 +15,7 @@ import {
   Phone,
   Eye,
 } from "lucide-react";
-import { Header, Footer } from "@/components/layout";
+import { Footer } from "@/components/layout";
 import {
   activeBlogPosts,
   getBlogPost,
@@ -148,8 +148,7 @@ export default async function BlogPostPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingLd) }}
       />
-      <Header />
-      <main className="bg-cream min-h-screen pt-28 pb-20">
+      <main className="bg-cream min-h-screen pt-20 sm:pt-32 md:pt-40 lg:pt-44 pb-20">
         {/* Breadcrumbs Navigation */}
         <nav aria-label="Breadcrumb" className="container-px max-w-4xl mx-auto py-3">
           <ol className="flex items-center gap-1.5 text-xs text-ink-soft">

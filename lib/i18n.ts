@@ -86,6 +86,10 @@ export const translations = {
     "book.bookNow": "Book Now",
     "book.noResults": "No poojas found",
     "book.noResultsDesc": "Try a different search term.",
+    "book.sankalpHelpHeading": "Need Help in Sankalp Booking?",
+    "book.sankalpHelpSubtitle": "Need help with your Sankalp or Puja booking? Our team will guide you.",
+    "book.sankalpHelpCta": "Talk to an Expert",
+    "book.sankalpHelpExplore": "Explore Pujas",
 
     // ─── Login ───
     "login.title": "Welcome Back",
@@ -472,6 +476,10 @@ export const translations = {
     "book.bookNow": "अभी बुक करें",
     "book.noResults": "कोई पूजा नहीं मिली",
     "book.noResultsDesc": "कोई अन्य खोज शब्द आज़माएँ।",
+    "book.sankalpHelpHeading": "संकल्प और पूजा बुकिंग में सहायता चाहिए?",
+    "book.sankalpHelpSubtitle": "अपने संकल्प या पूजा बुकिंग में मार्गदर्शन चाहिए? हमारी टीम आपकी पूरी सहायता करेगी।",
+    "book.sankalpHelpCta": "विशेषज्ञ से बात करें",
+    "book.sankalpHelpExplore": "पूजा देखें",
 
     // ─── Login ───
     "login.title": "वापसी पर",
@@ -861,6 +869,10 @@ export const translations = {
     "book.bookNow": "ఇప్పుడే బుక్ చేయండి",
     "book.noResults": "పూజలు ఏవీ కనుగొనబడలేదు",
     "book.noResultsDesc": "మరొక శోధన పదాన్ని ప్రయత్నించండి.",
+    "book.sankalpHelpHeading": "సంకల్పం మరియు పూజా బుకింగ్‌లో సహాయం కావాలా?",
+    "book.sankalpHelpSubtitle": "మీ సంకల్పం లేదా పూజా బుకింగ్‌తో సహాయం కావాలా? మా బృందం మీకు మార్గదర్శకత్వం చేస్తుంది.",
+    "book.sankalpHelpCta": "నిపుణులతో మాట్లాడండి",
+    "book.sankalpHelpExplore": "పూజలను చూడండి",
 
     // ─── Login ───
     "login.title": "తిరిగి స్వాగతం",
@@ -1250,6 +1262,10 @@ export const translations = {
     "book.bookNow": "இப்போதே முன்பதிவு செய்க",
     "book.noResults": "பூஜைகள் எதுவும் கிடைக்கவில்லை",
     "book.noResultsDesc": "வேறு தேடல் சொல்லை முயற்சிக்கவும்.",
+    "book.sankalpHelpHeading": "சங்கல்பம் மற்றும் பூஜை முன்பதிவில் உதவி தேவையா?",
+    "book.sankalpHelpSubtitle": "உங்கள் சங்கல்பம் அல்லது பூஜை முன்பதிவுக்கு உதவி தேவையா? எங்கள் குழு உங்களுக்கு வழிகாட்டும்.",
+    "book.sankalpHelpCta": "நிபுணரிடம் பேசுங்கள்",
+    "book.sankalpHelpExplore": "பூஜைகளைக் காண்க",
 
     // ─── Login ───
     "login.title": "மீண்டும் வருக",

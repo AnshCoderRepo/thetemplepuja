@@ -6,7 +6,7 @@ import type {
   CatalogOverrides,
   PersistenceStore,
 } from "./persistence";
-import type { Coupon, FestivalEvent, Pooja, PoojaDate, Temple, UpcomingEventSpec } from "./data";
+import { defaultAddons, type Addon, type Coupon, type FestivalEvent, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec } from "./data";
 import type { BlogPost } from "./blog-data";
 import type { BookingRecord, DevoteeEntitlement, UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
@@ -38,13 +38,36 @@ const g = globalThis as unknown as {
   __ttpMongo?: { client: MongoClient; db: Promise<Db> };
 };
 
+export function resetMongoConnection(): void {
+  try {
+    if (g.__ttpMongo?.client) {
+      void g.__ttpMongo.client.close();
+    }
+  } catch {}
+  delete g.__ttpMongo;
+}
+
+// Discard any previously rejected promise on globalThis so hot-reload immediately retries
+if (g.__ttpMongo) {
+  g.__ttpMongo.db.catch(() => {
+    delete g.__ttpMongo;
+  });
+}
+
 function getDb(): Promise<Db> {
   ensureDnsPatch();
   if (!g.__ttpMongo) {
     const uri = getMongoUri();
     const dbName = getMongoDbName();
     const client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
-    g.__ttpMongo = { client, db: client.connect().then(() => client.db(dbName)) };
+    const dbPromise = client
+      .connect()
+      .then(() => client.db(dbName))
+      .catch((err) => {
+        delete g.__ttpMongo;
+        throw err;
+      });
+    g.__ttpMongo = { client, db: dbPromise };
   }
   return g.__ttpMongo.db;
 }
@@ -357,7 +380,84 @@ export const mongoStore: PersistenceStore = {
       { upsert: true }
     );
   },
+
+  async getAddons(): Promise<Addon[]> {
+    const col = await addonsCol();
+    const count = await col.countDocuments({});
+    if (count === 0) {
+      try {
+        await col.insertMany(defaultAddons.map((a) => ({ ...a })));
+      } catch {}
+    }
+    const docs = await col.find({}).toArray();
+    return docs.map(toAddonDoc);
+  },
+
+  async findAddonById(id: string): Promise<Addon | undefined> {
+    const col = await addonsCol();
+    const doc = await col.findOne({ $or: [{ _id: id }, { id }] });
+    return doc ? toAddonDoc(doc) : undefined;
+  },
+
+  async saveAddon(addon: Addon): Promise<void> {
+    const col = await addonsCol();
+    const id = String(addon._id || addon.id);
+    const doc = {
+      ...addon,
+      _id: id,
+      id: id,
+      updatedAt: new Date().toISOString(),
+    };
+    if (!doc.createdAt) doc.createdAt = new Date().toISOString();
+    await col.updateOne({ $or: [{ _id: id }, { id }] }, { $set: doc }, { upsert: true });
+  },
+
+  async deleteAddon(id: string): Promise<boolean> {
+    const col = await addonsCol();
+    const res = await col.deleteOne({ $or: [{ _id: id }, { id }] });
+    return res.deletedCount > 0;
+  },
 };
+
+export async function addonsCol(): Promise<Collection<any>> {
+  const db = await getDb();
+  const col = db.collection<any>("addons");
+  try {
+    await col.createIndex({ id: 1 });
+    await col.createIndex({ active: 1 });
+  } catch {}
+  return col;
+}
+
+function toAddonDoc(doc: any): Addon {
+  const idStr = String(doc._id || doc.id);
+  return {
+    _id: idStr,
+    id: idStr,
+    name: doc.name || "",
+    hindiName: doc.hindiName,
+    teluguName: doc.teluguName,
+    tamilName: doc.tamilName,
+    description: doc.description || "",
+    hindiDescription: doc.hindiDescription,
+    teluguDescription: doc.teluguDescription,
+    tamilDescription: doc.tamilDescription,
+    price: Number(doc.price) || 0,
+    currency: doc.currency || "INR",
+    active: doc.active !== false,
+    emoji: doc.emoji || "🌸",
+    category: doc.category || "Chadhava Seva",
+    hindiCategory: doc.hindiCategory,
+    teluguCategory: doc.teluguCategory,
+    tamilCategory: doc.tamilCategory,
+    image: doc.image,
+    type: doc.type || "chadhava",
+    badge: doc.badge,
+    hindiBadge: doc.hindiBadge,
+    createdAt: doc.createdAt || new Date().toISOString(),
+    updatedAt: doc.updatedAt || new Date().toISOString(),
+  };
+}
 
 // ============ ORDERS / PAYMENTS PERSISTENCE ============
 

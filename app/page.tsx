@@ -1,10 +1,36 @@
-import { Header, Footer } from "@/components/layout";
+import type { Metadata } from "next";
+import { Footer } from "@/components/layout";
 import { JsonLd, ContinueBookingSection } from "@/components/common";
 import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
 import { PoojaCatalog } from "@/features/catalog";
 import MessageCeoSection from "@/components/home/MessageCeoSection";
 import { faqs } from "@/lib/data";
-import { faqPageLd, organizationLd, websiteLd } from "@/lib/seo";
+import { faqPageLd, organizationLd, websiteLd, SITE_URL } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "TemplePujaSewa | Online Puja Booking & Panditji Services",
+  description:
+    "Ghar baithe online puja book karein. Hamari website TemplePujaSewa par aapko milenge verified panditji, puja samagri aur har tyohar ki sahi vidhi. Aaj hi book karein!",
+  alternates: {
+    canonical: SITE_URL,
+  },
+  openGraph: {
+    title: "TemplePujaSewa | Online Puja Booking & Panditji Services",
+    description:
+      "Ghar baithe online puja book karein. Hamari website TemplePujaSewa par aapko milenge verified panditji, puja samagri aur har tyohar ki sahi vidhi. Aaj hi book karein!",
+    url: SITE_URL,
+    type: "website",
+    siteName: "TemplePujaSewa",
+    images: [{ url: "/logo.jpeg", alt: "TemplePujaSewa" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "TemplePujaSewa | Online Puja Booking & Panditji Services",
+    description:
+      "Ghar baithe online puja book karein. Hamari website TemplePujaSewa par aapko milenge verified panditji, puja samagri aur har tyohar ki sahi vidhi. Aaj hi book karein!",
+    images: ["/logo.jpeg"],
+  },
+};
 
 export default function Home() {
   return (
@@ -12,7 +38,6 @@ export default function Home() {
       <JsonLd
         data={[organizationLd(), websiteLd(), faqPageLd(faqs)]}
       />
-      <Header />
       <main>
         <Hero />
 

@@ -15,16 +15,20 @@ import {
   Heart,
   Trash2,
 } from "lucide-react";
-import { fetchUserByPhone, syncUserFromServer } from "@/lib/api";
+import { fetchPujaAddons, fetchUserByPhone, syncUserFromServer } from "@/lib/api";
 import { SITE_CONFIG } from "@/lib/config";
 import {
-  defaultChadhavaOfferings,
+  defaultAddons,
+  getAssignedAddonsForPooja,
+  getLocalizedAddonName,
+  getLocalizedAddonDescription,
+  getLocalizedAddonCategory,
   getLocalizedPoojaTitle,
   getPoojaBannerImage,
   getTempleForPooja,
   DEMO_POOJA,
   isDemoSlug,
-  type ChadhavaOffering,
+  type Addon,
   type Pooja,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
@@ -268,22 +272,70 @@ export default function BookingFlow({
     });
   };
 
-  const chadhavaList = defaultChadhavaOfferings;
+  // Active add-ons strictly assigned to this exact puja
+  const [assignedAddons, setAssignedAddons] = useState<Addon[]>(() =>
+    getAssignedAddonsForPooja(selectedPooja, defaultAddons)
+  );
+  const [loadingAddons, setLoadingAddons] = useState(false);
 
-  const addonItems: BookingAddonItem[] = Object.entries(selectedAddons).map(
-    ([id, qty]) => {
-      const item = chadhavaList.find((c) => c.id === id);
+  useEffect(() => {
+    let live = true;
+    if (selectedPooja?.slug) {
+      setLoadingAddons(true);
+      fetchPujaAddons(selectedPooja.slug)
+        .then((res) => {
+          if (!live) return;
+          if (res.ok && res.addons) {
+            setAssignedAddons(res.addons);
+          } else {
+            setAssignedAddons(getAssignedAddonsForPooja(selectedPooja, defaultAddons));
+          }
+        })
+        .catch(() => {
+          if (live) setAssignedAddons(getAssignedAddonsForPooja(selectedPooja, defaultAddons));
+        })
+        .finally(() => {
+          if (live) setLoadingAddons(false);
+        });
+    } else {
+      setAssignedAddons(getAssignedAddonsForPooja(selectedPooja, defaultAddons));
+    }
+    return () => {
+      live = false;
+    };
+  }, [selectedPooja?.slug, selectedPooja?.assignedAddonIds]);
+
+  // Clean up any selections that do not belong to the selected puja
+  useEffect(() => {
+    const validIds = new Set(assignedAddons.map((a) => a._id || a.id));
+    setSelectedAddons((prev) => {
+      let changed = false;
+      const next: Record<string, number> = {};
+      for (const [id, qty] of Object.entries(prev)) {
+        if (validIds.has(id)) {
+          next[id] = qty;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [assignedAddons]);
+
+  const addonItems: BookingAddonItem[] = Object.entries(selectedAddons)
+    .filter(([, qty]) => qty > 0)
+    .map(([id, qty]) => {
+      const item = assignedAddons.find((c) => (c._id || c.id) === id);
       return {
         id,
-        name: item?.name || id,
+        name: (item && getLocalizedAddonName(item, locale)) || item?.name || id,
         price: item?.price || 0,
         quantity: qty,
-        emoji: item?.emoji,
-        category: item?.category,
+        emoji: item?.emoji || "🌸",
+        category: (item && getLocalizedAddonCategory(item, locale)) || item?.category,
         itemType: "chadhava",
       };
-    }
-  );
+    });
 
   const chadhavaTotal = addonItems.reduce(
     (sum, a) => sum + a.price * a.quantity,
@@ -1228,67 +1280,92 @@ export default function BookingFlow({
           </div>
 
           {/* Chadhavas list */}
-          <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
-            {chadhavaList.map((chadhava: ChadhavaOffering) => {
-              const qty = selectedAddons[chadhava.id] || 0;
-              const isAdded = qty > 0;
+          {loadingAddons ? (
+            <div className="py-8 text-center space-y-2">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-saffron-500 border-t-transparent" />
+              <p className="text-xs text-ink-soft">Loading offerings for this puja...</p>
+            </div>
+          ) : assignedAddons.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-saffron-200 bg-saffron-50/40 p-8 text-center space-y-2">
+              <span className="text-3xl">🪔</span>
+              <h4 className="text-sm font-bold text-ink">No Extra Offerings Required</h4>
+              <p className="text-xs text-ink-soft max-w-sm mx-auto">
+                All essential samagri, rituals, and blessings for{" "}
+                {selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "this puja"} are
+                already included in your selected package.
+              </p>
+            </div>
+          ) : (
+            <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+              {assignedAddons.map((addon: Addon) => {
+                const addonId = addon._id || addon.id;
+                const qty = selectedAddons[addonId] || 0;
+                const isAdded = qty > 0;
+                const addonName = getLocalizedAddonName(addon, locale);
+                const addonDesc = getLocalizedAddonDescription(addon, locale);
 
-              return (
-                <div
-                  key={chadhava.id}
-                  className={`flex items-center justify-between rounded-xl border p-3 transition-all ${
-                    isAdded
-                      ? "border-saffron-500 bg-saffron-50/60 shadow-xs"
-                      : "border-saffron-100 bg-white hover:border-saffron-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-saffron-50 text-lg border border-saffron-100">
-                      {chadhava.emoji || "🌸"}
-                    </span>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-ink truncate leading-tight">
-                        {chadhava.name}
-                      </h4>
-                      <span className="font-display text-xs font-bold text-saffron-700 block mt-0.5">
-                        {formatINR(chadhava.price)}
+                return (
+                  <div
+                    key={addonId}
+                    className={`flex items-center justify-between rounded-xl border p-3 transition-all ${
+                      isAdded
+                        ? "border-saffron-500 bg-saffron-50/60 shadow-xs"
+                        : "border-saffron-100 bg-white hover:border-saffron-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-saffron-50 text-lg border border-saffron-100">
+                        {addon.emoji || "🌸"}
                       </span>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-ink truncate leading-tight">
+                          {addonName}
+                        </h4>
+                        {addonDesc && (
+                          <p className="text-[10px] text-ink-soft line-clamp-1 mt-0.5">
+                            {addonDesc}
+                          </p>
+                        )}
+                        <span className="font-display text-xs font-bold text-saffron-700 block mt-0.5">
+                          {formatINR(addon.price)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quantity Stepper [- qty +] */}
+                    <div className="flex items-center gap-1.5 rounded-lg border border-saffron-200 bg-white px-1.5 py-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateAddonQty(addonId, -1)}
+                        disabled={qty === 0}
+                        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+                          qty > 0
+                            ? "text-saffron-900 hover:bg-saffron-50"
+                            : "text-slate-300 cursor-not-allowed"
+                        }`}
+                        aria-label={`Decrease ${addonName}`}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+
+                      <span className="w-5 text-center text-xs font-bold text-ink">
+                        {qty}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateAddonQty(addonId, 1)}
+                        className="flex h-6 w-6 items-center justify-center rounded text-saffron-900 hover:bg-saffron-50 transition-colors"
+                        aria-label={`Increase ${addonName}`}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Quantity Stepper [- qty +] */}
-                  <div className="flex items-center gap-1.5 rounded-lg border border-saffron-200 bg-white px-1.5 py-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateAddonQty(chadhava.id, -1)}
-                      disabled={qty === 0}
-                      className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
-                        qty > 0
-                          ? "text-saffron-900 hover:bg-saffron-50"
-                          : "text-slate-300 cursor-not-allowed"
-                      }`}
-                      aria-label={`Decrease ${chadhava.name}`}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-
-                    <span className="w-5 text-center text-xs font-bold text-ink">
-                      {qty}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateAddonQty(chadhava.id, 1)}
-                      className="flex h-6 w-6 items-center justify-center rounded text-saffron-900 hover:bg-saffron-50 transition-colors"
-                      aria-label={`Increase ${chadhava.name}`}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 pt-2">
             <button
