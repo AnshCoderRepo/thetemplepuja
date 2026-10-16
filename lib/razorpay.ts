@@ -53,7 +53,7 @@ export interface RazorpayOrder {
   notes?: Record<string, string>;
 }
 
-import { defaultChadhavaOfferings, type ChadhavaOffering } from "./data";
+import { defaultChadhavaOfferings, defaultAddons, type ChadhavaOffering, type Addon } from "./data";
 
 export interface SelectedAddonInput {
   id: string;
@@ -90,6 +90,7 @@ export function computeOrderAmount(input: {
   couponMap?: Record<string, Coupon>;
   phone?: string;
   confirmedCount?: number;
+  availableAddons?: (Addon | ChadhavaOffering)[];
 }): {
   amount: number;
   subtotal: number;
@@ -112,32 +113,81 @@ export function computeOrderAmount(input: {
 
   let addonTotal = 0;
   const validatedAddons: ValidatedAddon[] = [];
+  const pool = input.availableAddons && input.availableAddons.length > 0
+    ? input.availableAddons
+    : (defaultAddons as (Addon | ChadhavaOffering)[]);
+
+  const assignedAddonIds = input.pooja.assignedAddonIds;
+  const hasAssignedList = Array.isArray(assignedAddonIds);
+  const assignedIdSet = hasAssignedList ? new Set(assignedAddonIds) : null;
+  const seenAddonIds = new Set<string>();
 
   if (input.addons && Array.isArray(input.addons)) {
     for (const item of input.addons) {
       if (!item || !item.id || typeof item.quantity !== "number" || item.quantity <= 0) continue;
-      const found = defaultChadhavaOfferings.find((c) => c.id === item.id);
-      if (found) {
-        const qty = Math.min(Math.max(1, Math.floor(item.quantity)), 20); // reasonable cap
-        const lineTotal = found.price * qty;
-        addonTotal += lineTotal;
-        validatedAddons.push({
-          id: found.id,
-          name: found.name,
-          price: found.price,
-          quantity: qty,
-          emoji: found.emoji,
-          category: found.category,
-          itemType:
-            found.type ??
-            (found.category === "Prasad Seva" ||
-            found.category === "Temple Donation" ||
-            found.category === "Anna Daan" ||
-            found.category === "Sacred Relic"
-              ? "addon"
-              : "chadhava"),
-        });
+      const cleanId = String(item.id).trim();
+      if (!cleanId || seenAddonIds.has(cleanId)) continue;
+      seenAddonIds.add(cleanId);
+
+      const found = pool.find((c) => (c as Addon)._id === cleanId || c.id === cleanId);
+      if (!found) {
+        return {
+          amount: 0,
+          subtotal: 0,
+          addonTotal: 0,
+          addons: [],
+          validatedAddons: [],
+          discount: 0,
+          couponProblem: `Add-on with ID "${cleanId}" not found.`,
+        };
       }
+
+      if ((found as Addon).active === false) {
+        return {
+          amount: 0,
+          subtotal: 0,
+          addonTotal: 0,
+          addons: [],
+          validatedAddons: [],
+          discount: 0,
+          couponProblem: `Add-on "${found.name}" is currently inactive.`,
+        };
+      }
+
+      if (assignedIdSet !== null) {
+        const isAssigned = assignedIdSet.has(found.id) || assignedIdSet.has((found as Addon)._id);
+        if (!isAssigned) {
+          return {
+            amount: 0,
+            subtotal: 0,
+            addonTotal: 0,
+            addons: [],
+            validatedAddons: [],
+            discount: 0,
+            couponProblem: `Add-on "${found.name}" is not assigned to this puja.`,
+          };
+        }
+      }
+
+      const qty = Math.min(Math.max(1, Math.floor(item.quantity)), 20); // reasonable cap
+      const lineTotal = found.price * qty;
+      addonTotal += lineTotal;
+      validatedAddons.push({
+        id: found.id || (found as Addon)._id,
+        name: found.name,
+        price: found.price,
+        quantity: qty,
+        emoji: found.emoji,
+        category: found.category,
+        itemType:
+          found.type ??
+          (found.category === "Prasad Seva" ||
+          found.category === "Temple Donation" ||
+          found.category === "Anna Daan" ||
+          found.category === "Sacred Relic"
+            ? "addon"
+            : "chadhava"),
+      });
     }
   }
 

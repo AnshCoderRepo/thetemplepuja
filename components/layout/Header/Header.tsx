@@ -25,7 +25,7 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+      className={`fixed inset-x-0 top-0 z-40 transition-all duration-300 ${
         hasSolidBackground
           ? "bg-cream/95 shadow-soft backdrop-blur-md border-b border-saffron-100/70"
           : "bg-transparent"

@@ -109,6 +109,7 @@ export function duplicatePooja(
     deities: source.deities ? [...source.deities] : ["Lord Shiva"],
     templeSlugs: source.templeSlugs ? [...source.templeSlugs] : [],
     chadhavaOptions: source.chadhavaOptions ? [...source.chadhavaOptions] : [],
+    assignedAddonIds: source.assignedAddonIds ? [...source.assignedAddonIds] : [],
     packages: source.packages
       ? source.packages.map((pkg: PoojaPackage) => ({ ...pkg }))
       : undefined,

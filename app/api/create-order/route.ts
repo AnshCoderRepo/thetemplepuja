@@ -45,6 +45,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.poojaSlug && typeof body.poojaSlug === "string") {
+      const { getResolvedCatalog, getAllAddons } = await import("@/lib/server-store");
+      const { DEMO_POOJA, isDemoSlug, isPoojaActive } = await import("@/lib/data");
+      const { computeOrderAmount } = await import("@/lib/razorpay");
+      const catalog = await getResolvedCatalog();
+      const normSlug = body.poojaSlug.toLowerCase().replace(/_/g, "-");
+      const pooja = isDemoSlug(normSlug) ? DEMO_POOJA : catalog.poojas.find((p) => p.slug === normSlug);
+      if (pooja && isPoojaActive(pooja)) {
+        const availableAddons = await getAllAddons();
+        const computed = computeOrderAmount({
+          pooja,
+          packageTier: typeof body.packageTier === "string" ? body.packageTier : undefined,
+          addons: Array.isArray(body.addons) ? body.addons : undefined,
+          couponCode: typeof body.couponCode === "string" ? body.couponCode : undefined,
+          couponMap: catalog.coupons,
+          availableAddons,
+        });
+        if (computed.couponProblem) {
+          return NextResponse.json({ error: computed.couponProblem }, { status: 400 });
+        }
+        const expectedPaise = Math.round(computed.amount * 100);
+        if (Math.abs(amountInPaise - expectedPaise) > 100) {
+          return NextResponse.json(
+            { error: "Amount mismatch detected with database pricing. Please retry." },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const keyId = (process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "").trim();
     const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 

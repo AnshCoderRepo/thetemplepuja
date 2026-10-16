@@ -9,6 +9,7 @@ import type {
 } from "./persistence";
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
+import { defaultAddons, type Addon } from "./data";
 
 function dataDir(): string {
   return process.env.TTP_DATA_DIR || path.join(process.cwd(), ".data");
@@ -141,6 +142,41 @@ export function createJsonStore(): PersistenceStore {
       if (idx >= 0) list[idx] = req;
       else list.unshift(req);
       writeJson("refund_requests.json", list);
+    },
+    async getAddons(): Promise<Addon[]> {
+      const list = readJson<Addon[]>("addons.json", []);
+      if (!list || list.length === 0) {
+        // Return defaults and write to file
+        writeJson("addons.json", defaultAddons);
+        return [...defaultAddons];
+      }
+      return list;
+    },
+    async findAddonById(id: string): Promise<Addon | undefined> {
+      const list = await this.getAddons();
+      return list.find((a) => a._id === id || a.id === id);
+    },
+    async saveAddon(addon: Addon): Promise<void> {
+      const list = await this.getAddons();
+      const id = addon._id || addon.id;
+      const clean: Addon = {
+        ...addon,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = list.findIndex((a) => a._id === id || a.id === id);
+      if (idx >= 0) list[idx] = clean;
+      else list.push(clean);
+      writeJson("addons.json", list);
+    },
+    async deleteAddon(id: string): Promise<boolean> {
+      const list = await this.getAddons();
+      const next = list.filter((a) => a._id !== id && a.id !== id);
+      if (next.length === list.length) return false;
+      writeJson("addons.json", next);
+      return true;
     },
   };
 }

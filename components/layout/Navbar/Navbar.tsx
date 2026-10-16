@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,6 +9,7 @@ import { SITE_CONFIG } from "@/lib/config";
 import { useI18n } from "@/components/providers";
 import LanguageToggle from "@/components/common/LanguageToggle/LanguageToggle";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
+import AIGuide from "@/features/contact/components/AIGuide";
 
 export const navLinks = [
   { label: "Home", href: "/#home" },
@@ -26,6 +27,22 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
   const { t, locale, setLocale } = useI18n();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleCloseMobileMenu = () => setMobileMenuOpen(false);
+    window.addEventListener("close-mobile-menu", handleCloseMobileMenu);
+    return () => window.removeEventListener("close-mobile-menu", handleCloseMobileMenu);
+  }, []);
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        window.dispatchEvent(new CustomEvent("close-ai-guide"));
+      }
+      return next;
+    });
+  };
 
   const activeNavLinks = [
     { label: t("nav.home"), href: "/#home" },
@@ -113,7 +130,7 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
         </div>
 
         {/* Desktop Action & Mobile Menu Button */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 mr-30">
           {/* Language Switcher in Navbar */}
           <LanguageToggle />
 
@@ -124,10 +141,13 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
             {t("nav.login")}
           </Link>
 
+          {/* AI Spiritual Guide (Integrated directly in single navbar) */}
+          <AIGuide />
+
           {/* Mobile hamburger */}
           <button
             type="button"
-            onClick={() => setMobileMenuOpen((o) => !o)}
+            onClick={toggleMobileMenu}
             className="flex h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-full border border-saffron-200 bg-white text-ink transition-colors hover:bg-saffron-50 lg:hidden shrink-0"
             aria-label="Toggle menu"
           >

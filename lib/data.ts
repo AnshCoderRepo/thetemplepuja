@@ -772,6 +772,62 @@ export interface PoojaPackage {
   description?: string;
 }
 
+export interface Addon {
+  _id: string;
+  id: string;
+  name: string;
+  hindiName?: string;
+  teluguName?: string;
+  tamilName?: string;
+  description: string;
+  hindiDescription?: string;
+  teluguDescription?: string;
+  tamilDescription?: string;
+  price: number;
+  currency: string;
+  active: boolean;
+  emoji?: string;
+  category?: string;
+  hindiCategory?: string;
+  teluguCategory?: string;
+  tamilCategory?: string;
+  image?: string;
+  type?: "chadhava" | "addon";
+  badge?: string;
+  hindiBadge?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function chadhavaToDefaultAddon(c: ChadhavaOffering): Addon {
+  return {
+    _id: c.id,
+    id: c.id,
+    name: c.name,
+    hindiName: c.hindiName,
+    teluguName: c.teluguName,
+    tamilName: c.tamilName,
+    description: c.description,
+    hindiDescription: c.hindiDescription,
+    teluguDescription: c.teluguDescription,
+    tamilDescription: c.tamilDescription,
+    price: c.price,
+    currency: "INR",
+    active: true,
+    emoji: c.emoji || "🌸",
+    category: c.category || (c.type === "addon" ? "Other Add-on" : "Chadhava Seva"),
+    hindiCategory: c.hindiCategory,
+    teluguCategory: c.teluguCategory,
+    tamilCategory: c.tamilCategory,
+    image: c.image,
+    type: c.type || "chadhava",
+    badge: c.badge,
+    hindiBadge: c.hindiBadge,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+}
+
 export interface ChadhavaOffering {
   id: string;
   name: string;
@@ -1048,6 +1104,48 @@ export function getLocalizedOfferingCategory(offering: ChadhavaOffering, locale?
   return offering.category || "";
 }
 
+export const defaultAddons: Addon[] = defaultChadhavaOfferings.map(chadhavaToDefaultAddon);
+
+export function getAssignedAddonsForPooja(pooja?: Pooja | null, allAddons?: Addon[]): Addon[] {
+  if (!pooja) return [];
+  const pool = allAddons && allAddons.length > 0 ? allAddons : defaultAddons;
+  const assignedIds = new Set(pooja.assignedAddonIds || []);
+  if (assignedIds.size > 0) {
+    return pool.filter((a) => a.active !== false && (assignedIds.has(a._id) || assignedIds.has(a.id)));
+  }
+  // If legacy chadhavaOptions exists and no assignedAddonIds is set, fall back to matching by name or id
+  if (Array.isArray(pooja.chadhavaOptions) && pooja.chadhavaOptions.length > 0) {
+    const legacySet = new Set(pooja.chadhavaOptions.map((s) => s.trim().toLowerCase()));
+    return pool.filter(
+      (a) =>
+        a.active !== false &&
+        (legacySet.has(a.name.toLowerCase()) || legacySet.has(a.id.toLowerCase()) || legacySet.has(a._id.toLowerCase()))
+    );
+  }
+  return [];
+}
+
+export function getLocalizedAddonName(addon: Addon, locale?: string): string {
+  if (locale === "hi" && addon.hindiName) return addon.hindiName;
+  if (locale === "te" && addon.teluguName) return addon.teluguName;
+  if (locale === "ta" && addon.tamilName) return addon.tamilName;
+  return addon.name;
+}
+
+export function getLocalizedAddonDescription(addon: Addon, locale?: string): string {
+  if (locale === "hi" && addon.hindiDescription) return addon.hindiDescription;
+  if (locale === "te" && addon.teluguDescription) return addon.teluguDescription;
+  if (locale === "ta" && addon.tamilDescription) return addon.tamilDescription;
+  return addon.description;
+}
+
+export function getLocalizedAddonCategory(addon: Addon, locale?: string): string {
+  if (locale === "hi" && addon.hindiCategory) return addon.hindiCategory;
+  if (locale === "te" && addon.teluguCategory) return addon.teluguCategory;
+  if (locale === "ta" && addon.tamilCategory) return addon.tamilCategory;
+  return addon.category || "";
+}
+
 export interface Pooja {
   slug: string;
   title: string;
@@ -1096,6 +1194,8 @@ export interface Pooja {
   templeSlugs?: string[];
   /** Chadhava offering tags */
   chadhavaOptions?: string[];
+  /** Specific assigned Add-on IDs for this puja */
+  assignedAddonIds?: string[];
   /** Multi-tier packages */
   packages?: PoojaPackage[];
 
@@ -1453,6 +1553,7 @@ export const DEMO_POOJA: Pooja = {
   seats: "Live Demo",
   capacity: 100,
   live: true,
+  assignedAddonIds: ["kumkum", "special-prasad", "panchamrit-abhishek"],
   packages: [
     { name: "Single Devotee", price: 1, description: "1 Devotee Name & Gotra Sankalp (₹1)" },
     { name: "Couple / Dampati", price: 1, description: "Husband & Wife Joint Sankalp (₹1)" },
@@ -1495,6 +1596,7 @@ export const poojas: Pooja[] = [
     type: "temple",
     online: true,
     deities: ["Lord Vishnu", "Lord Satyanarayan"],
+    assignedAddonIds: ["kumkum", "special-prasad", "panchamrit-abhishek"],
     description:
       "The beloved vow-fulfillment ritual of Lord Vishnu's Satyanarayan form, bringing peace, prosperity and harmony to the whole family.",
     hindiDescription:
@@ -1525,6 +1627,7 @@ export const poojas: Pooja[] = [
     type: "temple",
     online: true,
     deities: ["Lord Shiva"],
+    assignedAddonIds: ["panchamrit-abhishek", "bilva-patra", "special-prasad"],
     description:
       "Sacred abhishek of the Shiva Linga with panchamrit, bilva leaves and Vedic chants — a powerful ritual for protection and inner strength.",
     hindiDescription:

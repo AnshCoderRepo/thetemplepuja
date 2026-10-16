@@ -20,6 +20,7 @@ import {
   type PoojaDate,
   type Temple,
   type UpcomingEventSpec,
+  type Addon,
 } from "./data";
 import {
   cancelBooking,
@@ -1091,6 +1092,111 @@ export async function exportDevoteesExcelRemote(
     };
   }
 }
+
+// ===================== ADD-ONS API CLIENT =====================
+
+export interface EnrichedAddon extends Addon {
+  assignedPoojaCount?: number;
+  assignedPoojaSlugs?: string[];
+  assignedPoojaTitles?: string[];
+}
+
+export async function fetchAdminAddons(token: string): Promise<{
+  ok: boolean;
+  addons: EnrichedAddon[];
+  error?: string;
+  status?: number;
+}> {
+  try {
+    const res = await fetch("/api/admin/addons", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.status === 401) {
+      return { ok: false, addons: [], status: 401, error: "Unauthorized" };
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, addons: [], error: data.error || "Failed to fetch add-ons" };
+    }
+    return { ok: true, addons: data.addons || [] };
+  } catch (err) {
+    return { ok: false, addons: [], error: "Network error fetching add-ons" };
+  }
+}
+
+export async function saveAdminAddon(
+  addon: Partial<Addon>,
+  token: string
+): Promise<{ ok: boolean; addon?: Addon; error?: string; status?: number }> {
+  try {
+    const res = await fetch("/api/admin/addons", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(addon),
+    });
+    if (res.status === 401) {
+      return { ok: false, status: 401, error: "Unauthorized" };
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to save add-on" };
+    }
+    return { ok: true, addon: data.addon };
+  } catch (err) {
+    return { ok: false, error: "Network error saving add-on" };
+  }
+}
+
+export async function deleteAdminAddon(
+  id: string,
+  token: string
+): Promise<{ ok: boolean; error?: string; status?: number }> {
+  try {
+    const res = await fetch(`/api/admin/addons?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (res.status === 401) {
+      return { ok: false, status: 401, error: "Unauthorized" };
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to delete add-on" };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: "Network error deleting add-on" };
+  }
+}
+
+export async function fetchPujaAddons(poojaSlug?: string): Promise<{
+  ok: boolean;
+  addons: Addon[];
+  error?: string;
+}> {
+  try {
+    const url = poojaSlug
+      ? `/api/addons?poojaSlug=${encodeURIComponent(poojaSlug)}`
+      : "/api/addons";
+    const res = await fetch(url, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, addons: [], error: data.error || "Failed to fetch addons" };
+    }
+    return { ok: true, addons: data.addons || [] };
+  } catch (err) {
+    return { ok: false, addons: [], error: "Network error fetching addons" };
+  }
+}
+
 
 
 
