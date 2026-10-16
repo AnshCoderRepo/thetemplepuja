@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, Menu, X } from "lucide-react";
+import { Globe, Menu, X, Phone, Mail } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/config";
 import { useI18n } from "@/components/providers";
 import LanguageToggle from "@/components/common/LanguageToggle/LanguageToggle";
@@ -163,7 +163,7 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
       {/* Mobile Drawer */}
       <div
         className={`overflow-hidden bg-cream/95 backdrop-blur-md transition-all duration-300 lg:hidden ${
-          mobileMenuOpen ? "max-h-[32rem] border-b border-saffron-200" : "max-h-0"
+          mobileMenuOpen ? "max-h-[50rem] border-b border-saffron-200" : "max-h-0"
         }`}
       >
         <div className="container-px flex flex-col gap-2 py-4">
@@ -243,6 +243,61 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Quick Contact & Socials in Mobile Drawer */}
+          <div className="mt-1 rounded-xl border border-saffron-200/80 bg-white/90 p-3 space-y-2">
+            <p className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">
+              24/7 Devotee Care &amp; Socials
+            </p>
+            <div className="grid grid-cols-1 gap-1.5 text-xs">
+              <a
+                href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+                className="flex items-center gap-2 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-emerald-800 font-semibold hover:bg-emerald-100 transition-colors"
+              >
+                <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span>Call Helpline: {SITE_CONFIG.contact.phoneDisplay}</span>
+              </a>
+              <a
+                href={`mailto:${SITE_CONFIG.contact.email}`}
+                className="flex items-center gap-2 rounded-lg bg-saffron-50 px-2.5 py-1.5 text-saffron-900 font-semibold hover:bg-saffron-100 transition-colors"
+              >
+                <Mail className="h-3.5 w-3.5 text-saffron-600 shrink-0" />
+                <span className="truncate">{SITE_CONFIG.contact.email}</span>
+              </a>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-saffron-100 text-[11px] text-ink-soft">
+              <span className="font-semibold text-ink">Follow:</span>
+              <div className="flex items-center gap-2.5">
+                <a
+                  href={SITE_CONFIG.social.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-pink-600 hover:underline"
+                >
+                  Instagram
+                </a>
+                <span>•</span>
+                <a
+                  href={SITE_CONFIG.social.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-blue-600 hover:underline"
+                >
+                  Facebook
+                </a>
+                <span>•</span>
+                <a
+                  href={SITE_CONFIG.social.youtube}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-red-600 hover:underline"
+                >
+                  YouTube
+                </a>
+              </div>
             </div>
           </div>
 

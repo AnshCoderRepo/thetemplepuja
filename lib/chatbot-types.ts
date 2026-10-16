@@ -195,7 +195,7 @@ export const DEFAULT_CHATBOT_KNOWLEDGE: ChatbotKnowledgeEntry[] = [
     category: "faqs",
     question: "How can I contact customer support or get help on WhatsApp?",
     answer:
-      "Our devotee care team is available 7 days a week. You can tap the WhatsApp icon on the screen to chat directly with our temple coordinators, call our helpline at +91 96210 14155, or email Infotemplepujasewa@gmail.com for any questions regarding bookings, pandit coordination, or customized rituals.",
+      "Our devotee care team is available 7 days a week. You can tap the WhatsApp icon on the screen to chat directly with our temple coordinators, call our helpline at +91 96210 14155, or email infotemplepujasewa@gmail.com for any questions regarding bookings, pandit coordination, or customized rituals.",
     keywords: ["support", "contact", "whatsapp", "helpline", "phone", "email", "help", "coordinator"],
     updatedAt: "2026-10-14T00:00:00.000Z",
   },

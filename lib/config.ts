@@ -30,11 +30,24 @@ export const SITE_CONFIG = {
     // Official pre-filled greeting message for customer support
     whatsappPreFilledMessage: "Namaste, I would like to know more about your Puja services.",
     // Support & Admin Email
-    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "Infotemplepujasewa@gmail.com",
+    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "infotemplepujasewa@gmail.com",
     // Official WhatsApp Channel link (e.g. for daily panchang, pooja muhurat & darshan updates)
     whatsappChannelUrl:
       process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL_URL ||
       "https://whatsapp.com/channel/0029Vaexample",
+  },
+
+  // Official Social Media Handles & URLs
+  social: {
+    instagram:
+      process.env.NEXT_PUBLIC_INSTAGRAM_URL ||
+      "https://www.instagram.com/templepujasewa?mdxt=cXd3andyOWN1cmNr",
+    facebook:
+      process.env.NEXT_PUBLIC_FACEBOOK_URL ||
+      "https://www.facebook.com/share/1J1Wh1NRND/",
+    youtube:
+      process.env.NEXT_PUBLIC_YOUTUBE_URL ||
+      "https://www.youtube.com/@TEMPLEPUJASEWA",
   },
 
   // Payment Configuration (UPI QR & Razorpay)
@@ -54,7 +67,7 @@ export const SITE_CONFIG = {
 
   // Admin Portal Defaults
   admin: {
-    defaultEmail: process.env.ADMIN_EMAIL || "admin@thetemplepuja.com",
+    defaultEmail: process.env.ADMIN_EMAIL || "infotemplepujasewa@gmail.com",
     defaultPassword: process.env.ADMIN_PASSWORD || "admin123",
   },
 } as const;
@@ -97,6 +110,13 @@ export function getWhatsAppChannelUrl(): string {
     process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL_URL ||
     SITE_CONFIG.contact.whatsappChannelUrl
   );
+}
+
+/**
+ * Retrieve official Social Media links
+ */
+export function getSocialLinks() {
+  return SITE_CONFIG.social;
 }
 
 export default SITE_CONFIG;

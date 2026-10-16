@@ -235,7 +235,7 @@ export default function AccountManager({
                 setCurrentEmail(e.target.value);
                 setMsg(null);
               }}
-              placeholder={savedEmail ?? "admin@thetemplepuja.com"}
+              placeholder={savedEmail ?? "infotemplepujasewa@gmail.com"}
               autoComplete="username"
             />
           </Field>
@@ -259,7 +259,7 @@ export default function AccountManager({
                 setNewEmail(e.target.value);
                 setMsg(null);
               }}
-              placeholder={savedEmail ?? "admin@thetemplepuja.com"}
+              placeholder={savedEmail ?? "infotemplepujasewa@gmail.com"}
               autoComplete="off"
             />
           </Field>

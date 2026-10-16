@@ -759,8 +759,29 @@ export const contactInfo = [
   {
     icon: "✉️",
     label: "Email Support",
-    value: "Infotemplepujasewa@gmail.com",
+    value: "infotemplepujasewa@gmail.com",
     href: `mailto:${SITE_CONFIG.contact.email}`,
+  },
+];
+
+export const socialLinks = [
+  {
+    name: "Instagram",
+    href: SITE_CONFIG.social.instagram,
+    handle: "@templepujasewa",
+    label: "Follow on Instagram",
+  },
+  {
+    name: "Facebook",
+    href: SITE_CONFIG.social.facebook,
+    handle: "Temple Puja Sewa",
+    label: "Connect on Facebook",
+  },
+  {
+    name: "YouTube",
+    href: SITE_CONFIG.social.youtube,
+    handle: "@TEMPLEPUJASEWA",
+    label: "Subscribe on YouTube",
   },
 ];
 

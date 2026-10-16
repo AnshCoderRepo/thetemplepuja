@@ -15,10 +15,16 @@ const ORG = {
   contactPoint: {
     "@type": "ContactPoint",
     telephone: `+${SITE_CONFIG.contact.countryCode}-${SITE_CONFIG.contact.phoneRaw}`,
+    email: SITE_CONFIG.contact.email,
     contactType: "customer service",
     availableLanguage: ["English", "Hindi"],
   },
-  sameAs: [getWhatsAppUrl()],
+  sameAs: [
+    SITE_CONFIG.social.instagram,
+    SITE_CONFIG.social.facebook,
+    SITE_CONFIG.social.youtube,
+    getWhatsAppUrl(),
+  ],
 } as const;
 
 export function organizationLd() {

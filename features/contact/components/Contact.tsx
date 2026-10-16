@@ -81,6 +81,50 @@ export default function Contact() {
                     </div>
                   </div>
                 </div>
+
+                {/* Social Community Channels Card */}
+                <div className="card p-4 space-y-3 bg-gradient-to-br from-amber-50/50 to-orange-50/30 border-saffron-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-ink uppercase tracking-wider">
+                      Sacred Community Channels
+                    </span>
+                    <span className="text-[11px] text-saffron-600 font-semibold">
+                      Daily Darshan &amp; Muhurats
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <a
+                      href={SITE_CONFIG.social.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col items-center justify-center p-2.5 rounded-xl bg-white border border-pink-200/80 hover:border-pink-500 hover:shadow-xs transition-all"
+                    >
+                      <span className="text-xl group-hover:scale-110 transition-transform">📷</span>
+                      <span className="text-xs font-bold text-ink group-hover:text-pink-600 mt-1">Instagram</span>
+                      <span className="text-[10px] text-ink-soft">@templepujasewa</span>
+                    </a>
+                    <a
+                      href={SITE_CONFIG.social.facebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col items-center justify-center p-2.5 rounded-xl bg-white border border-blue-200/80 hover:border-blue-500 hover:shadow-xs transition-all"
+                    >
+                      <span className="text-xl group-hover:scale-110 transition-transform">👍</span>
+                      <span className="text-xs font-bold text-ink group-hover:text-blue-600 mt-1">Facebook</span>
+                      <span className="text-[10px] text-ink-soft">Share &amp; Connect</span>
+                    </a>
+                    <a
+                      href={SITE_CONFIG.social.youtube}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col items-center justify-center p-2.5 rounded-xl bg-white border border-red-200/80 hover:border-red-500 hover:shadow-xs transition-all"
+                    >
+                      <span className="text-xl group-hover:scale-110 transition-transform">▶️</span>
+                      <span className="text-xs font-bold text-ink group-hover:text-red-600 mt-1">YouTube</span>
+                      <span className="text-[10px] text-ink-soft">@TEMPLEPUJASEWA</span>
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           </Reveal>
