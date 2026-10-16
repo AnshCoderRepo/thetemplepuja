@@ -68,7 +68,7 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@thetemplepuja.com"
+                  placeholder="infotemplepujasewa@gmail.com"
                   className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-saffron-100 bg-cream/40 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
                 />
               </div>

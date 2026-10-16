@@ -8,7 +8,13 @@ describe("Global Contact Information & Privacy Policy Integration", () => {
     expect(SITE_CONFIG.contact.phoneRaw).toBe("9621014155");
     expect(SITE_CONFIG.contact.phoneDisplay).toBe("+91 96210 14155");
     expect(SITE_CONFIG.contact.whatsappNumber).toBe("919621014155");
-    expect(SITE_CONFIG.contact.email).toBe("Infotemplepujasewa@gmail.com");
+    expect(SITE_CONFIG.contact.email).toBe("infotemplepujasewa@gmail.com");
+  });
+
+  it("configures official social media URLs for Instagram, Facebook, and YouTube", () => {
+    expect(SITE_CONFIG.social.instagram).toContain("instagram.com/templepujasewa");
+    expect(SITE_CONFIG.social.facebook).toContain("facebook.com");
+    expect(SITE_CONFIG.social.youtube).toContain("youtube.com/@TEMPLEPUJASEWA");
   });
 
   it("generates WhatsApp URLs using the correct international format https://wa.me/919621014155", () => {
@@ -29,8 +35,8 @@ describe("Global Contact Information & Privacy Policy Integration", () => {
     expect(phone?.value).toBe("+91 96210 14155");
 
     const email = contactInfo.find((c) => c.label.includes("Email"));
-    expect(email?.href).toBe("mailto:Infotemplepujasewa@gmail.com");
-    expect(email?.value).toBe("Infotemplepujasewa@gmail.com");
+    expect(email?.href).toBe("mailto:infotemplepujasewa@gmail.com");
+    expect(email?.value).toBe("infotemplepujasewa@gmail.com");
   });
 
   it("uses updated contact phone and email in Pandit AI chatbot defaults", () => {
