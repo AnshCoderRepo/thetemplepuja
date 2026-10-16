@@ -1,6 +1,6 @@
 // Pure, testable coupon logic shared by the booking flow. Kept free of React so
 // the rules can be unit-tested directly (see tests/coupons.test.ts).
-import { coupons, type Coupon } from "./data";
+import { coupons, isCouponActive, type Coupon } from "./data";
 import { formatINR } from "./format";
 import { findUserByPhone } from "./storage";
 
@@ -41,6 +41,7 @@ export function couponProblem(
 ): string | null {
   const c = couponMap[code];
   if (!c) return `"${code}" is not a valid coupon code.`;
+  if (!isCouponActive(c)) return `Coupon "${code}" is currently inactive.`;
   const countOf =
     bookingCount !== undefined
       ? () => bookingCount
@@ -73,6 +74,7 @@ export function couponDiscount(
   couponMap: Record<string, Coupon> = coupons
 ): number {
   const c = couponMap[code];
+  if (!c || !isCouponActive(c)) return 0;
   if (c?.kind === "percent" && c.value) return Math.round((price * c.value) / 100);
   return 0;
 }

@@ -26,6 +26,7 @@ import { ErrorBoundary } from "@/components/common";
 import { FloatingWhatsApp } from "@/features/contact";
 import { BookingModal } from "@/features/bookings";
 import { PublicHeader } from "@/components/layout";
+import { MetaPixel } from "@/components/analytics";
 import Providers from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
@@ -64,6 +65,7 @@ export default function RootLayout({
     >
       <body className="font-sans" suppressHydrationWarning>
         <Providers>
+          <MetaPixel />
           <ErrorBoundary>
             <PublicHeader />
             {children}

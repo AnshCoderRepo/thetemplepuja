@@ -127,4 +127,25 @@ describe("Incomplete Booking Persistence & Resumption", () => {
     const drafts = getIncompleteBookings();
     expect(drafts.find((d) => d.bookingId === "BK-EXPIRED-999")).toBeUndefined();
   });
+
+  it("does not expose another user's draft to an authenticated user with a different phone (Requirement 7)", () => {
+    saveIncompleteBooking({
+      ...mockDraft,
+      bookingId: "BK-USER-A",
+      phone: "9876543210",
+      primaryName: "User A",
+    });
+    saveIncompleteBooking({
+      ...mockDraft,
+      bookingId: "BK-USER-B",
+      phone: "9123456780",
+      primaryName: "User B",
+    });
+
+    // When User B logs in, they should ONLY see BK-USER-B, NOT BK-USER-A
+    const userBDrafts = getIncompleteBookings("9123456780");
+    expect(userBDrafts.length).toBe(1);
+    expect(userBDrafts[0].bookingId).toBe("BK-USER-B");
+    expect(userBDrafts.find((d) => d.bookingId === "BK-USER-A")).toBeUndefined();
+  });
 });

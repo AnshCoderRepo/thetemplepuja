@@ -91,6 +91,24 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+
+    if (booking.couponCode) {
+      const { isCouponActive } = await import("@/lib/data");
+      const code = String(booking.couponCode).trim().toUpperCase();
+      const c = catalog.coupons[code];
+      if (!c) {
+        return NextResponse.json(
+          { error: `Coupon "${code}" is not a valid coupon code.` },
+          { status: 400 }
+        );
+      }
+      if (!isCouponActive(c)) {
+        return NextResponse.json(
+          { error: `Coupon "${code}" is currently inactive.` },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   const targetStatus = booking.status || "confirmed";

@@ -40,7 +40,7 @@ import {
   X,
 } from "lucide-react";
 import { fetchAdminAddons, fetchCatalog, saveAdminAddon, saveCatalogSection, type EnrichedAddon } from "@/lib/api";
-import { defaultAddons, isPoojaActive, type Addon, type Pooja, type PoojaPackage, type Temple } from "@/lib/data";
+import { defaultAddons, isPoojaActive, resolvePoojaTemple, type Addon, type Pooja, type PoojaPackage, type Temple } from "@/lib/data";
 import { duplicatePooja } from "@/lib/pooja-duplicate";
 import { formatINR } from "@/lib/format";
 import { PoojaImage, PoojaImageFallback } from "@/components/common";
@@ -128,6 +128,9 @@ interface PoojaDraft {
   capacity: string;
   live: boolean;
   deities: string[];
+  templeId: string;
+  templeSlug: string;
+  templeName: string;
   templeSlugs: string[];
   chadhavaOptions: string[];
   assignedAddonIds: string[];
@@ -166,7 +169,10 @@ const emptyDraft: PoojaDraft = {
   capacity: "",
   live: false,
   deities: ["Lord Shiva"],
-  templeSlugs: ["kashi-vishwanath"],
+  templeId: "",
+  templeSlug: "",
+  templeName: "",
+  templeSlugs: [],
   chadhavaOptions: ["Contribute to Bhojan for 11 Brahmins"],
   assignedAddonIds: [],
   packages: [
@@ -264,6 +270,228 @@ export default function PoojasManager({
   const [newTempleName, setNewTempleName] = useState("");
   const [newTempleCity, setNewTempleCity] = useState("");
   const [newTempleState, setNewTempleState] = useState("");
+
+  // Searchable Temple Dropdown state
+  const [isTempleDropdownOpen, setIsTempleDropdownOpen] = useState(false);
+  const [templeDropdownSearch, setTempleDropdownSearch] = useState("");
+
+  const filteredTemples = useMemo(() => {
+    if (!templeDropdownSearch.trim()) return temples;
+    const q = templeDropdownSearch.trim().toLowerCase();
+    return temples.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.hindiName && t.hindiName.toLowerCase().includes(q)) ||
+        (t.city && t.city.toLowerCase().includes(q)) ||
+        (t.state && t.state.toLowerCase().includes(q)) ||
+        (t.deity && t.deity.toLowerCase().includes(q))
+    );
+  }, [temples, templeDropdownSearch]);
+
+  const selectedTemple = useMemo(() => {
+    if (draft.templeId) {
+      const byId = temples.find((t) => {
+        const tid = t._id ? String(t._id) : "";
+        return (
+          (tid && tid === draft.templeId) ||
+          (t.id && String(t.id) === draft.templeId) ||
+          t.slug === draft.templeId
+        );
+      });
+      if (byId) return byId;
+    }
+    if (draft.templeSlug) {
+      const bySlug = temples.find((t) => t.slug === draft.templeSlug);
+      if (bySlug) return bySlug;
+    }
+    if (draft.templeSlugs && draft.templeSlugs.length > 0) {
+      const bySlugs = temples.find((t) => draft.templeSlugs.includes(t.slug));
+      if (bySlugs) return bySlugs;
+    }
+    return null;
+  }, [temples, draft.templeId, draft.templeSlug, draft.templeSlugs]);
+
+  const handleSelectTemple = (t: Temple) => {
+    const stableId = t._id ? String(t._id) : (t.id || t.slug);
+    setDraft((prev) => ({
+      ...prev,
+      templeId: stableId,
+      templeSlug: t.slug,
+      templeName: t.name,
+      templeSlugs: [t.slug],
+    }));
+    setIsTempleDropdownOpen(false);
+    setTempleDropdownSearch("");
+  };
+
+  const handleClearTemple = () => {
+    setDraft((prev) => ({
+      ...prev,
+      templeId: "",
+      templeSlug: "",
+      templeName: "",
+      templeSlugs: [],
+    }));
+    setIsTempleDropdownOpen(false);
+    setTempleDropdownSearch("");
+  };
+
+  const renderTempleDropdown = () => (
+    <div className="relative">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsTempleDropdownOpen((prev) => !prev)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsTempleDropdownOpen((prev) => !prev);
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border bg-white px-3.5 py-2.5 text-xs transition-all cursor-pointer shadow-2xs ${
+          isTempleDropdownOpen
+            ? "border-saffron-500 ring-2 ring-saffron-100"
+            : "border-saffron-200 hover:border-saffron-300"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span className="text-sm shrink-0">🛕</span>
+          {selectedTemple ? (
+            <div className="truncate text-left">
+              <span className="font-bold text-ink truncate block">
+                {selectedTemple.name}
+              </span>
+              <span className="text-[11px] text-ink-soft truncate block">
+                {selectedTemple.city}, {selectedTemple.state} • {selectedTemple.deity}
+              </span>
+            </div>
+          ) : (
+            <span className="text-ink-soft/70">
+              Select temple from Temple Management database (optional)...
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {selectedTemple && (
+            <button
+              type="button"
+              title="Remove temple association"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearTemple();
+              }}
+              className="p-1 rounded-md text-ink-soft hover:text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <ChevronDown
+            className={`h-4 w-4 text-ink-soft transition-transform duration-200 ${
+              isTempleDropdownOpen ? "rotate-180" : ""
+            }`}
+          />
+        </div>
+      </div>
+
+      {isTempleDropdownOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-20"
+            onClick={() => {
+              setIsTempleDropdownOpen(false);
+              setTempleDropdownSearch("");
+            }}
+          />
+
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-30 max-h-72 overflow-hidden rounded-2xl border border-saffron-200 bg-white shadow-xl flex flex-col animate-fadeIn">
+            <div className="p-2.5 border-b border-saffron-100 bg-saffron-50/40 flex items-center gap-2">
+              <Search className="h-4 w-4 text-saffron-600 shrink-0" />
+              <input
+                type="text"
+                autoFocus
+                value={templeDropdownSearch}
+                onChange={(e) => setTempleDropdownSearch(e.target.value)}
+                placeholder="Search by temple name, city, state, deity..."
+                className="w-full bg-transparent text-xs text-ink placeholder:text-ink-soft/50 focus:outline-none"
+              />
+              {templeDropdownSearch && (
+                <button
+                  type="button"
+                  onClick={() => setTempleDropdownSearch("")}
+                  className="text-ink-soft hover:text-ink text-xs"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="overflow-y-auto py-1 divide-y divide-saffron-50 max-h-60">
+              <button
+                type="button"
+                onClick={handleClearTemple}
+                className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between transition-colors ${
+                  !selectedTemple
+                    ? "bg-saffron-50/60 font-bold text-saffron-800"
+                    : "text-ink-soft hover:bg-slate-50"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span>🚫</span>
+                  <span>— No Temple Assigned (General / Home Puja) —</span>
+                </span>
+                {!selectedTemple && <Check className="h-3.5 w-3.5 text-saffron-600" />}
+              </button>
+
+              {filteredTemples.map((temple) => {
+                const isSelected =
+                  selectedTemple?.slug === temple.slug ||
+                  (temple._id && draft.templeId === String(temple._id));
+                return (
+                  <button
+                    key={temple.slug || (temple._id ? String(temple._id) : temple.name)}
+                    type="button"
+                    onClick={() => handleSelectTemple(temple)}
+                    className={`w-full px-3.5 py-2.5 text-left text-xs flex items-start justify-between gap-2 transition-colors ${
+                      isSelected
+                        ? "bg-saffron-50/80 text-saffron-900 font-bold"
+                        : "text-ink hover:bg-saffron-50/40"
+                    }`}
+                  >
+                    <div className="space-y-0.5 truncate">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="text-amber-600">🛕</span>
+                        <span className="font-semibold text-ink truncate">{temple.name}</span>
+                        {temple.hindiName && (
+                          <span className="text-[11px] text-saffron-700 font-normal truncate">
+                            ({temple.hindiName})
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-ink-soft truncate pl-5">
+                        📍 {temple.city}, {temple.state} • {temple.deity}
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <span className="shrink-0 p-1 rounded-full bg-saffron-500 text-white mt-0.5">
+                        <Check className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              {filteredTemples.length === 0 && (
+                <div className="p-4 text-center text-xs text-ink-soft">
+                  No temples found matching &ldquo;{templeDropdownSearch}&rdquo;.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   // Media Banner upload state
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -526,9 +754,13 @@ export default function PoojasManager({
 
     const nextTemples = [...temples.filter((t) => t.slug !== slug), newTemple];
     setTemples(nextTemples);
-    if (!draft.templeSlugs.includes(slug)) {
-      setDraft((prev) => ({ ...prev, templeSlugs: [...prev.templeSlugs, slug] }));
-    }
+    setDraft((prev) => ({
+      ...prev,
+      templeId: slug,
+      templeSlug: slug,
+      templeName: trimmedName,
+      templeSlugs: [slug],
+    }));
 
     try {
       await saveCatalogSection("temples", nextTemples, token);
@@ -729,6 +961,12 @@ export default function PoojasManager({
     setIsDuplicating(false);
     setSourcePoojaTitle("");
     setSlugManuallyEdited(true);
+
+    const assignedTemple = resolvePoojaTemple(p, temples);
+    const resolvedTempleId = p.templeId || (assignedTemple ? (assignedTemple._id ? String(assignedTemple._id) : (assignedTemple.id || assignedTemple.slug)) : "");
+    const resolvedTempleSlug = p.templeSlug || (assignedTemple ? assignedTemple.slug : (p.templeSlugs?.[0] ?? ""));
+    const resolvedTempleName = p.templeName || (assignedTemple ? assignedTemple.name : "");
+
     setDraft({
       slug: p.slug,
       title: p.title,
@@ -760,7 +998,10 @@ export default function PoojasManager({
       capacity: p.capacity !== undefined ? String(p.capacity) : "",
       live: p.live ?? false,
       deities: p.deities ? [...p.deities] : ["Lord Shiva"],
-      templeSlugs: p.templeSlugs ? [...p.templeSlugs] : [],
+      templeId: resolvedTempleId,
+      templeSlug: resolvedTempleSlug,
+      templeName: resolvedTempleName,
+      templeSlugs: p.templeSlugs && p.templeSlugs.length > 0 ? [...p.templeSlugs] : (resolvedTempleSlug ? [resolvedTempleSlug] : []),
       assignedAddonIds: p.assignedAddonIds ? [...p.assignedAddonIds] : [],
       chadhavaOptions: p.chadhavaOptions ? [...p.chadhavaOptions] : [],
       packages: p.packages && p.packages.length > 0
@@ -781,6 +1022,11 @@ export default function PoojasManager({
     setIsDuplicating(true);
     setSourcePoojaTitle(p.title);
     setSlugManuallyEdited(true);
+
+    const assignedTemple = resolvePoojaTemple(duplicated, temples);
+    const resolvedTempleId = duplicated.templeId || (assignedTemple ? (assignedTemple._id ? String(assignedTemple._id) : (assignedTemple.id || assignedTemple.slug)) : "");
+    const resolvedTempleSlug = duplicated.templeSlug || (assignedTemple ? assignedTemple.slug : (duplicated.templeSlugs?.[0] ?? ""));
+    const resolvedTempleName = duplicated.templeName || (assignedTemple ? assignedTemple.name : "");
 
     setDraft({
       slug: duplicated.slug,
@@ -813,7 +1059,10 @@ export default function PoojasManager({
       capacity: duplicated.capacity !== undefined ? String(duplicated.capacity) : "",
       live: duplicated.live ?? false,
       deities: duplicated.deities ? [...duplicated.deities] : ["Lord Shiva"],
-      templeSlugs: duplicated.templeSlugs ? [...duplicated.templeSlugs] : [],
+      templeId: resolvedTempleId,
+      templeSlug: resolvedTempleSlug,
+      templeName: resolvedTempleName,
+      templeSlugs: duplicated.templeSlugs && duplicated.templeSlugs.length > 0 ? [...duplicated.templeSlugs] : (resolvedTempleSlug ? [resolvedTempleSlug] : []),
       assignedAddonIds: duplicated.assignedAddonIds ? [...duplicated.assignedAddonIds] : [],
       chadhavaOptions: duplicated.chadhavaOptions ? [...duplicated.chadhavaOptions] : [],
       packages: duplicated.packages && duplicated.packages.length > 0
@@ -1002,7 +1251,10 @@ export default function PoojasManager({
       gradient: draft.gradient,
       imageUrl: draft.imageUrl.trim() || undefined,
       deities: draft.deities,
-      templeSlugs: draft.templeSlugs,
+      templeId: draft.templeId.trim() || undefined,
+      templeSlug: draft.templeSlug.trim() || undefined,
+      templeName: draft.templeName.trim() || undefined,
+      templeSlugs: draft.templeSlugs.filter(Boolean),
       assignedAddonIds: draft.assignedAddonIds,
       chadhavaOptions: draft.chadhavaOptions,
       packages: draft.packages.length > 0 ? draft.packages : undefined,
@@ -1491,6 +1743,25 @@ export default function PoojasManager({
                             </button>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Associated Temple Dropdown (Shown on Homepage Card) */}
+                      <div className="rounded-2xl border border-saffron-100 bg-amber-50/30 p-3.5 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-ink flex items-center gap-1.5">
+                            <span>🛕</span>
+                            <span>Associated Temple (Shown on Homepage Card Badge)</span>
+                          </label>
+                          {selectedTemple && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Linked to Temple
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-ink-soft">
+                          Select the temple from the Temple Management module. Its name will display as an elegant badge on the homepage card banner.
+                        </p>
+                        {renderTempleDropdown()}
                       </div>
 
                       {/* English Description */}
@@ -2050,6 +2321,8 @@ export default function PoojasManager({
                           </button>
                         </div>
 
+                        {renderTempleDropdown()}
+
                         {/* Inline Custom Temple Form */}
                         {isAddingTemple && (
                           <div className="p-3 rounded-xl bg-white border border-purple-200 shadow-xs space-y-2.5 animate-fadeIn">
@@ -2099,29 +2372,38 @@ export default function PoojasManager({
                           </div>
                         )}
 
-                        <div className="flex flex-wrap gap-2">
-                          {temples.map((temple) => {
-                            const selected = draft.templeSlugs.includes(temple.slug);
-                            return (
-                              <button
-                                key={temple.slug}
-                                type="button"
-                                onClick={() => {
-                                  const templeSlugs = selected
-                                    ? draft.templeSlugs.filter((s) => s !== temple.slug)
-                                    : [...draft.templeSlugs, temple.slug];
-                                  setDraft({ ...draft, templeSlugs });
-                                }}
-                                className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
-                                  selected
-                                    ? "bg-purple-700 text-white shadow-sm"
-                                    : "bg-white text-purple-700 hover:bg-purple-50 border border-purple-100"
-                                }`}
-                              >
-                                🛕 {temple.name} ({temple.city}) {selected && "✕"}
-                              </button>
-                            );
-                          })}
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[11px] font-semibold text-ink-soft block">
+                            Or quick-select from existing temples:
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {temples.map((temple) => {
+                              const selected =
+                                selectedTemple?.slug === temple.slug ||
+                                draft.templeSlugs.includes(temple.slug) ||
+                                (temple._id && draft.templeId === String(temple._id));
+                              return (
+                                <button
+                                  key={temple.slug}
+                                  type="button"
+                                  onClick={() => {
+                                    if (selected) {
+                                      handleClearTemple();
+                                    } else {
+                                      handleSelectTemple(temple);
+                                    }
+                                  }}
+                                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                                    selected
+                                      ? "bg-purple-700 text-white shadow-sm"
+                                      : "bg-white text-purple-700 hover:bg-purple-50 border border-purple-100"
+                                  }`}
+                                >
+                                  🛕 {temple.name} ({temple.city}) {selected && "✓"}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
 
@@ -2646,6 +2928,15 @@ export default function PoojasManager({
                         <span className="rounded-md bg-purple-100 px-2 py-1 font-semibold text-purple-800">
                           🛕 {draft.type === "temple" ? "Temple Puja" : "Home Puja"}
                         </span>
+                        {draft.templeName ? (
+                          <span className="rounded-md bg-amber-100 px-2.5 py-1 font-semibold text-amber-900 border border-amber-300/60 flex items-center gap-1">
+                            🛕 {draft.templeName}
+                          </span>
+                        ) : (
+                          <span className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-slate-600">
+                            No Temple Assigned
+                          </span>
+                        )}
                         <span className="rounded-md bg-emerald-100 px-2 py-1 font-semibold text-emerald-800">
                           {draft.online ? "🔴 Online" : "📍 In-Person"}
                         </span>

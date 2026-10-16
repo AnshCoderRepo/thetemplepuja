@@ -12,11 +12,14 @@ import {
   getLocalizedPoojaTitle,
   getPoojaSchedule,
   getPoojaBannerImage,
+  getLocalizedTempleName,
+  resolvePoojaTemple,
   isPoojaLiveStreamAvailable,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
 import { PoojaImage } from "@/components/common";
+import { useCatalog } from "../hooks/useCatalog";
 
 export interface PoojaCardProps {
   pooja: Pooja;
@@ -31,6 +34,11 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
   const bannerImage = p.imageUrl ? p.imageUrl.trim() : getPoojaBannerImage(p);
   const poojaTitle = getLocalizedPoojaTitle(p, locale);
   const nativeBadge = getLocalizedPoojaNativeBadge(p, locale);
+  const { temples } = useCatalog();
+  const assignedTemple = resolvePoojaTemple(p, temples);
+  const templeName = assignedTemple
+    ? getLocalizedTempleName(assignedTemple, locale) || assignedTemple.name
+    : p.templeName || null;
 
   const handleNavigateToPooja = () => {
     router.push(`/book/${p.slug}`);
@@ -128,11 +136,26 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
           )}
         </div>
 
-        {/* Subtle hover booking affordance */}
-        <span className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 z-10 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-bold text-amber-200 backdrop-blur border border-white/15 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-xs pointer-events-none">
-          <span>{t("book.bookNow")}</span>
-          <span aria-hidden="true">→</span>
-        </span>
+        {/* Bottom-right: Temple Name badge */}
+        {templeName && (
+          <div className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 z-10 flex items-center justify-end max-w-[55%] sm:max-w-[60%] pointer-events-none">
+            <span
+              title={templeName}
+              className="inline-flex items-center gap-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-amber-400/40 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-amber-100 shadow-md group-hover:border-amber-300 transition-colors truncate"
+            >
+              <span className="text-amber-400 shrink-0 text-xs" aria-hidden="true">🛕</span>
+              <span className="truncate">{templeName}</span>
+            </span>
+          </div>
+        )}
+
+        {/* Subtle hover booking affordance (only when no temple badge present to avoid clutter) */}
+        {!templeName && (
+          <span className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 z-10 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-bold text-amber-200 backdrop-blur border border-white/15 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-xs pointer-events-none">
+            <span>{t("book.bookNow")}</span>
+            <span aria-hidden="true">→</span>
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col justify-between p-5">

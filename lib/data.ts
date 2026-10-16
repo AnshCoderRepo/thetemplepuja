@@ -1211,6 +1211,12 @@ export interface Pooja {
   imageUrl?: string;
   /** Related Deities (e.g. ["Lord Shiva", "Lord Ganesha"]) */
   deities?: string[];
+  /** Primary assigned temple stable ID (MongoDB _id or id) */
+  templeId?: string;
+  /** Primary assigned temple slug */
+  templeSlug?: string;
+  /** Resolved temple name for instant display / denormalization */
+  templeName?: string;
   /** Associated Temple IDs/Slugs (e.g. ["navagrah-temple", "kashi-vishwanath"]) */
   templeSlugs?: string[];
   /** Chadhava offering tags */
@@ -1985,6 +1991,29 @@ export interface Coupon {
   minBookings?: number;
   /** Minimum pooja price required to use the coupon */
   minAmount?: number;
+  /** Whether the coupon is active and can be used at checkout. Default is true unless explicitly false. */
+  active?: boolean;
+  /** Alias for active flag */
+  isActive?: boolean;
+}
+
+/** True unless the admin explicitly deactivated the coupon. Existing coupons remain active by default. */
+export function isCouponActive(c?: Coupon | null): boolean {
+  if (!c) return false;
+  if (c.active !== undefined) return c.active !== false;
+  if (c.isActive !== undefined) return c.isActive !== false;
+  return true;
+}
+
+/** Returns only active coupons from a coupon map. */
+export function activeCoupons(map: Record<string, Coupon>): Record<string, Coupon> {
+  const result: Record<string, Coupon> = {};
+  for (const [code, c] of Object.entries(map)) {
+    if (isCouponActive(c)) {
+      result[code] = c;
+    }
+  }
+  return result;
 }
 
 // ===================== POOJA DATES =====================
@@ -2080,6 +2109,8 @@ export const coupons: Record<string, Coupon> = {
 // ===================== TEMPLE MANAGEMENT =====================
 
 export interface Temple {
+  _id?: string;
+  id?: string;
   slug: string;
   name: string;
   hindiName?: string;
@@ -2124,6 +2155,70 @@ export function activeTemples(list: Temple[]): Temple[] {
   return list.filter(isTempleActive);
 }
 
+/**
+ * Resolve the associated Temple for a pooja without falling back to a default.
+ * Returns null if no temple is assigned or found.
+ */
+export function resolvePoojaTemple(
+  pooja?: Pooja | null,
+  templesList?: Temple[]
+): Temple | null {
+  if (!pooja) return null;
+  const pool = templesList && templesList.length > 0 ? templesList : defaultTemples;
+
+  // 1. Check explicit templeId (MongoDB _id, id, or slug)
+  if (pooja.templeId && pooja.templeId !== "none") {
+    const idStr = String(pooja.templeId).trim();
+    const found = pool.find((t) => {
+      const tid = t._id ? String(t._id) : "";
+      return (
+        (tid && tid === idStr) ||
+        (t.id && String(t.id) === idStr) ||
+        t.slug === idStr
+      );
+    });
+    if (found) return found;
+  }
+
+  // If templeId is explicitly set to empty or "none", it was intentionally unassigned
+  if (pooja.templeId === "" || pooja.templeId === "none") {
+    return null;
+  }
+
+  // 2. Check explicit templeSlug
+  if (pooja.templeSlug) {
+    const found = pool.find((t) => t.slug === pooja.templeSlug);
+    if (found) return found;
+  }
+
+  // 3. Check templeSlugs array
+  if (pooja.templeSlugs && pooja.templeSlugs.length > 0) {
+    const found = pool.find((t) => {
+      const tid = t._id ? String(t._id) : "";
+      return (
+        pooja.templeSlugs!.includes(t.slug) ||
+        (tid && pooja.templeSlugs!.includes(tid)) ||
+        (t.id && pooja.templeSlugs!.includes(String(t.id)))
+      );
+    });
+    if (found) return found;
+  }
+
+  // If pooja was saved with an empty templeSlugs array and templeId wasn't specified,
+  // do not associate any temple.
+  if (Array.isArray(pooja.templeSlugs) && pooja.templeSlugs.length === 0) {
+    return null;
+  }
+
+  // 4. Reverse lookup from temple.poojaSlugs (only for legacy seed poojas where neither templeId nor templeSlugs was set)
+  if (pooja.slug) {
+    const match = pool.find((t) => t.poojaSlugs?.includes(pooja.slug));
+    if (match) return match;
+  }
+
+  return null;
+}
+
 export function getTempleForPooja(
   pooja?: Pooja | null,
   templesList?: Temple[]
@@ -2131,12 +2226,8 @@ export function getTempleForPooja(
   const pool = templesList && templesList.length > 0 ? templesList : defaultTemples;
   const fallback = pool.find((t) => t.slug === "kashi-vishwanath") || pool[0] || defaultTemples[1];
   if (!pooja) return fallback;
-  if (pooja.templeSlugs && pooja.templeSlugs.length > 0) {
-    const found = pool.find((t) => pooja.templeSlugs?.includes(t.slug));
-    if (found) return found;
-  }
-  const match = pool.find((t) => t.poojaSlugs?.includes(pooja.slug));
-  if (match) return match;
+  const resolved = resolvePoojaTemple(pooja, pool);
+  if (resolved) return resolved;
   return fallback;
 }
 

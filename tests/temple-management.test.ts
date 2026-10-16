@@ -11,6 +11,7 @@ import {
   getRelatedPoojasForTemple,
   getTemple,
   getTempleForPooja,
+  resolvePoojaTemple,
   isTempleActive,
   type Pooja,
   type Temple,
@@ -187,5 +188,134 @@ describe("Temple Management & Public Temple Information", () => {
     expect(urls.some((u) => u.endsWith("/temples"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/temples/kashi-vishwanath"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/temples/mahakaleshwar"))).toBe(true);
+  });
+
+  describe("Puja Card Temple Name Resolution (Homepage Banner Badge)", () => {
+    const mockTemples: Temple[] = [
+      {
+        _id: "66f123456789abcdef000001",
+        slug: "trimbakeshwar",
+        name: "Trimbakeshwar Shiva Temple",
+        hindiName: "त्र्यंबकेश्वर ज्योतिर्लिंग मंदिर",
+        deity: "Lord Shiva",
+        city: "Nashik",
+        state: "Maharashtra",
+        description: "Holy Jyotirlinga near Godavari river",
+        active: true,
+      },
+      {
+        _id: "66f123456789abcdef000002",
+        slug: "khatu-shyam",
+        name: "Khatu Shyam Ji Temple",
+        hindiName: "खाटू श्याम जी मंदिर",
+        deity: "Khatu Shyam",
+        city: "Sikar",
+        state: "Rajasthan",
+        description: "Revered shrine in Rajasthan",
+        active: true,
+      },
+    ];
+
+    it("resolves temple by stable MongoDB _id reference", () => {
+      const poojaWithMongoId: Pooja = {
+        slug: "kaal-sarp-dosh-puja",
+        title: "Kaal Sarp Dosh Nivaran Puja",
+        hindiTitle: "काल सर्प दोष निवारण पूजा",
+        price: 2501,
+        benefits: ["Dosha Shanti"],
+        bestMuhurat: "Nag Panchami",
+        duration: "2 hours",
+        description: "Special dosha shanti pooja",
+        emoji: "🐍",
+        gradient: "from-slate-700 to-amber-900",
+        templeId: "66f123456789abcdef000001",
+      };
+
+      const resolved = resolvePoojaTemple(poojaWithMongoId, mockTemples);
+      expect(resolved).toBeDefined();
+      expect(resolved?.name).toBe("Trimbakeshwar Shiva Temple");
+      expect(resolved?.slug).toBe("trimbakeshwar");
+      expect(getLocalizedTempleName(resolved, "hi")).toBe("त्र्यंबकेश्वर ज्योतिर्लिंग मंदिर");
+    });
+
+    it("resolves temple by templeSlug or templeSlugs array", () => {
+      const poojaWithSlug: Pooja = {
+        slug: "khatu-shyam-kirtan",
+        title: "Shree Khatu Shyam Bhajan & Kirtan",
+        hindiTitle: "श्री खाटू श्याम भजन एवं कीर्तन",
+        price: 1101,
+        benefits: ["Bhakti & Blessings"],
+        bestMuhurat: "Ekadashi",
+        duration: "3 hours",
+        description: "Devotional kirtan",
+        emoji: "🪔",
+        gradient: "from-amber-500 to-orange-700",
+        templeSlug: "khatu-shyam",
+      };
+
+      const resolved = resolvePoojaTemple(poojaWithSlug, mockTemples);
+      expect(resolved?.name).toBe("Khatu Shyam Ji Temple");
+    });
+
+    it("returns null gracefully when no temple is assigned to the puja", () => {
+      const homePooja: Pooja = {
+        slug: "griha-shanti-home",
+        title: "Vedic Griha Shanti at Home",
+        hindiTitle: "वैदिक गृह शांति पूजा",
+        price: 3101,
+        benefits: ["Home Harmony"],
+        bestMuhurat: "Any auspicious day",
+        duration: "2 hours",
+        description: "Performed at devotee's residence",
+        emoji: "🏠",
+        gradient: "from-emerald-600 to-teal-800",
+        type: "home",
+        templeId: "",
+        templeSlugs: [],
+      };
+
+      // Crucial: Must return null instead of falling back to Kashi Vishwanath or defaultTemples[0]!
+      const resolved = resolvePoojaTemple(homePooja, mockTemples);
+      expect(resolved).toBeNull();
+    });
+
+    it("updates resolved temple name immediately when admin edits templeId reference", () => {
+      const dynamicPooja: Pooja = {
+        slug: "special-yagya",
+        title: "Maha Yagya Seva",
+        hindiTitle: "महायज्ञ सेवा",
+        price: 5101,
+        benefits: ["Divine protection"],
+        bestMuhurat: "Purnima",
+        duration: "4 hours",
+        description: "Auspicious havan",
+        emoji: "🔥",
+        gradient: "from-orange-500 to-rose-700",
+        templeId: "66f123456789abcdef000001",
+      };
+
+      // Initially linked to Trimbakeshwar
+      const initial = resolvePoojaTemple(dynamicPooja, mockTemples);
+      expect(initial?.name).toBe("Trimbakeshwar Shiva Temple");
+
+      // Admin updates temple to Khatu Shyam
+      const updatedPooja = {
+        ...dynamicPooja,
+        templeId: "66f123456789abcdef000002",
+        templeSlug: "khatu-shyam",
+      };
+      const updated = resolvePoojaTemple(updatedPooja, mockTemples);
+      expect(updated?.name).toBe("Khatu Shyam Ji Temple");
+
+      // Admin unassigns temple
+      const unassignedPooja = {
+        ...dynamicPooja,
+        templeId: "",
+        templeSlug: "",
+        templeSlugs: [],
+      };
+      const unassigned = resolvePoojaTemple(unassignedPooja, mockTemples);
+      expect(unassigned).toBeNull();
+    });
   });
 });
