@@ -51,7 +51,7 @@ export default function BookingModal() {
       role="dialog"
       aria-modal="true"
       aria-label="Book Pooja Modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-y-auto animate-fadeIn"
     >
       {/* Backdrop */}
       <div
@@ -60,7 +60,7 @@ export default function BookingModal() {
       />
 
       {/* Modal Dialog Container - Perfectly Centered in Middle */}
-      <div className="relative z-10 m-auto my-auto flex h-auto max-h-[90vh] w-full max-w-md sm:max-w-lg flex-col rounded-3xl border border-saffron-200/90 bg-[#FFFDF9] shadow-[0_25px_70px_rgba(30,10,5,0.35)] overflow-hidden">
+      <div className="relative z-10 m-auto my-auto flex h-auto max-h-[92dvh] sm:max-h-[90vh] w-full max-w-md sm:max-w-lg flex-col rounded-3xl border border-saffron-200/90 bg-[#FFFDF9] shadow-[0_25px_70px_rgba(30,10,5,0.35)] overflow-hidden min-h-0">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-saffron-100 bg-white/95 px-5 py-3.5 sm:px-6 shadow-xs backdrop-blur shrink-0">
           <div className="flex items-center gap-2.5">
@@ -99,7 +99,7 @@ export default function BookingModal() {
         {/* Modal Body - Scrollable */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8"
+          className="flex-1 min-h-0 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7 overscroll-contain"
         >
           <BookingFlow
             pooja={selectedPooja}
