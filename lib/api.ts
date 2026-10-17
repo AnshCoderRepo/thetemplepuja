@@ -22,6 +22,7 @@ import {
   type UpcomingEventSpec,
   type Addon,
 } from "./data";
+import type { GalleryItem } from "./gallery-types";
 import {
   cancelBooking,
   deleteUser,
@@ -1197,6 +1198,110 @@ export async function fetchPujaAddons(poojaSlug?: string): Promise<{
   }
 }
 
+// ===================== GALLERY API =====================
 
+export async function fetchPublicGallery(options?: {
+  homepage?: boolean;
+  mediaType?: "photo" | "video";
+  category?: string;
+}): Promise<{
+  ok: boolean;
+  items: GalleryItem[];
+  error?: string;
+}> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.homepage) params.set("homepage", "true");
+    if (options?.mediaType) params.set("mediaType", options.mediaType);
+    if (options?.category && options.category !== "all" && options.category !== "All") {
+      params.set("category", options.category);
+    }
 
+    const query = params.toString();
+    const url = `/api/gallery${query ? `?${query}` : ""}`;
+    const res = await fetch(url, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, items: [], error: data.error || "Failed to fetch gallery items" };
+    }
+    return { ok: true, items: data.items || [] };
+  } catch (err) {
+    return { ok: false, items: [], error: "Network error fetching gallery" };
+  }
+}
 
+export async function fetchAdminGallery(token: string): Promise<{
+  ok: boolean;
+  items: GalleryItem[];
+  error?: string;
+  status?: number;
+}> {
+  try {
+    const res = await fetch("/api/admin/gallery", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.status === 401) {
+      return { ok: false, items: [], status: 401, error: "Unauthorized" };
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, items: [], error: data.error || "Failed to fetch gallery items" };
+    }
+    return { ok: true, items: data.items || [] };
+  } catch (err) {
+    return { ok: false, items: [], error: "Network error fetching gallery" };
+  }
+}
+
+export async function saveAdminGalleryItem(
+  item: Partial<GalleryItem>,
+  token: string
+): Promise<{ ok: boolean; item?: GalleryItem; error?: string; status?: number }> {
+  try {
+    const res = await fetch("/api/admin/gallery", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(item),
+    });
+    if (res.status === 401) {
+      return { ok: false, status: 401, error: "Unauthorized" };
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to save gallery item" };
+    }
+    return { ok: true, item: data.item };
+  } catch (err) {
+    return { ok: false, error: "Network error saving gallery item" };
+  }
+}
+
+export async function deleteAdminGalleryItem(
+  id: string,
+  token: string
+): Promise<{ ok: boolean; error?: string; status?: number }> {
+  try {
+    const res = await fetch(`/api/admin/gallery?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (res.status === 401) {
+      return { ok: false, status: 401, error: "Unauthorized" };
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to delete gallery item" };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: "Network error deleting gallery item" };
+  }
+}

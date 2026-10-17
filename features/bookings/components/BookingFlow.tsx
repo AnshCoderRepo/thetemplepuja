@@ -1061,6 +1061,8 @@ export default function BookingFlow({
         confirmed={confirmed}
         basePrice={packagePrice}
         phone={phone}
+        onClose={onClose}
+        isModal={isModal}
       />
     );
   }

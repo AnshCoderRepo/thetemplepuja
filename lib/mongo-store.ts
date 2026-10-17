@@ -11,6 +11,7 @@ import type { BlogPost } from "./blog-data";
 import type { BookingRecord, DevoteeEntitlement, UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
 import { getPhoneLookupVariants } from "./phone";
+import { DEFAULT_GALLERY_ITEMS, type GalleryItem } from "./gallery-types";
 
 import type {
   ChatbotKnowledgeEntry,
@@ -417,7 +418,81 @@ export const mongoStore: PersistenceStore = {
     const res = await col.deleteOne({ $or: [{ _id: id }, { id }] });
     return res.deletedCount > 0;
   },
+
+  async getGalleryItems(): Promise<GalleryItem[]> {
+    const col = await galleryCol();
+    const count = await col.countDocuments({});
+    if (count === 0) {
+      try {
+        await col.insertMany(DEFAULT_GALLERY_ITEMS.map((g) => ({ ...g })));
+      } catch {}
+    }
+    const docs = await col.find({}).sort({ displayOrder: 1 }).toArray();
+    return docs.map(toGalleryDoc);
+  },
+
+  async findGalleryItemById(id: string): Promise<GalleryItem | undefined> {
+    const col = await galleryCol();
+    const doc = await col.findOne({ $or: [{ _id: id }, { id }] });
+    return doc ? toGalleryDoc(doc) : undefined;
+  },
+
+  async saveGalleryItem(item: GalleryItem): Promise<void> {
+    const col = await galleryCol();
+    const id = String(item._id || item.id);
+    const doc = {
+      ...item,
+      _id: id,
+      id: id,
+      updatedAt: new Date().toISOString(),
+    };
+    if (!doc.createdAt) doc.createdAt = new Date().toISOString();
+    await col.updateOne({ $or: [{ _id: id }, { id }] }, { $set: doc }, { upsert: true });
+  },
+
+  async deleteGalleryItem(id: string): Promise<boolean> {
+    const col = await galleryCol();
+    const res = await col.deleteOne({ $or: [{ _id: id }, { id }] });
+    return res.deletedCount > 0;
+  },
 };
+
+export async function galleryCol(): Promise<Collection<any>> {
+  const db = await getDb();
+  const col = db.collection<any>("gallery");
+  try {
+    await col.createIndex({ id: 1 });
+    await col.createIndex({ isActive: 1 });
+    await col.createIndex({ showOnHomepage: 1 });
+    await col.createIndex({ displayOrder: 1 });
+  } catch {}
+  return col;
+}
+
+function toGalleryDoc(doc: any): GalleryItem {
+  const idStr = String(doc._id || doc.id);
+  return {
+    _id: idStr,
+    id: idStr,
+    title: doc.title || "",
+    description: doc.description || "",
+    mediaType: doc.mediaType || "photo",
+    imageUrl: doc.imageUrl,
+    videoUrl: doc.videoUrl,
+    thumbnailUrl: doc.thumbnailUrl,
+    youtubeUrl: doc.youtubeUrl,
+    youtubeVideoId: doc.youtubeVideoId,
+    category: doc.category || "Puja Ceremonies",
+    isActive: doc.isActive !== false,
+    showOnHomepage: doc.showOnHomepage !== false,
+    displayOrder: Number(doc.displayOrder) || 1,
+    isDemo: Boolean(doc.isDemo),
+    videoDurationSeconds: doc.videoDurationSeconds ? Number(doc.videoDurationSeconds) : undefined,
+    durationVerified: Boolean(doc.durationVerified),
+    createdAt: doc.createdAt || new Date().toISOString(),
+    updatedAt: doc.updatedAt || new Date().toISOString(),
+  };
+}
 
 export async function addonsCol(): Promise<Collection<any>> {
   const db = await getDb();

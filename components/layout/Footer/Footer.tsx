@@ -54,6 +54,7 @@ export default function Footer() {
     { label: t("nav.home"), href: "/#home" },
     { label: t("nav.bookPooja"), href: "/#poojas" },
     { label: t("nav.temples"), href: "/temples" },
+    { label: "Our Gallery", href: "/our-gallery" },
     { label: "Spiritual Blog", href: "/blog" },
     { label: "Message CEO", href: "/#message-ceo" },
     { label: t("nav.whyUs"), href: "/#why-us" },

@@ -19,6 +19,7 @@ import DatesManager from "@/components/admin/DatesManager";
 import CouponsManager from "@/components/admin/CouponsManager";
 import AccountManager from "@/components/admin/AccountManager";
 import ChatbotManager from "@/components/admin/ChatbotManager";
+import GalleryManager from "@/components/admin/GalleryManager";
 import CustomerProfileModal, { type ProfileTab } from "@/components/admin/CustomerProfileModal";
 import RefundRequestsManager from "@/components/admin/RefundRequestsManager";
 
@@ -144,6 +145,13 @@ export default function AdminDashboard({
               token={token || ""}
               onAuthError={onAuthError}
               onRefresh={onRefresh}
+            />
+          )}
+
+          {tab === "gallery" && (
+            <GalleryManager
+              token={token || ""}
+              onAuthError={onAuthError}
             />
           )}
 

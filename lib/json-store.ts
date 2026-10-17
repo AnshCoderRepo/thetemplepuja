@@ -10,6 +10,7 @@ import type {
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
 import { defaultAddons, type Addon } from "./data";
+import { DEFAULT_GALLERY_ITEMS, type GalleryItem } from "./gallery-types";
 
 function dataDir(): string {
   return process.env.TTP_DATA_DIR || path.join(process.cwd(), ".data");
@@ -176,6 +177,40 @@ export function createJsonStore(): PersistenceStore {
       const next = list.filter((a) => a._id !== id && a.id !== id);
       if (next.length === list.length) return false;
       writeJson("addons.json", next);
+      return true;
+    },
+    async getGalleryItems(): Promise<GalleryItem[]> {
+      const list = readJson<GalleryItem[]>("gallery.json", []);
+      if (!list || list.length === 0) {
+        writeJson("gallery.json", DEFAULT_GALLERY_ITEMS);
+        return [...DEFAULT_GALLERY_ITEMS];
+      }
+      return list.sort((a, b) => a.displayOrder - b.displayOrder);
+    },
+    async findGalleryItemById(id: string): Promise<GalleryItem | undefined> {
+      const list = await this.getGalleryItems();
+      return list.find((g) => g._id === id || g.id === id);
+    },
+    async saveGalleryItem(item: GalleryItem): Promise<void> {
+      const list = await this.getGalleryItems();
+      const id = item._id || item.id;
+      const clean: GalleryItem = {
+        ...item,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = list.findIndex((g) => g._id === id || g.id === id);
+      if (idx >= 0) list[idx] = clean;
+      else list.push(clean);
+      writeJson("gallery.json", list);
+    },
+    async deleteGalleryItem(id: string): Promise<boolean> {
+      const list = await this.getGalleryItems();
+      const next = list.filter((g) => g._id !== id && g.id !== id);
+      if (next.length === list.length) return false;
+      writeJson("gallery.json", next);
       return true;
     },
   };

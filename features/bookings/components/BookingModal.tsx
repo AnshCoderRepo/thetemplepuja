@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { X, Sparkles } from "lucide-react";
 import { useBookingModal, useI18n } from "@/components/providers";
-import { LanguageToggle } from "@/components/common";
 import { useCatalog } from "@/features/catalog";
 import { getLocalizedPoojaTitle, getLocalizedPoojaDescription } from "@/lib/data";
 import { event as trackMetaEvent } from "@/lib/meta-pixel";
@@ -95,7 +94,6 @@ export default function BookingModal() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <LanguageToggle className="scale-90 sm:scale-100 origin-right" />
             <button
               type="button"
               onClick={closeBooking}
