@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/layout";
 import { JsonLd, ContinueBookingSection } from "@/components/common";
-import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
+import { Hero, WhyChooseUs, Testimonials, FAQ, OurGallerySection } from "@/features/home";
 import { PoojaCatalog } from "@/features/catalog";
 import MessageCeoSection from "@/components/home/MessageCeoSection";
 import { faqs } from "@/lib/data";
@@ -62,6 +62,7 @@ export default function Home() {
         </section>
 
         <WhyChooseUs />
+        <OurGallerySection />
         <Testimonials />
         <FAQ />
 

@@ -7,6 +7,7 @@ import type {
   ChatbotSettings,
   PlatformSettings,
 } from "./chatbot-types";
+import { DEFAULT_GALLERY_ITEMS, type GalleryItem } from "./gallery-types";
 
 export interface CatalogOverrides {
   poojas?: Pooja[];
@@ -65,6 +66,11 @@ export interface PersistenceStore {
   findAddonById(id: string): Promise<Addon | undefined>;
   saveAddon(addon: Addon): Promise<void>;
   deleteAddon(id: string): Promise<boolean>;
+  /** Our Gallery media management */
+  getGalleryItems(): Promise<GalleryItem[]>;
+  findGalleryItemById(id: string): Promise<GalleryItem | undefined>;
+  saveGalleryItem(item: GalleryItem): Promise<void>;
+  deleteGalleryItem(id: string): Promise<boolean>;
 }
 
 /** In-memory store — data lives for the lifetime of the process only. */
@@ -75,6 +81,7 @@ export function createMemoryStore(): PersistenceStore {
   let users: UserProfile[] = [];
   let refundRequests: RefundRequest[] = [];
   let addons: Addon[] = defaultAddons.map((a) => ({ ...a }));
+  let galleryItems: GalleryItem[] = DEFAULT_GALLERY_ITEMS.map((g) => ({ ...g }));
 
   // Mirrors the MongoDB store's saveUser semantics: phone-keyed, appending
   // only bookings that aren't already on the devotee, so concurrent saves on
@@ -197,6 +204,30 @@ export function createMemoryStore(): PersistenceStore {
       const before = addons.length;
       addons = addons.filter((a) => a._id !== id && a.id !== id);
       return addons.length !== before;
+    },
+    async getGalleryItems() {
+      return [...galleryItems].sort((a, b) => a.displayOrder - b.displayOrder);
+    },
+    async findGalleryItemById(id: string) {
+      return galleryItems.find((g) => g._id === id || g.id === id);
+    },
+    async saveGalleryItem(item: GalleryItem) {
+      const id = item._id || item.id;
+      const clean: GalleryItem = {
+        ...item,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = galleryItems.findIndex((g) => g._id === id || g.id === id);
+      if (idx >= 0) galleryItems[idx] = clean;
+      else galleryItems.push(clean);
+    },
+    async deleteGalleryItem(id: string) {
+      const before = galleryItems.length;
+      galleryItems = galleryItems.filter((g) => g._id !== id && g.id !== id);
+      return galleryItems.length !== before;
     },
   };
 }

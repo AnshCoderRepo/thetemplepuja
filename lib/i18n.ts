@@ -330,6 +330,11 @@ export const translations = {
     "booking.confirm.shareWhatsApp": "Share Booking on WhatsApp",
     "booking.confirm.whatsappNotice": "Our Acharyas will perform your puja with authentic Vedic rituals. Video updates will be sent to WhatsApp.",
     "booking.confirm.accountCreated": "Devotee Portal Account Activated",
+    "booking.confirm.redirecting": "Redirecting to home page in {seconds} seconds...",
+    "booking.confirm.redirectPaused": "Auto-redirect paused",
+    "booking.confirm.goToHomeNow": "Go to Home Now",
+    "booking.confirm.stayOnPage": "Stay on Page",
+    "booking.confirm.resumeRedirect": "Resume",
 
     // Checkout
     "checkout.title": "Secure Dakshina Payment",
@@ -405,6 +410,18 @@ export const translations = {
     "temples.verifiedShrine": "Verified Consecrated Shrine",
     "temples.backToTemples": "← Back to Temples",
     "temples.activePujasCount": "Available Sevas",
+    "gallery.heading": "Our Gallery",
+    "gallery.subheading": "Explore the beautiful moments of our puja ceremonies, traditions, and devotion.",
+    "gallery.viewAll": "View All Photos & Videos",
+    "gallery.bookPuja": "Book Your Puja",
+    "gallery.all": "All Media",
+    "gallery.photos": "Photos",
+    "gallery.videos": "Videos",
+    "gallery.emptyTitle": "No gallery items found",
+    "gallery.emptyDesc": "No photos or videos match your selected filter.",
+    "gallery.loadMore": "Load More Moments",
+    "gallery.filterByCategory": "All Categories",
+    "nav.gallery": "Gallery",
   },
 
   hi: {
@@ -723,6 +740,11 @@ export const translations = {
     "booking.confirm.shareWhatsApp": "व्हाट्सऐप पर साझा करें",
     "booking.confirm.whatsappNotice": "आचार्य जी द्वारा वैदिक विधि से पूजा संपन्न होगी। वीडियो लिंक व्हाट्सऐप पर भेजा जाएगा।",
     "booking.confirm.accountCreated": "भक्त पोर्टल खाता सक्रिय हो गया है",
+    "booking.confirm.redirecting": "{seconds} सेकंड में होम पेज पर ले जाया जा रहा है...",
+    "booking.confirm.redirectPaused": "स्वतः पुनर्निर्देशन रोक दिया गया है",
+    "booking.confirm.goToHomeNow": "अभी होम पेज पर जाएँ",
+    "booking.confirm.stayOnPage": "यहीं रहें",
+    "booking.confirm.resumeRedirect": "पुनः शुरू करें",
 
     // Checkout
     "checkout.title": "सुरक्षित दक्षिणा भुगतान",
@@ -798,6 +820,18 @@ export const translations = {
     "temples.verifiedShrine": "प्रमाणित जाग्रत सिद्धपीठ",
     "temples.backToTemples": "← मंदिरों की सूची पर वापस जाएँ",
     "temples.activePujasCount": "उपलब्ध सेवाएँ",
+    "gallery.heading": "Our Gallery",
+    "gallery.subheading": "Explore the beautiful moments of our puja ceremonies, traditions, and devotion.",
+    "gallery.viewAll": "सभी फ़ोटो और वीडियो देखें",
+    "gallery.bookPuja": "अपनी पूजा बुक करें",
+    "gallery.all": "सभी मीडिया",
+    "gallery.photos": "फ़ोटो",
+    "gallery.videos": "वीडियो",
+    "gallery.emptyTitle": "कोई गैलरी सामग्री उपलब्ध नहीं है",
+    "gallery.emptyDesc": "आपके चुने हुए फ़िल्टर के अनुसार कोई फ़ोटो या वीडियो नहीं मिला।",
+    "gallery.loadMore": "और अधिक पल देखें",
+    "gallery.filterByCategory": "सभी श्रेणियाँ",
+    "nav.gallery": "गैलरी",
   },
 
   te: {
@@ -1116,6 +1150,11 @@ export const translations = {
     "booking.confirm.shareWhatsApp": "వాట్సాప్‌లో షేర్ చేయండి",
     "booking.confirm.whatsappNotice": "వేద పండితులు వైదిక పద్ధతిలో పూజను నిర్వహిస్తారు. వీడియో లింక్ వాట్సాప్‌కు పంపబడుతుంది.",
     "booking.confirm.accountCreated": "భక్తుల పోర్టల్ ఖాతా సక్రియం చేయబడింది",
+    "booking.confirm.redirecting": "{seconds} సెకన్లలో హోమ్‌పేజీకి మళ్ళించబడుతోంది...",
+    "booking.confirm.redirectPaused": "స్వయంచాలక దారి మళ్లింపు తాత్కాలికంగా ఆపబడింది",
+    "booking.confirm.goToHomeNow": "ఇప్పుడే హోమ్‌పేజీకి వెళ్లండి",
+    "booking.confirm.stayOnPage": "ఇక్కడే ఉండండి",
+    "booking.confirm.resumeRedirect": "కొనసాగించండి",
 
     // Checkout
     "checkout.title": "సురక్షిత దక్షిణ చెల్లింపు",
@@ -1191,6 +1230,18 @@ export const translations = {
     "temples.verifiedShrine": "ధృవీకరించబడిన పవిత్ర క్షేత్రం",
     "temples.backToTemples": "← దేవాలయాలకు తిరిగి వెళ్లండి",
     "temples.activePujasCount": "అందుబాటులో ఉన్న సేవలు",
+    "gallery.heading": "Our Gallery",
+    "gallery.subheading": "Explore the beautiful moments of our puja ceremonies, traditions, and devotion.",
+    "gallery.viewAll": "అన్ని ఫోటోలు & వీడియోలను వీక్షించండి",
+    "gallery.bookPuja": "మీ పూజను బుక్ చేయండి",
+    "gallery.all": "అన్ని మీడియా",
+    "gallery.photos": "ఫోటోలు",
+    "gallery.videos": "వీడియోలు",
+    "gallery.emptyTitle": "గ్యాలరీ అంశాలు ఏవీ కనుగొనబడలేదు",
+    "gallery.emptyDesc": "ఎంచుకున్న ఫిల్టర్‌కు సరిపోలే ఫోటోలు లేదా వీడియోలు లేవు.",
+    "gallery.loadMore": "మరిన్ని క్షణాలను చూడండి",
+    "gallery.filterByCategory": "అన్ని విభాగాలు",
+    "nav.gallery": "గ్యాలరీ",
   },
 
   ta: {
@@ -1509,6 +1560,11 @@ export const translations = {
     "booking.confirm.shareWhatsApp": "வாட்ஸ்அப்பில் பகிரவும்",
     "booking.confirm.whatsappNotice": "வேத பண்டிதர்கள் வேத முறைப்படி பூஜையைச் செய்வார்கள். வீடியோ இணைப்பு வாட்ஸ்அப்பில் அனுப்பப்படும்.",
     "booking.confirm.accountCreated": "பக்தர் கணக்கு செயல்படுத்தப்பட்டது",
+    "booking.confirm.redirecting": "{seconds} வினாடிகளில் முகப்புப் பக்கத்திற்குத் திருப்பிவிடப்படுகிறீர்கள்...",
+    "booking.confirm.redirectPaused": "தானியங்கி வழிமாற்று இடைநிறுத்தப்பட்டது",
+    "booking.confirm.goToHomeNow": "இப்போதே முகப்புக்குச் செல்லவும்",
+    "booking.confirm.stayOnPage": "இங்கேயே இருங்கள்",
+    "booking.confirm.resumeRedirect": "தொடரவும்",
 
     // Checkout
     "checkout.title": "பாதுகாப்பான தட்சிணை கட்டணம்",
@@ -1584,6 +1640,18 @@ export const translations = {
     "temples.verifiedShrine": "சரிபார்க்கப்பட்ட புனித தலம்",
     "temples.backToTemples": "← கோவில்கள் பக்கத்திற்குத் திரும்பு",
     "temples.activePujasCount": "கிடைக்கும் சேவைகள்",
+    "gallery.heading": "Our Gallery",
+    "gallery.subheading": "Explore the beautiful moments of our puja ceremonies, traditions, and devotion.",
+    "gallery.viewAll": "அனைத்து புகைப்படங்கள் & வீடியோக்களைக் காண்க",
+    "gallery.bookPuja": "உங்கள் பூஜையை முன்பதிவு செய்க",
+    "gallery.all": "அனைத்து ஊடகங்கள்",
+    "gallery.photos": "புகைப்படங்கள்",
+    "gallery.videos": "வீடியோக்கள்",
+    "gallery.emptyTitle": "கேலரி உருப்படிகள் எதுவும் கிடைக்கவில்லை",
+    "gallery.emptyDesc": "தேர்ந்தெடுக்கப்பட்ட வடிகட்டிக்கு புகைப்படங்கள் அல்லது வீடியோக்கள் இல்லை.",
+    "gallery.loadMore": "மேலும் தருணங்களைக் காண்க",
+    "gallery.filterByCategory": "அனைத்து பிரிவுகள்",
+    "nav.gallery": "கேலரி",
   },
 } as const;
 

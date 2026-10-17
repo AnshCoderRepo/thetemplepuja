@@ -20,6 +20,7 @@ import {
   type UpcomingEventSpec,
   type Addon,
 } from "./data";
+import type { GalleryItem } from "./gallery-types";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
 import { createMemoryStore, type PersistenceStore } from "./persistence";
 import { mongoStore, resetMongoConnection } from "./mongo-store";
@@ -303,6 +304,51 @@ export async function deleteAddon(id: string): Promise<boolean> {
     }
   }
   return success;
+}
+
+// ===================== GALLERY PERSISTENCE =====================
+
+export async function getAllGalleryItems(): Promise<GalleryItem[]> {
+  return withFallback((s) => s.getGalleryItems());
+}
+
+export async function getActiveGalleryItems(options?: {
+  mediaType?: "photo" | "video";
+  category?: string;
+}): Promise<GalleryItem[]> {
+  const all = await getAllGalleryItems();
+  let filtered = all.filter((item) => item.isActive !== false);
+
+  if (options?.mediaType) {
+    filtered = filtered.filter((item) => item.mediaType === options.mediaType);
+  }
+  if (options?.category && options.category !== "all" && options.category !== "All") {
+    filtered = filtered.filter(
+      (item) => item.category.toLowerCase() === options.category!.toLowerCase()
+    );
+  }
+
+  return filtered.sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+export async function getHomepageGalleryItems(limit: number = 6): Promise<GalleryItem[]> {
+  const all = await getAllGalleryItems();
+  return all
+    .filter((item) => item.isActive !== false && item.showOnHomepage === true)
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .slice(0, limit);
+}
+
+export async function findGalleryItemById(id: string): Promise<GalleryItem | undefined> {
+  return withFallback((s) => s.findGalleryItemById(id));
+}
+
+export async function saveGalleryItem(item: GalleryItem): Promise<void> {
+  await withFallback((s) => s.saveGalleryItem(item));
+}
+
+export async function deleteGalleryItem(id: string): Promise<boolean> {
+  return withFallback((s) => s.deleteGalleryItem(id));
 }
 
 // ===================== ADMIN CREDENTIALS =====================

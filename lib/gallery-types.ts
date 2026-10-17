@@ -1,0 +1,187 @@
+export type GalleryMediaType = "photo" | "video";
+
+export interface GalleryItem {
+  id: string;
+  _id?: string;
+  title: string;
+  description: string;
+  mediaType: GalleryMediaType;
+  imageUrl?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
+  youtubeUrl?: string;
+  youtubeVideoId?: string;
+  category: string;
+  isActive: boolean;
+  showOnHomepage: boolean;
+  displayOrder: number;
+  isDemo?: boolean;
+  videoDurationSeconds?: number;
+  durationVerified?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const GALLERY_CATEGORIES = [
+  "Puja Ceremonies",
+  "Havan & Yagya",
+  "Temple Rituals",
+  "Kalash Sthapana",
+  "Puja Samagri",
+  "Festivals & Celebrations",
+] as const;
+
+export type GalleryCategory = (typeof GALLERY_CATEGORIES)[number];
+
+/**
+ * Parses any standard YouTube URL (desktop, mobile, youtu.be, shorts, embed)
+ * and safely extracts the 11-character video ID.
+ */
+export function extractYouTubeVideoId(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+
+  // Handle youtu.be/VIDEO_ID
+  const shortMatch = trimmed.match(/^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})/i);
+  if (shortMatch) return shortMatch[1];
+
+  // Handle youtube.com/shorts/VIDEO_ID
+  const shortsMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/i);
+  if (shortsMatch) return shortsMatch[1];
+
+  // Handle youtube.com/embed/VIDEO_ID
+  const embedMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/i);
+  if (embedMatch) return embedMatch[1];
+
+  // Handle standard youtube.com/watch?v=VIDEO_ID
+  const standardMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
+  if (standardMatch) return standardMatch[1];
+
+  // Handle live streams youtube.com/live/VIDEO_ID
+  const liveMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube\.com\/live\/([a-zA-Z0-9_-]{11})/i);
+  if (liveMatch) return liveMatch[1];
+
+  return null;
+}
+
+/**
+ * Returns a high-quality YouTube thumbnail URL from a video ID or YouTube URL.
+ */
+export function getYouTubeThumbnailUrl(videoIdOrUrl: string | null | undefined): string | null {
+  if (!videoIdOrUrl) return null;
+  const trimmed = videoIdOrUrl.trim();
+  const id = trimmed.length === 11 && !trimmed.includes("/")
+    ? trimmed
+    : extractYouTubeVideoId(trimmed);
+  if (!id) return null;
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}
+
+/**
+ * Standard 6 demo gallery items showcasing authentic Hindu puja rituals.
+ * Labeled with isDemo: true so the admin can clearly identify and replace them.
+ */
+export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
+  {
+    id: "gal-ganesh-puja",
+    _id: "gal-ganesh-puja",
+    title: "Ganesh Puja",
+    description: "Auspicious invocation of Bhagwan Ganesha with sacred modak offerings, durva grass, and Vedic mantras for obstacle removal and prosperity.",
+    mediaType: "photo",
+    imageUrl: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=1200&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=600&q=80",
+    category: "Puja Ceremonies",
+    isActive: true,
+    showOnHomepage: true,
+    displayOrder: 1,
+    isDemo: true,
+    createdAt: "2026-09-01T10:00:00.000Z",
+    updatedAt: "2026-09-01T10:00:00.000Z",
+  },
+  {
+    id: "gal-traditional-havan",
+    _id: "gal-traditional-havan",
+    title: "Traditional Havan Ceremony",
+    description: "Sacred fire ritual (Yagya) with shuddh desi ghee and herbal samagri invoked by Vedic Acharyas for spiritual purification and divine grace.",
+    mediaType: "video",
+    youtubeUrl: "https://www.youtube.com/watch?v=7X8II6J-6mU",
+    youtubeVideoId: "7X8II6J-6mU",
+    thumbnailUrl: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=600&q=80",
+    category: "Havan & Yagya",
+    isActive: true,
+    showOnHomepage: true,
+    displayOrder: 2,
+    isDemo: true,
+    videoDurationSeconds: 120, // 2 minutes (within 180s limit)
+    durationVerified: true,
+    createdAt: "2026-09-02T11:00:00.000Z",
+    updatedAt: "2026-09-02T11:00:00.000Z",
+  },
+  {
+    id: "gal-kalash-sthapana",
+    _id: "gal-kalash-sthapana",
+    title: "Kalash Sthapana",
+    description: "Consecration of the holy Mangal Kalash with coconut, mango leaves, sacred red thread, and Ganga jal, invoking Trideva and universal energies.",
+    mediaType: "photo",
+    imageUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=600&q=80",
+    category: "Kalash Sthapana",
+    isActive: true,
+    showOnHomepage: true,
+    displayOrder: 3,
+    isDemo: true,
+    createdAt: "2026-09-03T09:30:00.000Z",
+    updatedAt: "2026-09-03T09:30:00.000Z",
+  },
+  {
+    id: "gal-pandit-ji-rituals",
+    _id: "gal-pandit-ji-rituals",
+    title: "Pandit Ji Performing Rituals",
+    description: "Certified Vedic Purohit conducting elaborate shodashopachara puja with profound reverence, conch sound, and traditional bell chime.",
+    mediaType: "video",
+    youtubeUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk",
+    youtubeVideoId: "kJQP7kiw5Fk",
+    thumbnailUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80",
+    category: "Temple Rituals",
+    isActive: true,
+    showOnHomepage: true,
+    displayOrder: 4,
+    isDemo: true,
+    videoDurationSeconds: 150, // 2m 30s (within 180s limit)
+    durationVerified: true,
+    createdAt: "2026-09-04T14:15:00.000Z",
+    updatedAt: "2026-09-04T14:15:00.000Z",
+  },
+  {
+    id: "gal-puja-samagri-prep",
+    _id: "gal-puja-samagri-prep",
+    title: "Puja Samagri Preparation",
+    description: "Meticulous arrangement of authentic Vedic samagri including fresh marigold garlands, kumkum, chandan, akshat, and fragrant camphor.",
+    mediaType: "photo",
+    imageUrl: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=1200&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=600&q=80",
+    category: "Puja Samagri",
+    isActive: true,
+    showOnHomepage: true,
+    displayOrder: 5,
+    isDemo: true,
+    createdAt: "2026-09-05T08:00:00.000Z",
+    updatedAt: "2026-09-05T08:00:00.000Z",
+  },
+  {
+    id: "gal-traditional-hindu-ceremony",
+    _id: "gal-traditional-hindu-ceremony",
+    title: "Traditional Hindu Puja Ceremony",
+    description: "Heartfelt Maha Aarti with brass deepams, surrounded by chanting devotees offering heartfelt prayers for peace, health, and family prosperity.",
+    mediaType: "photo",
+    imageUrl: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=1200&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=600&q=80",
+    category: "Puja Ceremonies",
+    isActive: true,
+    showOnHomepage: true,
+    displayOrder: 6,
+    isDemo: true,
+    createdAt: "2026-09-06T18:30:00.000Z",
+    updatedAt: "2026-09-06T18:30:00.000Z",
+  },
+];
