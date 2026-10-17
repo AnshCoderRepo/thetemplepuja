@@ -1201,8 +1201,9 @@ export default function BookingFlow({
                 <button
                   key={opt.id}
                   type="button"
+                  id={`booking-package-${opt.id}`}
                   onClick={() => setSelectedTier(opt.id)}
-                  className={`group flex items-center justify-between rounded-2xl border p-4 text-left transition-all duration-200 ${
+                  className={`group flex items-center justify-between rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer touch-manipulation ${
                     isSelected
                       ? "border-saffron-500 bg-saffron-50/70 shadow-sm ring-2 ring-saffron-400/40"
                       : "border-saffron-200/80 bg-white hover:border-saffron-300 hover:bg-saffron-50/20"
@@ -1246,11 +1247,12 @@ export default function BookingFlow({
 
           <button
             type="button"
+            id="booking-step-1-next-btn"
             onClick={() => {
               setCurrentStep(2);
               scrollToTop();
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99] mt-2"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99] mt-2 relative z-10 cursor-pointer touch-manipulation"
           >
             <span>Next</span>
             <ChevronRight className="h-4 w-4" />
@@ -1370,11 +1372,12 @@ export default function BookingFlow({
           <div className="flex items-center gap-2 pt-2">
             <button
               type="button"
+              id="booking-step-2-back-btn"
               onClick={() => {
                 setCurrentStep(1);
                 scrollToTop();
               }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 cursor-pointer touch-manipulation"
             >
               <ChevronLeft className="h-4 w-4" />
               <span>Back</span>
@@ -1382,11 +1385,12 @@ export default function BookingFlow({
 
             <button
               type="button"
+              id="booking-step-2-next-btn"
               onClick={() => {
                 setCurrentStep(3);
                 scrollToTop();
               }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99]"
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99] relative z-10 cursor-pointer touch-manipulation"
             >
               <span>Next</span>
               <ChevronRight className="h-4 w-4" />
@@ -1847,12 +1851,13 @@ export default function BookingFlow({
           <div className="flex items-center gap-2 pt-1">
             <button
               type="button"
+              id="booking-step-3-back-btn"
               disabled={isProcessingPayment}
               onClick={() => {
                 setCurrentStep(2);
                 scrollToTop();
               }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 disabled:opacity-50 cursor-pointer touch-manipulation"
             >
               <ChevronLeft className="h-4 w-4" />
               <span>Back</span>
@@ -1860,9 +1865,10 @@ export default function BookingFlow({
 
             <button
               type="button"
+              id="booking-step-3-pay-btn"
               disabled={isProcessingPayment}
               onClick={handleProceedToPayment}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white shadow-md transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white shadow-md transition-all relative z-10 cursor-pointer touch-manipulation ${
                 isProcessingPayment
                   ? "bg-saffron-600 cursor-wait opacity-90 shadow-saffron-600/20"
                   : "bg-gradient-to-r from-saffron-500 to-saffron-600 shadow-saffron-600/20 hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99]"

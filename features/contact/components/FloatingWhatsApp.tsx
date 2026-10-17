@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
 import { event as trackMetaEvent } from "@/lib/meta-pixel";
+import { useBookingModal } from "@/components/providers";
 
 function WhatsAppIcon({ className = "h-8 w-8" }: { className?: string }) {
   return (
@@ -26,6 +27,7 @@ export default function FloatingWhatsApp() {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const { isOpen: isBookingModalOpen } = useBookingModal();
 
   useEffect(() => {
     setMounted(true);
@@ -66,12 +68,12 @@ export default function FloatingWhatsApp() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  if (!mounted) return null;
+  if (!mounted || isBookingModalOpen) return null;
 
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-6 right-6 z-50 flex flex-col items-end select-none"
+      className="fixed bottom-6 right-6 z-40 flex flex-col items-end select-none"
     >
       {/* ─── Expanded Action Icons (Speed-Dial Stack) ─── */}
       <div
