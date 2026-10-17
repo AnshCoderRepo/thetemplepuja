@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronRight,
@@ -491,9 +491,12 @@ export default function BookingFlow({
     };
   }, [phone, phoneValid]);
 
+  const internalScrollRef = useRef<HTMLDivElement | null>(null);
+  const activeScrollRef = scrollContainerRef || internalScrollRef;
+
   const scrollToTop = () => {
-    if (scrollContainerRef?.current) {
-      scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    if (activeScrollRef?.current) {
+      activeScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -1085,100 +1088,129 @@ export default function BookingFlow({
   ];
 
   return (
-    <div className="mx-auto w-full max-w-lg">
-      {/* Clean 3-Step Indicator */}
-      <div className="mb-5 flex items-center justify-between border-b border-saffron-100 pb-3">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span
-            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-              currentStep === 1
-                ? "bg-saffron-600 text-white shadow-xs"
-                : currentStep > 1
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-100 text-slate-500"
-            }`}
-          >
-            {currentStep > 1 ? "✓" : "1"}
-          </span>
-          <span
-            className={`text-xs font-bold ${
-              currentStep === 1 ? "text-saffron-800" : "text-slate-500"
-            }`}
-          >
-            Option
-          </span>
-        </div>
+    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden">
+      {/* Responsive 3-Step Progress Indicator (Fixed at Top, Never Scrolls Away) */}
+      <div className="shrink-0 border-b border-saffron-100 bg-[#FFFDF9] px-3.5 py-2.5 sm:px-6 sm:py-3 shadow-2xs">
+        <div className="mx-auto flex items-center justify-between w-full max-w-md">
+          {/* Step 1: Option */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span
+              className={`flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-colors ${
+                currentStep === 1
+                  ? "bg-saffron-600 text-white shadow-xs"
+                  : currentStep > 1
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {currentStep > 1 ? <Check className="h-3 w-3 stroke-[3]" /> : "1"}
+            </span>
+            <span
+              className={`text-[11px] sm:text-xs font-bold transition-colors ${
+                currentStep === 1 ? "text-saffron-800" : currentStep > 1 ? "text-emerald-700" : "text-slate-400"
+              }`}
+            >
+              Option
+            </span>
+          </div>
 
-        <div className="h-0.5 w-6 bg-slate-200" />
-
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span
-            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-              currentStep === 2
-                ? "bg-saffron-600 text-white shadow-xs"
-                : currentStep > 2
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-100 text-slate-500"
+          {/* Connector 1 */}
+          <div
+            className={`flex-1 mx-1.5 sm:mx-3 h-0.5 min-w-[10px] transition-colors ${
+              currentStep > 1 ? "bg-emerald-500" : "bg-slate-200"
             }`}
-          >
-            {currentStep > 2 ? "✓" : "2"}
-          </span>
-          <span
-            className={`text-xs font-bold ${
-              currentStep === 2 ? "text-saffron-800" : "text-slate-500"
-            }`}
-          >
-            Chadhava
-          </span>
-        </div>
+          />
 
-        <div className="h-0.5 w-6 bg-slate-200" />
+          {/* Step 2: Chadhava */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span
+              className={`flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-colors ${
+                currentStep === 2
+                  ? "bg-saffron-600 text-white shadow-xs"
+                  : currentStep > 2
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {currentStep > 2 ? <Check className="h-3 w-3 stroke-[3]" /> : "2"}
+            </span>
+            <span
+              className={`text-[11px] sm:text-xs font-bold transition-colors ${
+                currentStep === 2 ? "text-saffron-800" : currentStep > 2 ? "text-emerald-700" : "text-slate-400"
+              }`}
+            >
+              Chadhava
+            </span>
+          </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span
-            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-              currentStep === 3
-                ? "bg-saffron-600 text-white shadow-xs"
-                : currentStep > 3
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-100 text-slate-500"
+          {/* Connector 2 */}
+          <div
+            className={`flex-1 mx-1.5 sm:mx-3 h-0.5 min-w-[10px] transition-colors ${
+              currentStep > 2 ? "bg-emerald-500" : "bg-slate-200"
             }`}
-          >
-            {currentStep > 3 ? "✓" : "3"}
-          </span>
-          <span
-            className={`text-xs font-bold ${
-              currentStep === 3 ? "text-saffron-800" : "text-slate-500"
-            }`}
-          >
-            {SITE_CONFIG.payment.mode === "upi_qr" ? "Devotee" : "Devotee & Pay"}
-          </span>
-        </div>
+          />
 
-        {SITE_CONFIG.payment.mode === "upi_qr" && (
-          <>
-            <div className="h-0.5 w-4 sm:w-6 bg-slate-200" />
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                  currentStep === 4
-                    ? "bg-saffron-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                4
+          {/* Step 3: Devotee & Pay */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span
+              className={`flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-colors ${
+                currentStep === 3
+                  ? "bg-saffron-600 text-white shadow-xs"
+                  : currentStep > 3
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {currentStep > 3 ? <Check className="h-3 w-3 stroke-[3]" /> : "3"}
+            </span>
+            <span
+              className={`text-[11px] sm:text-xs font-bold transition-colors ${
+                currentStep === 3 ? "text-saffron-800" : currentStep > 3 ? "text-emerald-700" : "text-slate-400"
+              }`}
+            >
+              <span className="sm:hidden">Devotee</span>
+              <span className="hidden sm:inline">
+                {SITE_CONFIG.payment.mode === "upi_qr" ? "Devotee" : "Devotee & Pay"}
               </span>
-              <span
-                className={`text-xs font-bold ${
-                  currentStep === 4 ? "text-saffron-800" : "text-slate-500"
+            </span>
+          </div>
+
+          {/* Optional Step 4 for direct UPI QR */}
+          {SITE_CONFIG.payment.mode === "upi_qr" && (
+            <>
+              <div
+                className={`flex-1 mx-1.5 sm:mx-2 h-0.5 min-w-[8px] transition-colors ${
+                  currentStep === 4 ? "bg-emerald-500" : "bg-slate-200"
                 }`}
-              >
-                Pay via QR
-              </span>
-            </div>
-          </>
-        )}
+              />
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <span
+                  className={`flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-colors ${
+                    currentStep === 4
+                      ? "bg-saffron-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  4
+                </span>
+                <span
+                  className={`text-[11px] sm:text-xs font-bold ${
+                    currentStep === 4 ? "text-saffron-800" : "text-slate-400"
+                  }`}
+                >
+                  Pay
+                </span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Main Vertically Scrollable Content Area (Single Unified Scrollbar) */}
+      <div
+        ref={activeScrollRef}
+        className="flex-1 min-h-0 overflow-y-auto px-4 py-3.5 sm:px-6 sm:py-5 overscroll-contain modal-scrollbar"
+      >
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* STEP 1: Select Option from 3 (Single, Couple, Family) with price only */}
@@ -1244,19 +1276,6 @@ export default function BookingFlow({
               );
             })}
           </div>
-
-          <button
-            type="button"
-            id="booking-step-1-next-btn"
-            onClick={() => {
-              setCurrentStep(2);
-              scrollToTop();
-            }}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99] mt-2 relative z-10 cursor-pointer touch-manipulation"
-          >
-            <span>Next</span>
-            <ChevronRight className="h-4 w-4" />
-          </button>
         </div>
       )}
 
@@ -1281,7 +1300,7 @@ export default function BookingFlow({
             )}
           </div>
 
-          {/* Chadhavas list */}
+          {/* Chadhavas list - Single unified scroll within modal body */}
           {loadingAddons ? (
             <div className="py-8 text-center space-y-2">
               <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-saffron-500 border-t-transparent" />
@@ -1298,7 +1317,7 @@ export default function BookingFlow({
               </p>
             </div>
           ) : (
-            <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+            <div className="space-y-2.5 pb-2">
               {assignedAddons.map((addon: Addon) => {
                 const addonId = addon._id || addon.id;
                 const qty = selectedAddons[addonId] || 0;
@@ -1309,58 +1328,58 @@ export default function BookingFlow({
                 return (
                   <div
                     key={addonId}
-                    className={`flex items-center justify-between rounded-xl border p-3 transition-all ${
+                    className={`flex items-center justify-between gap-2.5 rounded-2xl border p-3 sm:p-3.5 transition-all ${
                       isAdded
-                        ? "border-saffron-500 bg-saffron-50/60 shadow-xs"
+                        ? "border-saffron-500 bg-saffron-50/70 shadow-xs ring-1 ring-saffron-400/30"
                         : "border-saffron-100 bg-white hover:border-saffron-200"
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-saffron-50 text-lg border border-saffron-100">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-saffron-50 text-lg border border-saffron-100 shadow-2xs">
                         {addon.emoji || "🌸"}
                       </span>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-ink truncate leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs sm:text-sm font-bold text-ink truncate leading-tight">
                           {addonName}
                         </h4>
                         {addonDesc && (
-                          <p className="text-[10px] text-ink-soft line-clamp-1 mt-0.5">
+                          <p className="text-[10px] sm:text-[11px] text-ink-soft line-clamp-1 mt-0.5">
                             {addonDesc}
                           </p>
                         )}
-                        <span className="font-display text-xs font-bold text-saffron-700 block mt-0.5">
+                        <span className="font-display text-xs sm:text-sm font-extrabold text-saffron-700 block mt-0.5">
                           {formatINR(addon.price)}
                         </span>
                       </div>
                     </div>
 
                     {/* Quantity Stepper [- qty +] */}
-                    <div className="flex items-center gap-1.5 rounded-lg border border-saffron-200 bg-white px-1.5 py-0.5 shrink-0">
+                    <div className="flex items-center gap-1 rounded-xl border border-saffron-200 bg-white px-1.5 py-0.5 shrink-0 shadow-2xs">
                       <button
                         type="button"
                         onClick={() => handleUpdateAddonQty(addonId, -1)}
                         disabled={qty === 0}
-                        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+                        className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors cursor-pointer touch-manipulation ${
                           qty > 0
-                            ? "text-saffron-900 hover:bg-saffron-50"
+                            ? "text-saffron-900 hover:bg-saffron-50 active:scale-95"
                             : "text-slate-300 cursor-not-allowed"
                         }`}
                         aria-label={`Decrease ${addonName}`}
                       >
-                        <Minus className="h-3 w-3" />
+                        <Minus className="h-3.5 w-3.5" />
                       </button>
 
-                      <span className="w-5 text-center text-xs font-bold text-ink">
+                      <span className="w-5 text-center text-xs sm:text-sm font-bold text-ink select-none">
                         {qty}
                       </span>
 
                       <button
                         type="button"
                         onClick={() => handleUpdateAddonQty(addonId, 1)}
-                        className="flex h-6 w-6 items-center justify-center rounded text-saffron-900 hover:bg-saffron-50 transition-colors"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-saffron-900 hover:bg-saffron-50 active:scale-95 transition-colors cursor-pointer touch-manipulation"
                         aria-label={`Increase ${addonName}`}
                       >
-                        <Plus className="h-3 w-3" />
+                        <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
@@ -1368,34 +1387,6 @@ export default function BookingFlow({
               })}
             </div>
           )}
-
-          <div className="flex items-center gap-2 pt-2">
-            <button
-              type="button"
-              id="booking-step-2-back-btn"
-              onClick={() => {
-                setCurrentStep(1);
-                scrollToTop();
-              }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 cursor-pointer touch-manipulation"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Back</span>
-            </button>
-
-            <button
-              type="button"
-              id="booking-step-2-next-btn"
-              onClick={() => {
-                setCurrentStep(3);
-                scrollToTop();
-              }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99] relative z-10 cursor-pointer touch-manipulation"
-            >
-              <span>Next</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
         </div>
       )}
 
@@ -1847,54 +1838,6 @@ export default function BookingFlow({
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              id="booking-step-3-back-btn"
-              disabled={isProcessingPayment}
-              onClick={() => {
-                setCurrentStep(2);
-                scrollToTop();
-              }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 disabled:opacity-50 cursor-pointer touch-manipulation"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Back</span>
-            </button>
-
-            <button
-              type="button"
-              id="booking-step-3-pay-btn"
-              disabled={isProcessingPayment}
-              onClick={handleProceedToPayment}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white shadow-md transition-all relative z-10 cursor-pointer touch-manipulation ${
-                isProcessingPayment
-                  ? "bg-saffron-600 cursor-wait opacity-90 shadow-saffron-600/20"
-                  : "bg-gradient-to-r from-saffron-500 to-saffron-600 shadow-saffron-600/20 hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99]"
-              }`}
-            >
-              {isProcessingPayment ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>
-                    {SITE_CONFIG.payment.mode === "upi_qr"
-                      ? "Loading UPI Payment..."
-                      : "Opening Razorpay Gateway..."}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span>
-                    {SITE_CONFIG.payment.mode === "upi_qr"
-                      ? `Proceed to Pay via UPI / QR (${formatINR(finalTotal)})`
-                      : `Proceed to Pay (${formatINR(finalTotal)})`}
-                  </span>
-                  <ChevronRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </div>
         </div>
       )}
 
@@ -1921,6 +1864,121 @@ export default function BookingFlow({
           }}
           onConfirm={handleUpiPaymentSuccess}
         />
+      )}
+      </div>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* PERSISTENT ACTION FOOTER (Always visible, never clipped)      */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {currentStep <= 3 && (
+        <div className="shrink-0 border-t border-saffron-100 bg-white/95 px-4 py-3 sm:px-6 sm:py-3.5 backdrop-blur-md pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+          {/* STEP 1 FOOTER */}
+          {currentStep === 1 && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                id="booking-step-1-next-btn"
+                onClick={() => {
+                  setCurrentStep(2);
+                  scrollToTop();
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99] cursor-pointer touch-manipulation"
+              >
+                <span>Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* STEP 2 FOOTER */}
+          {currentStep === 2 && (
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                id="booking-step-2-back-btn"
+                onClick={() => {
+                  setCurrentStep(1);
+                  scrollToTop();
+                }}
+                className="flex items-center justify-center gap-1 rounded-xl border border-saffron-200 bg-white px-3.5 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 cursor-pointer touch-manipulation shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Back</span>
+              </button>
+
+              <button
+                type="button"
+                id="booking-step-2-next-btn"
+                onClick={() => {
+                  setCurrentStep(3);
+                  scrollToTop();
+                }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 py-3 text-sm font-bold text-white shadow-md shadow-saffron-600/20 transition-all hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99] cursor-pointer touch-manipulation"
+              >
+                <span>Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* STEP 3 FOOTER */}
+          {currentStep === 3 && (
+            <div className="space-y-2">
+              {formError && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 animate-shake">
+                  ⚠️ {formError}
+                </div>
+              )}
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  id="booking-step-3-back-btn"
+                  disabled={isProcessingPayment}
+                  onClick={() => {
+                    setCurrentStep(2);
+                    scrollToTop();
+                  }}
+                  className="flex items-center justify-center gap-1 rounded-xl border border-saffron-200 bg-white px-3.5 py-3 text-xs sm:text-sm font-semibold text-ink transition-colors hover:bg-saffron-50 disabled:opacity-50 cursor-pointer touch-manipulation shrink-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Back</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="booking-step-3-pay-btn"
+                  disabled={isProcessingPayment}
+                  onClick={handleProceedToPayment}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-xs sm:text-sm font-bold text-white shadow-md transition-all cursor-pointer touch-manipulation ${
+                    isProcessingPayment
+                      ? "bg-saffron-600 cursor-wait opacity-90 shadow-saffron-600/20"
+                      : "bg-gradient-to-r from-saffron-500 to-saffron-600 shadow-saffron-600/20 hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.99]"
+                  }`}
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>
+                        {SITE_CONFIG.payment.mode === "upi_qr"
+                          ? "Loading UPI Payment..."
+                          : "Opening Razorpay Gateway..."}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        {SITE_CONFIG.payment.mode === "upi_qr"
+                          ? `Proceed to Pay via UPI / QR (${formatINR(finalTotal)})`
+                          : `Proceed to Pay (${formatINR(finalTotal)})`}
+                      </span>
+                      <ChevronRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
