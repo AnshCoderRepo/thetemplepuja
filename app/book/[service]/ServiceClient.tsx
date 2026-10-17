@@ -551,12 +551,12 @@ function ServiceInner({ service }: { service: string }) {
             type="button"
             id="book-now-sticky-btn"
             onClick={handleBookNowClick}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-base font-bold text-white shadow-md shadow-saffron-600/25 transition-all hover:scale-[1.02] hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.98] shrink-0"
+            className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-3.5 sm:px-7 py-2 sm:py-3 text-xs sm:text-base font-bold text-white shadow-md shadow-saffron-600/25 transition-all hover:scale-[1.02] hover:from-saffron-400 hover:to-saffron-500 active:scale-[0.98] shrink-0 touch-manipulation cursor-pointer relative z-10"
           >
             <span>
               {t("book.bookNow")} — {t("service.from")} {formatINR(pooja.price)}
             </span>
-            <ArrowRight className="h-4 w-4 shrink-0" />
+            <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
           </button>
         </div>
       </aside>

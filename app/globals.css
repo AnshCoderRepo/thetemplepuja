@@ -8,12 +8,22 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
   background-color: var(--bg-cream);
   color: #2a1b12;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  max-width: 100vw;
+  min-width: 320px;
+}
+
+/* Eliminate tap delay and ensure responsive mobile interaction */
+button, a, input, select, textarea {
+  touch-action: manipulation;
 }
 
 ::selection {
@@ -39,15 +49,15 @@ body {
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-saffron-500 to-saffron-600 px-7 py-3.5 text-sm font-semibold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-saffron-500 to-saffron-600 px-7 py-3.5 text-sm font-semibold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2 cursor-pointer;
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-saffron-200 bg-white/80 px-7 py-3.5 text-sm font-semibold text-saffron-700 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-saffron-400 hover:bg-saffron-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-saffron-200 bg-white/80 px-7 py-3.5 text-sm font-semibold text-saffron-700 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-saffron-400 hover:bg-saffron-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 cursor-pointer;
   }
 
   .section-pad {
-    @apply py-20 md:py-28;
+    @apply py-12 sm:py-16 md:py-24 lg:py-28;
   }
 
   .eyebrow {

@@ -130,7 +130,7 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
         </div>
 
         {/* Desktop Action & Mobile Menu Button */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 mr-30">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Language Switcher in Navbar */}
           <LanguageToggle />
 

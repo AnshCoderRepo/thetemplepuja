@@ -35,7 +35,7 @@ export default function ContinueBookingSection({
   className = "",
   contained = true,
 }: ContinueBookingSectionProps) {
-  const { openBooking } = useBookingModal();
+  const { openBooking, isOpen: isBookingModalOpen } = useBookingModal();
   const [drafts, setDrafts] = useState<IncompleteBooking[]>([]);
   const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState<string>("");
@@ -123,7 +123,7 @@ export default function ContinueBookingSection({
     };
   }, [isExpanded]);
 
-  if (!mounted || drafts.length === 0) {
+  if (!mounted || drafts.length === 0 || isBookingModalOpen) {
     return null;
   }
 

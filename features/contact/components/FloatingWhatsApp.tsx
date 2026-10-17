@@ -26,6 +26,7 @@ function WhatsAppIcon({ className = "h-8 w-8" }: { className?: string }) {
 export default function FloatingWhatsApp() {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasStickyBottomBar, setHasStickyBottomBar] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { isOpen: isBookingModalOpen } = useBookingModal();
 
@@ -51,6 +52,36 @@ export default function FloatingWhatsApp() {
     };
   }, []);
 
+  // Monitor for sticky booking bar to dynamically float above it and prevent Book button collision
+  useEffect(() => {
+    const checkStickyBar = () => {
+      const stickyBar = document.getElementById("book-now-sticky-bar");
+      if (stickyBar) {
+        const isHidden =
+          stickyBar.getAttribute("aria-hidden") === "true" ||
+          stickyBar.classList.contains("translate-y-full") ||
+          stickyBar.classList.contains("pointer-events-none") ||
+          stickyBar.classList.contains("opacity-0");
+        setHasStickyBottomBar(!isHidden);
+      } else {
+        setHasStickyBottomBar(false);
+      }
+    };
+
+    checkStickyBar();
+    window.addEventListener("scroll", checkStickyBar, { passive: true });
+    window.addEventListener("resize", checkStickyBar, { passive: true });
+
+    const observer = new MutationObserver(checkStickyBar);
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+
+    return () => {
+      window.removeEventListener("scroll", checkStickyBar);
+      window.removeEventListener("resize", checkStickyBar);
+      observer.disconnect();
+    };
+  }, []);
+
   // Close when clicking outside
   useEffect(() => {
     if (!isOpen) return;
@@ -68,16 +99,21 @@ export default function FloatingWhatsApp() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
+  // Completely unmount/hide when booking modal is active to prevent any interference
   if (!mounted || isBookingModalOpen) return null;
 
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-6 right-6 z-40 flex flex-col items-end select-none"
+      className={`fixed z-40 flex flex-col items-end select-none pointer-events-none transition-all duration-300 ease-in-out ${
+        hasStickyBottomBar
+          ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] sm:right-6"
+          : "bottom-[max(1rem,env(safe-area-inset-bottom,0px))] sm:bottom-6 right-[max(0.75rem,env(safe-area-inset-right,0px))] sm:right-6"
+      }`}
     >
       {/* ─── Expanded Action Icons (Speed-Dial Stack) ─── */}
       <div
-        className={`flex flex-col items-end gap-3.5 mb-3.5 transition-all duration-300 ${
+        className={`flex flex-col items-end gap-2.5 sm:gap-3 mb-2.5 sm:mb-3 transition-all duration-300 ${
           isOpen
             ? "opacity-100 translate-y-0 pointer-events-auto"
             : "opacity-0 translate-y-6 pointer-events-none"
@@ -85,8 +121,8 @@ export default function FloatingWhatsApp() {
         aria-hidden={!isOpen}
       >
         {/* 1. Email Support Action */}
-        <div className="flex items-center gap-3 group">
-          <span className="rounded-xl bg-ink/90 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
+        <div className="flex items-center gap-2 sm:gap-3 group">
+          <span className="rounded-xl bg-ink/90 backdrop-blur-md px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
             Email Support
           </span>
           <a
@@ -97,15 +133,15 @@ export default function FloatingWhatsApp() {
               trackMetaEvent("Contact", { method: "email" });
               setIsOpen(false);
             }}
-            className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-amber-600 text-white shadow-xl shadow-saffron-500/30 transition-all duration-200 hover:scale-110 hover:shadow-2xl active:scale-95 border-2 border-white/30"
+            className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-amber-600 text-white shadow-xl shadow-saffron-500/30 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"
           >
-            <Mail className="h-7 w-7 sm:h-8 sm:w-8 transition-transform group-hover:scale-110" />
+            <Mail className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:scale-110" />
           </a>
         </div>
 
         {/* 2. Direct Call Action */}
-        <div className="flex items-center gap-3 group">
-          <span className="rounded-xl bg-ink/90 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
+        <div className="flex items-center gap-2 sm:gap-3 group">
+          <span className="rounded-xl bg-ink/90 backdrop-blur-md px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
             Call Helpline
           </span>
           <a
@@ -117,15 +153,15 @@ export default function FloatingWhatsApp() {
               trackMetaEvent("Lead");
               setIsOpen(false);
             }}
-            className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-110 hover:shadow-2xl active:scale-95 border-2 border-white/30"
+            className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"
           >
-            <Phone className="h-7 w-7 sm:h-8 sm:w-8 transition-transform group-hover:rotate-12" />
+            <Phone className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:rotate-12" />
           </a>
         </div>
 
         {/* 3. WhatsApp Chat Action */}
-        <div className="flex items-center gap-3 group">
-          <span className="rounded-xl bg-ink/90 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
+        <div className="flex items-center gap-2 sm:gap-3 group">
+          <span className="rounded-xl bg-ink/90 backdrop-blur-md px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
             WhatsApp Chat
           </span>
           <a
@@ -139,9 +175,9 @@ export default function FloatingWhatsApp() {
               trackMetaEvent("Lead");
               setIsOpen(false);
             }}
-            className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#128C7E] via-[#25D366] to-[#128C7E] text-white shadow-xl shadow-[#25D366]/35 transition-all duration-200 hover:scale-110 hover:shadow-2xl active:scale-95 border-2 border-white/30"
+            className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-[#128C7E] via-[#25D366] to-[#128C7E] text-white shadow-xl shadow-[#25D366]/35 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"
           >
-            <WhatsAppIcon className="h-7 w-7 sm:h-8 sm:w-8 transition-transform group-hover:scale-110" />
+            <WhatsAppIcon className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:scale-110" />
           </a>
         </div>
       </div>
@@ -149,31 +185,32 @@ export default function FloatingWhatsApp() {
       {/* ─── Single Floating Main Trigger Icon ─── */}
       <button
         type="button"
+        id="floating-support-btn"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label={isOpen ? "Close Support Menu" : "Contact Devotee Support"}
         title={isOpen ? "Close Support" : "Devotee Support"}
-        className={`relative flex h-16 w-16 sm:h-18 sm:w-18 items-center justify-center rounded-full text-white shadow-2xl transition-all duration-300 focus:outline-none focus-visible:ring-4 active:scale-95 border-2 border-white/40 ${
+        className={`relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full text-white shadow-xl transition-all duration-300 focus:outline-none focus-visible:ring-4 active:scale-95 border-2 border-white/40 pointer-events-auto cursor-pointer touch-manipulation ${
           isOpen
             ? "bg-maroon-900 hover:bg-maroon-800 shadow-maroon-900/50 rotate-90"
-            : "bg-gradient-to-tr from-[#128C7E] via-[#25D366] to-[#128C7E] shadow-[#25D366]/50 hover:scale-105 hover:shadow-[#25D366]/60 focus-visible:ring-[#25D366]"
+            : "bg-gradient-to-tr from-[#128C7E] via-[#25D366] to-[#128C7E] shadow-[#25D366]/40 hover:scale-105 hover:shadow-[#25D366]/60 focus-visible:ring-[#25D366]"
         }`}
       >
         {/* Glowing pulse ring when collapsed */}
         {!isOpen && (
           <>
-            <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-[#25D366]/30 duration-1000" />
-            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+            <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-[#25D366]/20 duration-1000" />
+            <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-4 w-4 rounded-full bg-emerald-500 border-2 border-white" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 border border-white" />
             </span>
           </>
         )}
 
         {isOpen ? (
-          <X className="h-8 w-8 sm:h-9 sm:w-9 transition-transform" />
+          <X className="h-6 w-6 sm:h-7 sm:w-7 transition-transform" />
         ) : (
-          <WhatsAppIcon className="h-8 w-8 sm:h-9 sm:w-9 transition-transform" />
+          <WhatsAppIcon className="h-6 w-6 sm:h-7 sm:w-7 transition-transform" />
         )}
       </button>
     </div>

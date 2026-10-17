@@ -160,7 +160,7 @@ export default function Hero() {
       </div>
 
       {/* Main Hero Content Container */}
-      <div className="container-px relative z-10 mx-auto w-full max-w-7xl flex-1 flex flex-col justify-center py-1 lg:-translate-x-8 sm:pt-8 md:pt-10 pb-2 min-h-0 ">
+      <div className="container-px relative z-10 mx-auto w-full max-w-7xl flex-1 flex flex-col justify-center py-1 sm:pt-8 md:pt-10 pb-2 min-h-0">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center">
           {/* Left Column: Glassmorphic Devotional Card (Comfortably sized so Lord Ganesha in center is fully visible) */}
           <div className="lg:col-span-6 xl:col-span-5 mt-12 flex flex-col items-start text-left bg-stone-950/50 sm:bg-stone-950/40 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-amber-300/20 p-4 sm:p-5 lg:p-6 shadow-2xl">
