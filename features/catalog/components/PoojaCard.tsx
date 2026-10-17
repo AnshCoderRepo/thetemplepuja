@@ -202,7 +202,7 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
           </div>
         </div>
 
-        <div className="mt-auto pt-4 flex items-center justify-between border-t border-saffron-100/60 text-xs">
+        <div className="mt-auto pt-4 flex flex-wrap items-center justify-between gap-2 border-t border-saffron-100/60 text-xs">
           <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md text-[11px] shrink-0">
             🕉️ Authentic Vedic Seva
           </span>

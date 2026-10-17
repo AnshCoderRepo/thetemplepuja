@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { sendChatMessage } from "@/lib/api";
 import { getWhatsAppUrl } from "@/lib/config";
+import { useBookingModal } from "@/components/providers";
 
 interface Message {
   from: "bot" | "user";
@@ -124,6 +125,14 @@ export default function AIGuide() {
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const { isOpen: isBookingModalOpen } = useBookingModal();
+
+  // Auto-close AI guide if booking modal is opened
+  useEffect(() => {
+    if (isBookingModalOpen && open) {
+      setOpen(false);
+    }
+  }, [isBookingModalOpen, open]);
 
   useEffect(() => {
     setMounted(true);
