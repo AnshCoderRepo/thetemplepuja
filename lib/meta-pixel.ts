@@ -1,12 +1,12 @@
 /**
  * Meta (Facebook) Pixel Configuration & Helper Functions
- * Official Pixel ID: 2274877150125921
+ * Official Pixel ID: 1528984618994788
  */
 
 export const FB_PIXEL_ID =
   process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID ||
   process.env.NEXT_PUBLIC_META_PIXEL_ID ||
-  "2274877150125921";
+  "1528984618994788";
 
 // Global declaration for TypeScript
 declare global {
@@ -25,8 +25,22 @@ declare global {
  * Track standard page views
  */
 export const pageview = (): void => {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+  if (typeof window === "undefined") return;
+
+  if (typeof window.fbq === "function") {
     window.fbq("track", "PageView");
+  } else {
+    // Retry shortly if script is still downloading/hydrating
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "PageView");
+        clearInterval(interval);
+      } else if (attempts >= 10) {
+        clearInterval(interval);
+      }
+    }, 200);
   }
 };
 
@@ -55,8 +69,22 @@ export const event = (
     | "Subscribe",
   options: Record<string, unknown> = {}
 ): void => {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+  if (typeof window === "undefined") return;
+
+  if (typeof window.fbq === "function") {
     window.fbq("track", name, options);
+  } else {
+    // Retry shortly if script is still downloading/hydrating
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (typeof window.fbq === "function") {
+        window.fbq("track", name, options);
+        clearInterval(interval);
+      } else if (attempts >= 10) {
+        clearInterval(interval);
+      }
+    }, 200);
   }
 };
 
@@ -67,7 +95,20 @@ export const customEvent = (
   name: string,
   options: Record<string, unknown> = {}
 ): void => {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+  if (typeof window === "undefined") return;
+
+  if (typeof window.fbq === "function") {
     window.fbq("trackCustom", name, options);
+  } else {
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (typeof window.fbq === "function") {
+        window.fbq("trackCustom", name, options);
+        clearInterval(interval);
+      } else if (attempts >= 10) {
+        clearInterval(interval);
+      }
+    }, 200);
   }
 };
