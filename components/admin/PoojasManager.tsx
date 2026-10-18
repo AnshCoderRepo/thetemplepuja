@@ -40,11 +40,24 @@ import {
   X,
 } from "lucide-react";
 import { fetchAdminAddons, fetchCatalog, saveAdminAddon, saveCatalogSection, type EnrichedAddon } from "@/lib/api";
-import { defaultAddons, isPoojaActive, resolvePoojaTemple, type Addon, type Pooja, type PoojaPackage, type Temple } from "@/lib/data";
+import {
+  DEMO_POOJA,
+  isDemoSlug,
+  defaultAddons,
+  isPoojaActive,
+  resolvePoojaTemple,
+  getPoojaSchedule,
+  getPoojaBannerImage,
+  type Addon,
+  type Pooja,
+  type PoojaPackage,
+  type Temple,
+} from "@/lib/data";
 import { duplicatePooja } from "@/lib/pooja-duplicate";
 import { formatINR } from "@/lib/format";
 import { PoojaImage, PoojaImageFallback } from "@/components/common";
 import ConfirmDialog from "./ConfirmDialog";
+import ServiceCardEditModal from "./ServiceCardEditModal";
 import {
   DateInput,
   dateToDaysFromToday,
@@ -136,6 +149,11 @@ interface PoojaDraft {
   assignedAddonIds: string[];
   packages: PoojaPackage[];
   active: boolean;
+  badge: string;
+  showBadge: boolean;
+  displayOrder: string;
+  ctaText: string;
+  ctaLink: string;
 }
 
 const emptyDraft: PoojaDraft = {
@@ -180,6 +198,11 @@ const emptyDraft: PoojaDraft = {
     { name: "Family Havan Seva", price: 2101, description: "Full family gotra & name sankalp + blessed prasad" },
   ],
   active: true,
+  badge: "",
+  showBadge: true,
+  displayOrder: "",
+  ctaText: "",
+  ctaLink: "",
 };
 
 function slugify(text: string): string {
@@ -232,6 +255,10 @@ export default function PoojasManager({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [deityFilter, setDeityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("default");
+
+  // View Mode: Cards Grid vs Table & Dedicated Card Edit Modal State
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [editingCardPooja, setEditingCardPooja] = useState<Pooja | null>(null);
   
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -552,7 +579,10 @@ export default function PoojasManager({
     let live = true;
     fetchCatalog().then((c) => {
       if (live) {
-        setList(c.poojas);
+        const catalogPoojas = c.poojas || [];
+        const hasDemo = catalogPoojas.some((p) => isDemoSlug(p.slug));
+        const resolvedList = hasDemo ? catalogPoojas : [DEMO_POOJA, ...catalogPoojas];
+        setList(resolvedList);
         if (c.temples) setTemples(c.temples);
       }
     });
@@ -1010,6 +1040,11 @@ export default function PoojasManager({
             { name: "Individual Sankalp", price: p.price, description: "1 Devotee name in Sankalp" },
           ],
       active: isPoojaActive(p),
+      badge: p.badge ?? "",
+      showBadge: p.showBadge !== false,
+      displayOrder: p.displayOrder !== undefined ? String(p.displayOrder) : "",
+      ctaText: p.ctaText ?? "",
+      ctaLink: p.ctaLink ?? "",
     });
     setCurrentStep(1);
     setError("");
@@ -1071,6 +1106,11 @@ export default function PoojasManager({
             { name: "Individual Sankalp", price: duplicated.price, description: "1 Devotee name in Sankalp" },
           ],
       active: false, // SAFE DEFAULT: Hidden / Draft by default
+      badge: duplicated.badge ?? "",
+      showBadge: duplicated.showBadge !== false,
+      displayOrder: duplicated.displayOrder !== undefined ? String(duplicated.displayOrder) : "",
+      ctaText: duplicated.ctaText ?? "",
+      ctaLink: duplicated.ctaLink ?? "",
     });
 
     setCurrentStep(1);
@@ -1082,7 +1122,12 @@ export default function PoojasManager({
     setIsRefreshing(true);
     try {
       const c = await fetchCatalog();
-      if (c.poojas) setList(c.poojas);
+      if (c.poojas) {
+        const catalogPoojas = c.poojas;
+        const hasDemo = catalogPoojas.some((p) => isDemoSlug(p.slug));
+        const resolvedList = hasDemo ? catalogPoojas : [DEMO_POOJA, ...catalogPoojas];
+        setList(resolvedList);
+      }
       if (c.temples) setTemples(c.temples);
       onRefresh?.();
       showNotification("Puja Catalog refreshed with latest server data.");
@@ -1091,6 +1136,35 @@ export default function PoojasManager({
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const handleSaveCard = async (updatedPooja: Pooja) => {
+    const exists = list.some((p) => p.slug === updatedPooja.slug);
+    const next = exists
+      ? list.map((p) => (p.slug === updatedPooja.slug ? updatedPooja : p))
+      : [updatedPooja, ...list];
+
+    const res = await saveCatalogSection("poojas", next, token);
+    if (!res.ok) {
+      if (res.status === 401) onAuthError();
+      throw new Error(res.error || "Failed to save service card");
+    }
+
+    setList(next);
+    showNotification(`Card "${updatedPooja.title}" updated successfully!`);
+    onRefresh?.();
+  };
+
+  const handleDeleteCard = async (target: Pooja) => {
+    const next = list.filter((p) => p.slug !== target.slug);
+    const res = await saveCatalogSection("poojas", next, token);
+    if (!res.ok) {
+      if (res.status === 401) onAuthError();
+      throw new Error(res.error || "Failed to delete service card");
+    }
+    setList(next);
+    showNotification(`Card "${target.title}" removed from catalog.`);
+    onRefresh?.();
   };
 
   const toggleStatus = async (slug: string) => {
@@ -1259,6 +1333,11 @@ export default function PoojasManager({
       chadhavaOptions: draft.chadhavaOptions,
       packages: draft.packages.length > 0 ? draft.packages : undefined,
       active: draft.active,
+      badge: draft.badge.trim() || undefined,
+      showBadge: draft.showBadge,
+      displayOrder: draft.displayOrder.trim() && !Number.isNaN(Number(draft.displayOrder)) ? Number(draft.displayOrder) : undefined,
+      ctaText: draft.ctaText.trim() || undefined,
+      ctaLink: draft.ctaLink.trim() || undefined,
       createdAt: isDuplicating ? new Date().toISOString() : undefined,
       isNew: isDuplicating ? true : undefined,
     };
@@ -3063,12 +3142,41 @@ export default function PoojasManager({
                 Manage your puja ceremonies with advanced filtering and bulk actions
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-xl bg-cream/80 p-1 border border-saffron-200 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("cards")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
+                    viewMode === "cards"
+                      ? "bg-white text-saffron-900 shadow-xs font-bold"
+                      : "text-ink-soft hover:text-ink"
+                  }`}
+                  title="Switch to Service Cards View"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  <span>Service Cards</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
+                    viewMode === "table"
+                      ? "bg-white text-saffron-900 shadow-xs font-bold"
+                      : "text-ink-soft hover:text-ink"
+                  }`}
+                  title="Switch to Table View"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  <span>Table View</span>
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-ink-soft shadow-xs hover:bg-saffron-50 hover:text-saffron-800 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs font-semibold text-ink-soft shadow-xs hover:bg-saffron-50 hover:text-saffron-800 disabled:opacity-50 transition-colors"
                 title="Refresh Puja Catalog in place"
               >
                 <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
@@ -3077,7 +3185,7 @@ export default function PoojasManager({
               <button
                 type="button"
                 onClick={startAdd}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-saffron-500/20 hover:from-saffron-600 hover:to-saffron-700"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-saffron-500/20 hover:from-saffron-600 hover:to-saffron-700"
               >
                 <Plus className="h-4 w-4" />
                 + New Puja
@@ -3339,213 +3447,423 @@ export default function PoojasManager({
             )}
           </div>
 
-          {/* Table */}
-          <div className="overflow-hidden rounded-2xl border border-saffron-100 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-ink">
-                <thead className="border-b border-saffron-100 bg-cream/40 text-[11px] font-bold text-ink-soft uppercase tracking-wider">
-                  <tr>
-                    <th className="px-4 py-3.5 w-12 text-center">Icon</th>
-                    <th className="px-4 py-3.5">Puja Details</th>
-                    <th className="px-4 py-3.5">Category</th>
-                    <th className="px-4 py-3.5 text-center">Status (Show/Hide)</th>
-                    <th className="px-4 py-3.5 text-center">Format</th>
-                    <th className="px-4 py-3.5">Price & Muhurat</th>
-                    <th className="px-4 py-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-saffron-50">
-                  {paginated.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-12 text-center text-ink-soft">
-                        <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-saffron-50 border border-saffron-200 text-2xl">
-                            🔍
-                          </div>
-                          <h4 className="text-sm font-bold text-ink">No pujas match your filters</h4>
-                          <p className="text-xs text-ink-soft">
-                            We couldn&apos;t find any puja ceremonies matching your current filter combination.
-                          </p>
-                          {hasActiveFilters && (
-                            <button
-                              type="button"
-                              onClick={resetAllFilters}
-                              className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-saffron-600 transition-all"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              Reset All Filters
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    paginated.map((pooja) => {
-                      const active = isPoojaActive(pooja);
-                      return (
-                        <tr
-                          key={pooja.slug}
-                          className={`transition-colors ${
-                            active
-                              ? "hover:bg-orange-50/30"
-                              : "bg-slate-50/50 opacity-80 hover:bg-slate-100/50"
-                          }`}
+          {/* ────────────────── VIEW MODE: CARDS vs TABLE ────────────────── */}
+          {viewMode === "cards" ? (
+            /* ── SERVICE CARDS GRID VIEW ── */
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {paginated.length === 0 ? (
+                  <div className="col-span-full rounded-3xl border border-saffron-100 bg-white p-12 text-center text-ink-soft">
+                    <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-saffron-50 border border-saffron-200 text-2xl">
+                        🔍
+                      </div>
+                      <h4 className="text-sm font-bold text-ink">No service cards match your filters</h4>
+                      <p className="text-xs text-ink-soft">
+                        We couldn&apos;t find any service cards matching your current filter combination.
+                      </p>
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={resetAllFilters}
+                          className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-saffron-600 transition-all"
                         >
-                          <td className="px-4 py-3.5 text-center">
-                            {pooja.imageUrl ? (
-                              <div className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-saffron-200/90 shadow-2xs bg-white">
-                                <PoojaImage
-                                  src={pooja.imageUrl}
-                                  alt={pooja.title}
-                                  fallbackSize="sm"
-                                  showBrandText={false}
-                                />
-                              </div>
-                            ) : (
-                              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-100 text-lg shadow-sm">
-                                {pooja.emoji}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5 max-w-xs">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-ink text-xs leading-snug">
-                                {pooja.title}
-                              </span>
-                              {!active && (
-                                <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-700">
-                                  HIDDEN
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Reset All Filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  paginated.map((pooja) => {
+                    const active = isPoojaActive(pooja);
+                    const hasCustomBadge = Boolean(pooja.badge && pooja.badge.trim());
+                    const showBadge = pooja.showBadge !== false;
+                    const displayBadge = hasCustomBadge ? pooja.badge : (isDemoSlug(pooja.slug) ? "DEMO" : null);
+
+                    return (
+                      <div
+                        key={pooja.slug}
+                        className={`group relative flex flex-col justify-between rounded-2xl border bg-white shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md ${
+                          active
+                            ? "border-saffron-200 hover:border-saffron-300"
+                            : "border-slate-200 bg-slate-50/70 opacity-90 hover:opacity-100"
+                        }`}
+                      >
+                        {/* Card Image Banner */}
+                        <div className="relative aspect-16/9 w-full bg-slate-100 overflow-hidden border-b border-saffron-100/70">
+                          {pooja.imageUrl ? (
+                            <PoojaImage
+                              src={pooja.imageUrl}
+                              alt={pooja.title}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className={`h-full w-full flex items-center justify-center text-4xl bg-gradient-to-br ${pooja.gradient || "from-saffron-500 to-saffron-700"}`}>
+                              <span>{pooja.emoji || "🪔"}</span>
+                            </div>
+                          )}
+
+                          {/* Overlay Gradient for readability */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
+
+                          {/* Top Overlays: Badges + Active/Inactive Switch */}
+                          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {displayBadge && (
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+                                    showBadge
+                                      ? "bg-red-600 text-white animate-pulse"
+                                      : "bg-slate-800/90 text-slate-300 border border-slate-600 line-through"
+                                  }`}
+                                  title={showBadge ? `Badge "${displayBadge}" is visible to public` : `Badge "${displayBadge}" is hidden by admin toggle`}
+                                >
+                                  {displayBadge}
+                                  {!showBadge && <EyeOff className="h-2.5 w-2.5 text-slate-400" />}
+                                </span>
+                              )}
+                              {pooja.displayOrder !== undefined && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-xs text-ink shadow-sm border border-saffron-200">
+                                  Order #{pooja.displayOrder}
                                 </span>
                               )}
                             </div>
-                            {pooja.hindiTitle && (
-                              <div className="text-[11px] text-saffron-700 font-medium">
-                                {pooja.hindiTitle}
-                              </div>
-                            )}
-                            <div className="text-[10px] text-ink-soft/70 line-clamp-1 mt-0.5">
-                              {pooja.description}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="inline-block rounded-full bg-cream px-2.5 py-1 text-[11px] font-semibold text-ink-soft border border-saffron-100">
-                              {pooja.category ?? "Rashifal Pooja"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
-                            {/* Interactive Toggle Switch Button */}
+
+                            {/* Active / Inactive Quick Toggle */}
                             <button
                               type="button"
                               onClick={() => toggleStatus(pooja.slug)}
-                              className={`group inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold transition-all shadow-sm ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm backdrop-blur-xs transition-colors ${
                                 active
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
-                                  : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200"
+                                  ? "bg-emerald-600/95 text-white hover:bg-emerald-700"
+                                  : "bg-slate-800/95 text-white hover:bg-slate-900"
                               }`}
-                              title={
-                                active
-                                  ? "🟢 Active & Visible on website. Click to Hide/Deactivate."
-                                  : "⚪ Hidden from website. Click to Show/Activate."
-                              }
+                              title={active ? "Active: Click to Hide from public website" : "Hidden: Click to Activate on public website"}
                             >
-                              <span
-                                className={`relative inline-block h-3.5 w-6 rounded-full transition-colors ${
-                                  active ? "bg-emerald-500" : "bg-slate-300"
-                                }`}
-                              >
-                                <span
-                                  className={`absolute top-0.5 left-0.5 h-2.5 w-2.5 rounded-full bg-white transition-transform ${
-                                    active ? "translate-x-2.5" : "translate-x-0"
-                                  }`}
-                                />
-                              </span>
+                              <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-300" : "bg-slate-400"}`} />
                               <span>{active ? "Active" : "Hidden"}</span>
                             </button>
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
-                            <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-bold text-saffron-800">
-                              {pooja.online !== false ? "Online" : "Temple"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <div className="font-bold text-ink">
+                          </div>
+
+                          {/* Bottom Image Info: Price & Format */}
+                          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                            <span className="inline-flex items-center rounded-lg bg-black/75 backdrop-blur-xs px-2.5 py-1 text-xs font-bold text-white shadow-xs">
                               {formatINR(pooja.price)}
+                            </span>
+                            <span className="inline-flex items-center rounded-lg bg-white/95 backdrop-blur-xs px-2 py-0.5 text-[10px] font-semibold text-saffron-900 shadow-xs">
+                              {pooja.online !== false ? "Online Puja" : "Temple Puja"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Card Content Body */}
+                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] text-ink-soft">
+                              <span className="font-semibold text-saffron-700">{pooja.category || "General"}</span>
+                              <span className="text-[10px] text-ink-soft/70 truncate max-w-[140px]">/{pooja.slug}</span>
                             </div>
-                            <div className="text-[10px] text-ink-soft">
-                              {pooja.bestMuhurat || "Auspicious"}
+                            <h3 className="font-bold text-ink text-sm leading-snug line-clamp-1">
+                              {pooja.title}
+                            </h3>
+                            {pooja.hindiTitle && (
+                              <p className="text-[11px] text-saffron-700 font-medium truncate">
+                                {pooja.hindiTitle}
+                              </p>
+                            )}
+                            <p className="text-xs text-ink-soft line-clamp-2 pt-0.5">
+                              {pooja.description}
+                            </p>
+                          </div>
+
+                          {/* CTA Info Preview */}
+                          <div className="rounded-xl bg-saffron-50/70 p-2.5 border border-saffron-100 text-[11px] space-y-0.5">
+                            <div className="flex items-center justify-between text-ink-soft">
+                              <span className="font-semibold text-[10px] uppercase tracking-wider text-saffron-800">CTA Button</span>
+                              <span className="text-[10px] truncate max-w-[150px] text-ink-soft/80">{pooja.ctaLink || `/book/${pooja.slug}`}</span>
                             </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-right relative">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* Duplicate Button */}
-                              <button
-                                type="button"
-                                onClick={() => startDuplicate(pooja)}
-                                className="p-1.5 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors"
-                                title="Duplicate Puja Ceremony"
-                                aria-label={`Duplicate ${pooja.title}`}
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </button>
-                              {/* Edit Button */}
+                            <div className="font-bold text-saffron-900 truncate">
+                              {pooja.ctaText || "Book Ceremony →"}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="pt-2 border-t border-saffron-100 flex items-center justify-between gap-2">
+                            {/* Primary Edit Service Card Action */}
+                            <button
+                              type="button"
+                              onClick={() => setEditingCardPooja(pooja)}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:from-saffron-600 hover:to-saffron-700 transition-all"
+                              title="Edit Service Card details (Title, Description, Image, Badge, CTA, Order)"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span>Edit Card</span>
+                            </button>
+
+                            {/* Secondary Actions */}
+                            <div className="flex items-center gap-1 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => startEdit(pooja)}
-                                className="p-1.5 rounded-lg border border-saffron-200 text-saffron-700 hover:bg-saffron-100"
-                                title="Edit Puja Details & Settings"
+                                className="p-2 rounded-xl border border-saffron-200 text-saffron-800 hover:bg-saffron-50 transition-colors"
+                                title="Full Ceremony Wizard (8 Steps: Packages, Temples, Deities)"
                               >
-                                <Pencil className="h-3.5 w-3.5" />
+                                <BookOpen className="h-3.5 w-3.5" />
                               </button>
-                              {/* Delete Button */}
+                              <button
+                                type="button"
+                                onClick={() => startDuplicate(pooja)}
+                                className="p-2 rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors"
+                                title="Duplicate Puja"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => setDeleteTarget(pooja)}
-                                className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50"
-                                title="Delete Puja Ceremony"
+                                className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete Puja"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Footer (Matching Screenshot 1) */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-saffron-100 px-4 py-3 bg-cream/20 text-xs text-ink-soft">
-              <div>
-                Showing {filtered.length > 0 ? (page - 1) * rowsPerPage + 1 : 0} to{" "}
-                {Math.min(page * rowsPerPage, filtered.length)} of {filtered.length} results
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <span>Page {page} of {totalPages}</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1}
-                    className="rounded-lg border border-saffron-100 bg-white px-2 py-1 text-xs font-bold disabled:opacity-40"
-                  >
-                    &lt;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
-                    disabled={page === totalPages}
-                    className="rounded-lg border border-saffron-100 bg-white px-2 py-1 text-xs font-bold disabled:opacity-40"
-                  >
-                    &gt;
-                  </button>
-                </div>
+            </div>
+          ) : (
+            /* ── TABLE VIEW ── */
+            <div className="overflow-hidden rounded-2xl border border-saffron-100 bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-ink">
+                  <thead className="border-b border-saffron-100 bg-cream/40 text-[11px] font-bold text-ink-soft uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3.5 w-12 text-center">Icon</th>
+                      <th className="px-4 py-3.5">Puja Details</th>
+                      <th className="px-4 py-3.5">Category</th>
+                      <th className="px-4 py-3.5 text-center">Status (Show/Hide)</th>
+                      <th className="px-4 py-3.5 text-center">Format</th>
+                      <th className="px-4 py-3.5">Price & Muhurat</th>
+                      <th className="px-4 py-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-saffron-50">
+                    {paginated.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-12 text-center text-ink-soft">
+                          <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-saffron-50 border border-saffron-200 text-2xl">
+                              🔍
+                            </div>
+                            <h4 className="text-sm font-bold text-ink">No pujas match your filters</h4>
+                            <p className="text-xs text-ink-soft">
+                              We couldn&apos;t find any puja ceremonies matching your current filter combination.
+                            </p>
+                            {hasActiveFilters && (
+                              <button
+                                type="button"
+                                onClick={resetAllFilters}
+                                className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-saffron-600 transition-all"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                Reset All Filters
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginated.map((pooja) => {
+                        const active = isPoojaActive(pooja);
+                        return (
+                          <tr
+                            key={pooja.slug}
+                            className={`transition-colors ${
+                              active
+                                ? "hover:bg-orange-50/30"
+                                : "bg-slate-50/50 opacity-80 hover:bg-slate-100/50"
+                            }`}
+                          >
+                            <td className="px-4 py-3.5 text-center">
+                              {pooja.imageUrl ? (
+                                <div className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-saffron-200/90 shadow-2xs bg-white">
+                                  <PoojaImage
+                                    src={pooja.imageUrl}
+                                    alt={pooja.title}
+                                    fallbackSize="sm"
+                                    showBrandText={false}
+                                  />
+                                </div>
+                              ) : (
+                                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-100 text-lg shadow-sm">
+                                  {pooja.emoji}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 max-w-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-ink text-xs leading-snug">
+                                  {pooja.title}
+                                </span>
+                                {!active && (
+                                  <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-700">
+                                    HIDDEN
+                                  </span>
+                                )}
+                              </div>
+                              {pooja.hindiTitle && (
+                                <div className="text-[11px] text-saffron-700 font-medium">
+                                  {pooja.hindiTitle}
+                                </div>
+                              )}
+                              <div className="text-[10px] text-ink-soft/70 line-clamp-1 mt-0.5">
+                                {pooja.description}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <span className="inline-block rounded-full bg-cream px-2.5 py-1 text-[11px] font-semibold text-ink-soft border border-saffron-100">
+                                {pooja.category ?? "Rashifal Pooja"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleStatus(pooja.slug)}
+                                className={`group inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold transition-all shadow-sm ${
+                                  active
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
+                                    : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200"
+                                }`}
+                                title={
+                                  active
+                                    ? "🟢 Active & Visible on website. Click to Hide/Deactivate."
+                                    : "⚪ Hidden from website. Click to Show/Activate."
+                                }
+                              >
+                                <span
+                                  className={`relative inline-block h-3.5 w-6 rounded-full transition-colors ${
+                                    active ? "bg-emerald-500" : "bg-slate-300"
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 left-0.5 h-2.5 w-2.5 rounded-full bg-white transition-transform ${
+                                      active ? "translate-x-2.5" : "translate-x-0"
+                                    }`}
+                                  />
+                                </span>
+                                <span>{active ? "Active" : "Hidden"}</span>
+                              </button>
+                            </td>
+                            <td className="px-4 py-3.5 text-center">
+                              <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-bold text-saffron-800">
+                                {pooja.online !== false ? "Online" : "Temple"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="font-bold text-ink">
+                                {formatINR(pooja.price)}
+                              </div>
+                              <div className="text-[10px] text-ink-soft">
+                                {pooja.bestMuhurat || "Auspicious"}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5 text-right relative">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* Edit Service Card Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCardPooja(pooja)}
+                                  className="p-1.5 rounded-lg border border-saffron-300 bg-saffron-50 text-saffron-700 hover:bg-saffron-100 transition-colors"
+                                  title="Edit Service Card details (Title, Description, Image, Badge, CTA, Order)"
+                                  aria-label={`Edit Card ${pooja.title}`}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                {/* Duplicate Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => startDuplicate(pooja)}
+                                  className="p-1.5 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors"
+                                  title="Duplicate Puja Ceremony"
+                                  aria-label={`Duplicate ${pooja.title}`}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+                                {/* Full Wizard Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(pooja)}
+                                  className="p-1.5 rounded-lg border border-saffron-200 text-saffron-700 hover:bg-saffron-100"
+                                  title="Full Wizard (8 Steps: Packages, Temples, Deities)"
+                                  aria-label={`Full Wizard for ${pooja.title}`}
+                                >
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                </button>
+                                {/* Delete Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteTarget(pooja)}
+                                  className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50"
+                                  title="Delete Puja Ceremony"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Shared Pagination Footer */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-saffron-100 px-4 py-3 bg-white text-xs text-ink-soft shadow-xs">
+            <div>
+              Showing {filtered.length > 0 ? (page - 1) * rowsPerPage + 1 : 0} to{" "}
+              {Math.min(page * rowsPerPage, filtered.length)} of {filtered.length} results
+            </div>
+            <div className="flex items-center gap-3">
+              <span>Page {page} of {totalPages}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  className="rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-xs font-bold disabled:opacity-40 hover:bg-saffron-50 transition-colors"
+                >
+                  &lt;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  className="rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-xs font-bold disabled:opacity-40 hover:bg-saffron-50 transition-colors"
+                >
+                  &gt;
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Service Card Edit Modal */}
+      <ServiceCardEditModal
+        isOpen={Boolean(editingCardPooja)}
+        pooja={editingCardPooja}
+        onClose={() => setEditingCardPooja(null)}
+        onSave={handleSaveCard}
+        onDelete={handleDeleteCard}
+      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

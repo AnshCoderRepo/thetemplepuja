@@ -1,4 +1,4 @@
-export type GalleryMediaType = "photo" | "video";
+export type GalleryMediaType = "photo" | "video" | "mixed";
 
 export interface GalleryItem {
   id: string;
@@ -6,18 +6,25 @@ export interface GalleryItem {
   title: string;
   description: string;
   mediaType: GalleryMediaType;
-  imageUrl?: string;
-  videoUrl?: string;
+  /** Up to 3 photos per card */
+  images?: string[];
+  imageUrl?: string; // Photo 1 (legacy & backward-compatible)
+  imageUrl2?: string; // Photo 2
+  imageUrl3?: string; // Photo 3
   thumbnailUrl?: string;
+
+  /** Single optional video */
+  videoUrl?: string;
   youtubeUrl?: string;
   youtubeVideoId?: string;
+  videoDurationSeconds?: number;
+  durationVerified?: boolean;
+
   category: string;
   isActive: boolean;
   showOnHomepage: boolean;
   displayOrder: number;
   isDemo?: boolean;
-  videoDurationSeconds?: number;
-  durationVerified?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,6 +39,54 @@ export const GALLERY_CATEGORIES = [
 ] as const;
 
 export type GalleryCategory = (typeof GALLERY_CATEGORIES)[number];
+
+/**
+ * Normalizes and extracts up to 3 valid image URLs from a gallery item.
+ * Preserves backward compatibility with legacy `imageUrl`, `thumbnailUrl`,
+ * and new `images` array / `imageUrl2`, `imageUrl3`.
+ */
+export function getGalleryItemImages(item?: Partial<GalleryItem> | null): string[] {
+  if (!item) return [];
+  const list: string[] = [];
+
+  const add = (val?: string | null) => {
+    if (!val || typeof val !== "string") return;
+    const clean = val.trim();
+    if (clean && !list.includes(clean)) {
+      list.push(clean);
+    }
+  };
+
+  // 1. If images array is provided, read in order
+  if (Array.isArray(item.images)) {
+    for (const img of item.images) {
+      add(img);
+    }
+  }
+
+  // 2. Also check individual photo slots if not already collected
+  add(item.imageUrl);
+  add(item.imageUrl2);
+  add(item.imageUrl3);
+
+  // 3. Fallback to thumbnailUrl if no photos are present
+  if (list.length === 0 && item.thumbnailUrl) {
+    add(item.thumbnailUrl);
+  }
+
+  return list.slice(0, 3);
+}
+
+/**
+ * Checks whether the gallery item has a valid playable YouTube video attached.
+ */
+export function hasYouTubeVideo(item?: Partial<GalleryItem> | null): boolean {
+  if (!item) return false;
+  return Boolean(
+    (item.youtubeVideoId && item.youtubeVideoId.trim()) ||
+    (item.youtubeUrl && extractYouTubeVideoId(item.youtubeUrl))
+  );
+}
 
 /**
  * Parses any standard YouTube URL (desktop, mobile, youtu.be, shorts, embed)
@@ -79,6 +134,7 @@ export function getYouTubeThumbnailUrl(videoIdOrUrl: string | null | undefined):
 
 /**
  * Standard 6 demo gallery items showcasing authentic Hindu puja rituals.
+ * Each card includes up to 3 photos and 1 optional video.
  * Labeled with isDemo: true so the admin can clearly identify and replace them.
  */
 export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
@@ -88,7 +144,14 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     title: "Ganesh Puja",
     description: "Auspicious invocation of Bhagwan Ganesha with sacred modak offerings, durva grass, and Vedic mantras for obstacle removal and prosperity.",
     mediaType: "photo",
+    images: [
+      "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
+    ],
     imageUrl: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=1200&q=80",
+    imageUrl2: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
     thumbnailUrl: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=600&q=80",
     category: "Puja Ceremonies",
     isActive: true,
@@ -103,7 +166,15 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     _id: "gal-traditional-havan",
     title: "Traditional Havan Ceremony",
     description: "Sacred fire ritual (Yagya) with shuddh desi ghee and herbal samagri invoked by Vedic Acharyas for spiritual purification and divine grace.",
-    mediaType: "video",
+    mediaType: "mixed",
+    images: [
+      "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=1200&q=80",
+    imageUrl2: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
     youtubeUrl: "https://www.youtube.com/watch?v=7X8II6J-6mU",
     youtubeVideoId: "7X8II6J-6mU",
     thumbnailUrl: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=600&q=80",
@@ -123,7 +194,14 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     title: "Kalash Sthapana",
     description: "Consecration of the holy Mangal Kalash with coconut, mango leaves, sacred red thread, and Ganga jal, invoking Trideva and universal energies.",
     mediaType: "photo",
+    images: [
+      "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
+    ],
     imageUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80",
+    imageUrl2: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
     thumbnailUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=600&q=80",
     category: "Kalash Sthapana",
     isActive: true,
@@ -138,7 +216,15 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     _id: "gal-pandit-ji-rituals",
     title: "Pandit Ji Performing Rituals",
     description: "Certified Vedic Purohit conducting elaborate shodashopachara puja with profound reverence, conch sound, and traditional bell chime.",
-    mediaType: "video",
+    mediaType: "mixed",
+    images: [
+      "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1200&q=80",
+    imageUrl2: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
     youtubeUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk",
     youtubeVideoId: "kJQP7kiw5Fk",
     thumbnailUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80",
@@ -158,7 +244,14 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     title: "Puja Samagri Preparation",
     description: "Meticulous arrangement of authentic Vedic samagri including fresh marigold garlands, kumkum, chandan, akshat, and fragrant camphor.",
     mediaType: "photo",
+    images: [
+      "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
+    ],
     imageUrl: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=1200&q=80",
+    imageUrl2: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=800&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
     thumbnailUrl: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=600&q=80",
     category: "Puja Samagri",
     isActive: true,
@@ -174,7 +267,14 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     title: "Traditional Hindu Puja Ceremony",
     description: "Heartfelt Maha Aarti with brass deepams, surrounded by chanting devotees offering heartfelt prayers for peace, health, and family prosperity.",
     mediaType: "photo",
+    images: [
+      "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
+    ],
     imageUrl: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=1200&q=80",
+    imageUrl2: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
     thumbnailUrl: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=600&q=80",
     category: "Puja Ceremonies",
     isActive: true,

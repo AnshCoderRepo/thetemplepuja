@@ -41,22 +41,32 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
     : p.templeName || null;
 
   const handleNavigateToPooja = () => {
-    router.push(`/book/${p.slug}`);
+    if (p.ctaLink && p.ctaLink.trim()) {
+      router.push(p.ctaLink.trim());
+    } else {
+      router.push(`/book/${p.slug}`);
+    }
   };
 
   // Top-right badge on the image:
-  // If in native script (e.g. Hindi/Telugu/Tamil) and different from English title, display native script.
-  // Otherwise display the category (e.g. "Abhishek", "Mahayagya") or Seva type so it doesn't redundantly repeat the title.
+  // If p.showBadge is explicitly false, hide the badge.
+  // If custom badge text is provided (e.g. "DEMO"), use it.
+  // Otherwise fall back to native script or category.
   const isDifferentFromTitle = Boolean(
     nativeBadge && nativeBadge.trim() !== poojaTitle.trim()
   );
-  const topBadgeText = isDifferentFromTitle
+  const fallbackBadgeText = isDifferentFromTitle
     ? nativeBadge
     : p.category && p.category.trim()
     ? p.category.trim()
     : p.type === "home"
     ? "Home Puja"
     : "Vedic Seva";
+
+  const isBadgeVisible = p.showBadge !== false;
+  const topBadgeText = isBadgeVisible
+    ? (p.badge && p.badge.trim() ? p.badge.trim() : fallbackBadgeText)
+    : null;
 
   // Determine appropriate container aspect ratio based on actual banner dimensions.
   // - If landscape (e.g. 16:9 = 1.78, 3:2 = 1.5, 4:3 = 1.33): allow it to display as a full
@@ -212,10 +222,10 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
               e.stopPropagation();
               handleNavigateToPooja();
             }}
-            aria-label={`${t("book.bookNow")}: ${poojaTitle}`}
+            aria-label={`${p.ctaText?.trim() || t("book.bookNow")}: ${poojaTitle}`}
             className="group/btn inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-600 hover:to-saffron-700 active:from-saffron-700 active:to-saffron-800 text-white font-bold text-xs px-3.5 sm:px-4 py-2 shadow-xs hover:shadow-md hover:shadow-saffron-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2 shrink-0 cursor-pointer"
           >
-            <span>{t("book.bookNow")}</span>
+            <span>{p.ctaText?.trim() || t("book.bookNow")}</span>
             <span
               aria-hidden="true"
               className="transition-transform duration-200 group-hover/btn:translate-x-0.5"

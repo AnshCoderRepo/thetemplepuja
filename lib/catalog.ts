@@ -79,8 +79,12 @@ export function getCatalogPoojas(): Pooja[] {
 }
 
 export function getCatalogPooja(slug: string): Pooja | undefined {
+  const custom = getCatalogPoojas().find(
+    (p) => p.slug === slug || (isDemoSlug(slug) && isDemoSlug(p.slug))
+  );
+  if (custom) return custom;
   if (isDemoSlug(slug)) return DEMO_POOJA;
-  return getCatalogPoojas().find((p) => p.slug === slug);
+  return undefined;
 }
 
 export function saveCatalogPoojas(poojas: Pooja[]): void {

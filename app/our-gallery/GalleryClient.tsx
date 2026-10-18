@@ -17,7 +17,7 @@ import type { GalleryItem, GalleryMediaType } from "@/lib/gallery-types";
 import { GALLERY_CATEGORIES } from "@/lib/gallery-types";
 import { fetchPublicGallery } from "@/lib/api";
 import { useBookingModal, useI18n } from "@/components/providers";
-import GalleryCard from "@/components/gallery/GalleryCard";
+import GalleryCard, { type GalleryCardOpenOptions } from "@/components/gallery/GalleryCard";
 import GalleryModal from "@/components/gallery/GalleryModal";
 
 const PAGE_SIZE = 9;
@@ -40,6 +40,7 @@ export default function GalleryClient() {
 
   // Lightbox / Video Modal state
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
+  const [modalOptions, setModalOptions] = useState<GalleryCardOpenOptions | undefined>(undefined);
 
   const loadGallery = async () => {
     try {
@@ -107,7 +108,7 @@ export default function GalleryClient() {
   const videoCount = useMemo(() => items.filter((i) => i.mediaType === "video").length, [items]);
 
   return (
-    <div className="min-h-screen bg-[#FFFDF9] pb-20">
+    <div className="min-h-screen bg-[#FFFDF9] pb-32 sm:pb-36">
       {/* Top Breadcrumb & Hero */}
       <div className="relative overflow-hidden bg-gradient-to-b from-saffron-50/80 via-cream to-[#FFFDF9] pt-8 pb-12 sm:pt-12 sm:pb-16 border-b border-saffron-100/70">
         <div className="container-px">
@@ -319,7 +320,10 @@ export default function GalleryClient() {
                   key={item.id || item._id}
                   item={item}
                   priority={idx < 3}
-                  onOpen={(it) => setSelectedItem(it)}
+                  onOpen={(it, opts) => {
+                    setSelectedItem(it);
+                    setModalOptions(opts);
+                  }}
                 />
               ))}
             </div>
@@ -365,7 +369,12 @@ export default function GalleryClient() {
       {/* Lightbox / Video Modal */}
       <GalleryModal
         item={selectedItem}
-        onClose={() => setSelectedItem(null)}
+        initialTab={modalOptions?.initialTab}
+        initialPhotoIndex={modalOptions?.photoIndex}
+        onClose={() => {
+          setSelectedItem(null);
+          setModalOptions(undefined);
+        }}
       />
     </div>
   );

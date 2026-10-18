@@ -44,11 +44,15 @@ function ServiceInner({ service }: { service: string }) {
   // Resolve from the backend catalog (falls back to the static list).
   const { poojas, temples, loaded } = useCatalog();
   const normalized = service.toLowerCase().replace(/_/g, "-");
-  const pooja = isDemoSlug(normalized)
-    ? DEMO_POOJA
-    : loaded
-    ? (poojas.find((p) => p.slug === normalized) ?? null)
+  const foundInCatalog = loaded
+    ? (poojas.find((p) => p.slug === normalized || (isDemoSlug(normalized) && isDemoSlug(p.slug))) ?? null)
     : undefined;
+  const pooja =
+    foundInCatalog !== undefined && foundInCatalog !== null
+      ? foundInCatalog
+      : isDemoSlug(normalized)
+      ? DEMO_POOJA
+      : foundInCatalog;
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isMainCtaInView, setIsMainCtaInView] = useState(true);

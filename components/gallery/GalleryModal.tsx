@@ -1,20 +1,87 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
-import { X, Sparkles, ExternalLink, Play, Calendar } from "lucide-react";
-import type { GalleryItem } from "@/lib/gallery-types";
+import {
+  X,
+  Sparkles,
+  ExternalLink,
+  Play,
+  Calendar,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Film,
+} from "lucide-react";
+import {
+  type GalleryItem,
+  getGalleryItemImages,
+  hasYouTubeVideo,
+} from "@/lib/gallery-types";
 import { useBookingModal } from "@/components/providers";
 
 interface GalleryModalProps {
   item: GalleryItem | null;
   onClose: () => void;
+  initialTab?: "photos" | "video";
+  initialPhotoIndex?: number;
 }
 
-export default function GalleryModal({ item, onClose }: GalleryModalProps) {
+export default function GalleryModal({
+  item,
+  onClose,
+  initialTab = "photos",
+  initialPhotoIndex = 0,
+}: GalleryModalProps) {
   const { openBooking } = useBookingModal();
   const modalRef = useRef<HTMLDivElement>(null);
 
+  const photos = item ? getGalleryItemImages(item) : [];
+  const hasVideo = item ? hasYouTubeVideo(item) || Boolean(item.videoUrl) : false;
+  const hasYouTube = Boolean(item?.youtubeUrl || item?.youtubeVideoId);
+
+  const [activeTab, setActiveTab] = useState<"photos" | "video">("photos");
+  const [photoIndex, setPhotoIndex] = useState<number>(0);
+
+  // Sync state whenever the selected item changes
+  useEffect(() => {
+    if (!item) return;
+
+    const itemPhotos = getGalleryItemImages(item);
+    const itemHasVideo = hasYouTubeVideo(item) || Boolean(item.videoUrl);
+
+    if (initialTab === "video" && itemHasVideo) {
+      setActiveTab("video");
+    } else if (itemPhotos.length > 0) {
+      setActiveTab("photos");
+    } else if (itemHasVideo) {
+      setActiveTab("video");
+    } else {
+      setActiveTab("photos");
+    }
+
+    if (
+      typeof initialPhotoIndex === "number" &&
+      initialPhotoIndex >= 0 &&
+      initialPhotoIndex < itemPhotos.length
+    ) {
+      setPhotoIndex(initialPhotoIndex);
+    } else {
+      setPhotoIndex(0);
+    }
+  }, [item, initialTab, initialPhotoIndex]);
+
+  const handlePrevPhoto = useCallback(() => {
+    if (photos.length <= 1) return;
+    setPhotoIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
+  }, [photos.length]);
+
+  const handleNextPhoto = useCallback(() => {
+    if (photos.length <= 1) return;
+    setPhotoIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0));
+  }, [photos.length]);
+
+  // Handle keyboard events (Escape, Left Arrow, Right Arrow)
   useEffect(() => {
     if (!item) return;
 
@@ -24,6 +91,10 @@ export default function GalleryModal({ item, onClose }: GalleryModalProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
+      } else if (e.key === "ArrowLeft" && activeTab === "photos") {
+        handlePrevPhoto();
+      } else if (e.key === "ArrowRight" && activeTab === "photos") {
+        handleNextPhoto();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -32,19 +103,18 @@ export default function GalleryModal({ item, onClose }: GalleryModalProps) {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [item, onClose]);
+  }, [item, onClose, activeTab, handlePrevPhoto, handleNextPhoto]);
 
   if (!item) return null;
 
-  const isVideo = item.mediaType === "video";
-  const hasYouTube = Boolean(isVideo && item.youtubeVideoId);
+  const currentPhoto = photos[photoIndex] || item.imageUrl || item.thumbnailUrl || "/logo.jpeg";
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={item.title}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 md:p-8 animate-fadeIn"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-5 md:p-8 animate-fadeIn"
     >
       {/* Backdrop */}
       <div
@@ -58,29 +128,67 @@ export default function GalleryModal({ item, onClose }: GalleryModalProps) {
         className="relative z-10 flex flex-col w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl sm:rounded-3xl border border-white/15 bg-white shadow-2xl"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-saffron-100 bg-[#FFFDF9] px-4 py-3 sm:px-6 sm:py-4 shrink-0">
-          <div className="flex items-center gap-2 min-w-0 pr-2">
+        <div className="flex items-center justify-between border-b border-saffron-100 bg-[#FFFDF9] px-3.5 py-2.5 sm:px-6 sm:py-3.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
             <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl bg-saffron-50 text-saffron-700 border border-saffron-200">
-              {isVideo ? <Play className="h-4 w-4 fill-current" /> : <Sparkles className="h-4 w-4" />}
+              {activeTab === "video" ? (
+                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              )}
             </span>
             <div className="min-w-0">
-              <h3 className="font-display text-sm sm:text-base md:text-lg font-bold text-ink truncate">
+              <h3 className="font-display text-xs sm:text-base md:text-lg font-bold text-ink truncate">
                 {item.title}
               </h3>
-              <p className="text-[10px] sm:text-xs font-medium text-saffron-800">
+              <p className="text-[10px] sm:text-xs font-medium text-saffron-800 truncate">
                 {item.category}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Tab Switcher & Actions */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {/* If BOTH photos and video exist: Show Tab Selector */}
+            {photos.length > 0 && hasVideo && (
+              <div className="flex items-center rounded-xl bg-slate-100 p-0.5 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("photos")}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === "photos"
+                      ? "bg-white text-saffron-900 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Camera className="h-3.5 w-3.5 text-saffron-600" />
+                  <span>Photos ({photos.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("video")}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === "video"
+                      ? "bg-red-600 text-white shadow-xs"
+                      : "text-slate-600 hover:text-red-600"
+                  }`}
+                >
+                  <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                  <span>Video</span>
+                </button>
+              </div>
+            )}
+
+            {/* YouTube Direct Link (if provided) */}
             {hasYouTube && item.youtubeUrl && (
               <a
                 href={item.youtubeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors"
-                title="Open on YouTube in new tab"
+                className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors"
+                title="Open video on YouTube in a new tab"
               >
                 <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
@@ -90,6 +198,7 @@ export default function GalleryModal({ item, onClose }: GalleryModalProps) {
               </a>
             )}
 
+            {/* Close Button */}
             <button
               type="button"
               onClick={onClose}
@@ -103,8 +212,8 @@ export default function GalleryModal({ item, onClose }: GalleryModalProps) {
 
         {/* Modal Media Body */}
         <div className="relative flex-1 min-h-[260px] sm:min-h-[380px] md:min-h-[460px] bg-black flex items-center justify-center overflow-hidden">
-          {isVideo ? (
-            hasYouTube ? (
+          {activeTab === "video" ? (
+            hasYouTube && item.youtubeVideoId ? (
               <div className="relative w-full h-full aspect-video">
                 <iframe
                   src={`https://www.youtube.com/embed/${item.youtubeVideoId}?autoplay=1&rel=0&modestbranding=1`}
@@ -125,28 +234,100 @@ export default function GalleryModal({ item, onClose }: GalleryModalProps) {
               </video>
             ) : (
               <div className="p-8 text-center text-white">
-                <p className="text-sm">Video source unavailable.</p>
+                <Film className="h-10 w-10 text-white/40 mx-auto mb-2" />
+                <p className="text-sm font-medium">Video source unavailable.</p>
               </div>
             )
           ) : (
-            <div className="relative w-full h-full min-h-[320px] sm:min-h-[480px]">
+            /* Photos Tab */
+            <div className="relative w-full h-full min-h-[300px] sm:min-h-[440px] flex items-center justify-center">
               <Image
-                src={item.imageUrl || item.thumbnailUrl || "/logo.jpeg"}
-                alt={item.title}
+                src={currentPhoto}
+                alt={`${item.title} - photo ${photoIndex + 1}`}
                 fill
                 priority
                 className="object-contain"
                 sizes="(max-width: 1024px) 100vw, 900px"
               />
+
+              {/* Multi-Photo Navigation Controls (only if > 1 photo) */}
+              {photos.length > 1 && (
+                <>
+                  {/* Left Prev Arrow */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevPhoto();
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/85 hover:scale-105 active:scale-95 cursor-pointer"
+                    aria-label="Previous photo"
+                  >
+                    <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
+
+                  {/* Right Next Arrow */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNextPhoto();
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/85 hover:scale-105 active:scale-95 cursor-pointer"
+                    aria-label="Next photo"
+                  >
+                    <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
+
+                  {/* Photo Counter Pill */}
+                  <div className="absolute top-3 right-3 rounded-full bg-black/70 backdrop-blur-md px-3 py-1 text-xs font-bold text-white border border-white/20">
+                    Photo {photoIndex + 1} of {photos.length}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
+        {/* Thumbnail Selector Row (When viewing Photos tab with > 1 photo) */}
+        {activeTab === "photos" && photos.length > 1 && (
+          <div className="bg-slate-950/90 border-t border-white/10 px-4 py-2 flex items-center justify-center gap-2.5 overflow-x-auto">
+            {photos.map((photoUrl, idx) => {
+              const isSelected = idx === photoIndex;
+              return (
+                <button
+                  key={`${photoUrl}-${idx}`}
+                  type="button"
+                  onClick={() => setPhotoIndex(idx)}
+                  className={`relative h-11 w-14 sm:h-14 sm:w-20 rounded-lg overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
+                    isSelected
+                      ? "border-saffron-500 ring-2 ring-saffron-400 scale-105"
+                      : "border-white/30 opacity-60 hover:opacity-100 hover:border-white/70"
+                  }`}
+                  aria-label={`Select photo ${idx + 1}`}
+                >
+                  <Image
+                    src={photoUrl}
+                    alt={`Thumbnail ${idx + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
+                  <span className="absolute bottom-0 right-0 bg-black/80 px-1 text-[9px] font-bold text-white">
+                    {idx + 1}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Modal Footer: Description & Booking Action */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#FFFDF9] border-t border-saffron-100 px-4 py-3.5 sm:px-6 sm:py-4 shrink-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#FFFDF9] border-t border-saffron-100 px-4 py-3 sm:px-6 sm:py-3.5 shrink-0">
           <div className="min-w-0 flex-1">
             <p className="text-xs sm:text-sm text-ink-soft leading-relaxed line-clamp-2">
-              {item.description || "Authentic Vedic rituals and spiritual devotion recorded with utmost sanctity."}
+              {item.description ||
+                "Authentic Vedic rituals and spiritual devotion recorded with utmost sanctity."}
             </p>
           </div>
 
@@ -160,7 +341,7 @@ export default function GalleryModal({ item, onClose }: GalleryModalProps) {
               className="btn-primary !py-2 !px-4 !text-xs w-full sm:w-auto inline-flex items-center justify-center gap-1.5"
             >
               <Calendar className="h-3.5 w-3.5" />
-              <span>Book Your Puja</span>
+              <span>Book Puja Now</span>
             </button>
           </div>
         </div>

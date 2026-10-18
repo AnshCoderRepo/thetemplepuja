@@ -6,7 +6,7 @@ import { ArrowRight, Calendar, Sparkles, Image as ImageIcon } from "lucide-react
 import type { GalleryItem } from "@/lib/gallery-types";
 import { fetchPublicGallery } from "@/lib/api";
 import { useBookingModal, useI18n } from "@/components/providers";
-import GalleryCard from "@/components/gallery/GalleryCard";
+import GalleryCard, { type GalleryCardOpenOptions } from "@/components/gallery/GalleryCard";
 import GalleryModal from "@/components/gallery/GalleryModal";
 
 export default function OurGallerySection() {
@@ -15,6 +15,7 @@ export default function OurGallerySection() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
+  const [modalOptions, setModalOptions] = useState<GalleryCardOpenOptions | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -92,7 +93,10 @@ export default function OurGallerySection() {
                 key={item.id || item._id}
                 item={item}
                 priority={idx < 2}
-                onOpen={(it) => setSelectedItem(it)}
+                onOpen={(it, opts) => {
+                  setSelectedItem(it);
+                  setModalOptions(opts);
+                }}
               />
             ))}
           </div>
@@ -122,7 +126,12 @@ export default function OurGallerySection() {
       {/* Lightbox / Video Modal */}
       <GalleryModal
         item={selectedItem}
-        onClose={() => setSelectedItem(null)}
+        initialTab={modalOptions?.initialTab}
+        initialPhotoIndex={modalOptions?.photoIndex}
+        onClose={() => {
+          setSelectedItem(null);
+          setModalOptions(undefined);
+        }}
       />
     </section>
   );
