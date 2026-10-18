@@ -765,11 +765,6 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       <h3 className="font-display text-sm font-bold text-ink leading-tight truncate">
                         {item.title}
                       </h3>
-                      {item.isDemo && (
-                        <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 uppercase">
-                          Demo
-                        </span>
-                      )}
                     </div>
                     {item.description && (
                       <p className="text-xs text-ink-soft line-clamp-2 mt-1 leading-relaxed">
