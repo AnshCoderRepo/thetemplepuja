@@ -491,8 +491,8 @@ export default function BlogsManager({
 
       const isPub = isPostPublished(item);
       let matchesStatus = true;
-      if (statusFilter === "published") matchesStatus = isPub;
-      else if (statusFilter === "draft") matchesStatus = item.status === "draft";
+      if (statusFilter === "published" || statusFilter === "active") matchesStatus = isPub;
+      else if (statusFilter === "draft" || statusFilter === "inactive") matchesStatus = !isPub;
       else if (statusFilter === "archived") matchesStatus = item.status === "archived";
 
       const matchesCat = categoryFilter === "all" || item.category === categoryFilter;
@@ -608,6 +608,43 @@ export default function BlogsManager({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Status Segmented Buttons */}
+          <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setStatusFilter("all")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                statusFilter === "all"
+                  ? "bg-white text-saffron-900 shadow-xs font-bold"
+                  : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              All ({stats.total})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("active")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                statusFilter === "active" || statusFilter === "published"
+                  ? "bg-emerald-600 text-white shadow-xs font-bold"
+                  : "text-emerald-700 hover:text-emerald-800"
+              }`}
+            >
+              Active ({stats.published})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("inactive")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                statusFilter === "inactive" || statusFilter === "draft"
+                  ? "bg-slate-700 text-white shadow-xs font-bold"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              Inactive ({stats.drafts})
+            </button>
+          </div>
+
           {/* Status selector */}
           <select
             value={statusFilter}

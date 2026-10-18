@@ -5,6 +5,7 @@ import {
   isValidSessionToken,
   saveAddon,
   deleteAddon,
+  saveCatalogOverrides,
 } from "@/lib/server-store";
 import type { Addon } from "@/lib/data";
 import { broadcastRealtime } from "@/lib/realtime";
@@ -23,6 +24,7 @@ function bearerToken(req: NextRequest): string | null {
 /**
  * GET /api/admin/addons
  * Returns all add-ons with their active status, fixed prices, and which pujas they are assigned to.
+ * Also returns totalPoojas and availablePoojas list for admin assignment UI.
  */
 export async function GET(req: NextRequest) {
   const token = bearerToken(req);
@@ -41,6 +43,9 @@ export async function GET(req: NextRequest) {
     const enrichedAddons = addons.map((addon) => {
       const id = addon._id || addon.id;
       const assignedPoojas = catalog.poojas.filter((p) => {
+        if (Array.isArray(addon.assignedPoojaSlugs) && addon.assignedPoojaSlugs.includes(p.slug)) {
+          return true;
+        }
         if (Array.isArray(p.assignedAddonIds)) {
           return p.assignedAddonIds.includes(id) || p.assignedAddonIds.includes(addon.id);
         }
@@ -61,9 +66,20 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    const availablePoojas = catalog.poojas.map((p) => ({
+      id: (p as any)._id || (p as any).id || p.slug,
+      slug: p.slug,
+      title: p.title,
+      hindiTitle: p.hindiTitle,
+      active: p.active !== false,
+      emoji: p.emoji || "🪔",
+    }));
+
     return NextResponse.json({
       ok: true,
       addons: enrichedAddons,
+      totalPoojas: catalog.poojas.length,
+      availablePoojas,
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -111,6 +127,10 @@ export async function POST(req: NextRequest) {
     const incomingId = String(body._id || body.id || "").trim();
     const id = incomingId || `addon-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}`;
 
+    const assignedPoojaSlugs = Array.isArray(body.assignedPoojaSlugs)
+      ? Array.from(new Set(body.assignedPoojaSlugs.map((s) => String(s).trim()).filter(Boolean)))
+      : undefined;
+
     const addonRecord: Addon = {
       _id: id,
       id,
@@ -134,11 +154,54 @@ export async function POST(req: NextRequest) {
       type: body.type === "addon" ? "addon" : "chadhava",
       badge: body.badge?.trim() || undefined,
       hindiBadge: body.hindiBadge?.trim() || undefined,
+      assignedPoojaSlugs: assignedPoojaSlugs,
       createdAt: body.createdAt || now,
       updatedAt: now,
     };
 
     await saveAddon(addonRecord);
+
+    // If explicit puja assignments were submitted, sync all poojas in catalog
+    if (assignedPoojaSlugs !== undefined) {
+      try {
+        const catalog = await getResolvedCatalog();
+        let poojasChanged = false;
+        const targetSlugSet = new Set(assignedPoojaSlugs);
+
+        const updatedPoojas = catalog.poojas.map((p) => {
+          const currentIds = p.assignedAddonIds ? [...p.assignedAddonIds] : [];
+          const hasCurrentId = currentIds.includes(id) || currentIds.includes(addonRecord._id) || currentIds.includes(addonRecord.id);
+          const shouldHave = targetSlugSet.has(p.slug);
+
+          if (shouldHave && !hasCurrentId) {
+            poojasChanged = true;
+            return {
+              ...p,
+              assignedAddonIds: [...currentIds, id],
+            };
+          } else if (!shouldHave && hasCurrentId) {
+            poojasChanged = true;
+            return {
+              ...p,
+              assignedAddonIds: currentIds.filter(
+                (aid) => aid !== id && aid !== addonRecord._id && aid !== addonRecord.id
+              ),
+            };
+          }
+          return p;
+        });
+
+        if (poojasChanged) {
+          await saveCatalogOverrides({ poojas: updatedPoojas });
+          broadcastRealtime({
+            type: "catalog_updated",
+            section: "poojas",
+          });
+        }
+      } catch (syncErr) {
+        console.error("[addons-post] Error syncing assigned pujas in catalog:", syncErr);
+      }
+    }
 
     broadcastRealtime({
       type: "catalog_updated",

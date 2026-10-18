@@ -548,15 +548,41 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
 
           {/* Quick Filter Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200 cursor-pointer"
-            >
-              <option value="all">Status: All</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
-            </select>
+            <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-white text-saffron-900 shadow-xs font-bold"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                All ({items.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("active")}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === "active"
+                    ? "bg-emerald-600 text-white shadow-xs font-bold"
+                    : "text-emerald-700 hover:text-emerald-800"
+                }`}
+              >
+                Active ({items.filter((i) => i.isActive).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("inactive")}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === "inactive"
+                    ? "bg-slate-700 text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                Inactive ({items.filter((i) => !i.isActive).length})
+              </button>
+            </div>
 
             <select
               value={typeFilter}

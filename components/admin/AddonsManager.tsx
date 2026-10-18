@@ -13,7 +13,13 @@ import {
   Sparkles,
   ExternalLink,
 } from "lucide-react";
-import { fetchAdminAddons, saveAdminAddon, deleteAdminAddon, type EnrichedAddon } from "@/lib/api";
+import {
+  fetchAdminAddons,
+  saveAdminAddon,
+  deleteAdminAddon,
+  type EnrichedAddon,
+  type AvailablePoojaOption,
+} from "@/lib/api";
 import type { Addon } from "@/lib/data";
 import { formatINR } from "@/lib/format";
 import {
@@ -39,6 +45,7 @@ interface AddonDraft {
   hindiDescription: string;
   type: "chadhava" | "addon";
   active: boolean;
+  assignedPoojaSlugs: string[];
 }
 
 const emptyDraft: AddonDraft = {
@@ -52,6 +59,7 @@ const emptyDraft: AddonDraft = {
   hindiDescription: "",
   type: "chadhava",
   active: true,
+  assignedPoojaSlugs: [],
 };
 
 const CATEGORIES = [
@@ -78,6 +86,9 @@ export default function AddonsManager({
   onRefresh?: () => void;
 }) {
   const [addons, setAddons] = useState<EnrichedAddon[]>([]);
+  const [totalPoojas, setTotalPoojas] = useState<number>(0);
+  const [availablePoojas, setAvailablePoojas] = useState<AvailablePoojaOption[]>([]);
+  const [pujaSearch, setPujaSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
@@ -101,6 +112,12 @@ export default function AddonsManager({
       return;
     }
     setAddons(res.addons || []);
+    if (typeof res.totalPoojas === "number") {
+      setTotalPoojas(res.totalPoojas);
+    }
+    if (res.availablePoojas && Array.isArray(res.availablePoojas)) {
+      setAvailablePoojas(res.availablePoojas);
+    }
   }, [token, onAuthError]);
 
   useEffect(() => {
@@ -138,6 +155,7 @@ export default function AddonsManager({
   const handleOpenCreate = () => {
     setDraft(emptyDraft);
     setEditingId(null);
+    setPujaSearch("");
     setError(null);
     setIsModalOpen(true);
   };
@@ -156,7 +174,9 @@ export default function AddonsManager({
       hindiDescription: addon.hindiDescription || "",
       type: addon.type === "addon" ? "addon" : "chadhava",
       active: addon.active !== false,
+      assignedPoojaSlugs: addon.assignedPoojaSlugs ? [...addon.assignedPoojaSlugs] : [],
     });
+    setPujaSearch("");
     setError(null);
     setIsModalOpen(true);
   };
@@ -176,7 +196,7 @@ export default function AddonsManager({
     setSaving(true);
     setError(null);
 
-    const payload: Partial<Addon> = {
+    const payload: Partial<Addon & { assignedPoojaSlugs?: string[] }> = {
       _id: editingId || draft._id,
       id: editingId || draft._id,
       name: draft.name.trim(),
@@ -189,6 +209,7 @@ export default function AddonsManager({
       hindiDescription: draft.hindiDescription.trim() || undefined,
       type: draft.type,
       active: draft.active,
+      assignedPoojaSlugs: draft.assignedPoojaSlugs,
     };
 
     const res = await saveAdminAddon(payload, token);
@@ -261,7 +282,7 @@ export default function AddonsManager({
       />
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <div className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-xs">
           <span className="text-xs font-bold text-ink-soft block uppercase tracking-wider">Total Add-ons</span>
           <span className="font-display text-2xl font-black text-ink mt-1 block">{addons.length}</span>
@@ -276,6 +297,12 @@ export default function AddonsManager({
           <span className="text-xs font-bold text-slate-600 block uppercase tracking-wider">Inactive</span>
           <span className="font-display text-2xl font-black text-slate-700 mt-1 block">
             {addons.filter((a) => a.active === false).length}
+          </span>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 shadow-xs">
+          <span className="text-xs font-bold text-amber-900 block uppercase tracking-wider">Total Pujas on Site</span>
+          <span className="font-display text-2xl font-black text-amber-800 mt-1 block">
+            {totalPoojas || availablePoojas.length}
           </span>
         </div>
         <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 shadow-xs">
@@ -309,20 +336,29 @@ export default function AddonsManager({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
-          {(["all", "active", "inactive"] as const).map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setStatusFilter(filter)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold capitalize transition-all ${
-                statusFilter === filter
-                  ? "bg-saffron-600 text-white shadow-xs"
-                  : "bg-cream/40 text-ink-soft hover:bg-cream/80"
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
+          {(["all", "active", "inactive"] as const).map((filter) => {
+            const count =
+              filter === "all"
+                ? addons.length
+                : filter === "active"
+                ? addons.filter((a) => a.active !== false).length
+                : addons.filter((a) => a.active === false).length;
+
+            return (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setStatusFilter(filter)}
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold capitalize transition-all cursor-pointer ${
+                  statusFilter === filter
+                    ? "bg-saffron-600 text-white shadow-xs"
+                    : "bg-cream/40 text-ink-soft hover:bg-cream/80"
+                }`}
+              >
+                {filter} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -490,7 +526,7 @@ export default function AddonsManager({
       {/* Create / Edit Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl border border-saffron-100 max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl border border-saffron-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-saffron-100">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-50 text-xl border border-saffron-200">
@@ -501,14 +537,14 @@ export default function AddonsManager({
                     {editingId ? "Edit Add-on Details" : "Create New Puja Add-on"}
                   </h3>
                   <p className="text-xs text-ink-soft">
-                    {editingId ? "Update fixed price, status or details" : "Creates an independent MongoDB record"}
+                    {editingId ? "Update fixed price, assigned pujas, status or details" : "Creates an independent MongoDB record and binds to selected pujas"}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-ink-soft hover:text-ink"
+                className="p-1.5 rounded-full hover:bg-slate-100 text-ink-soft hover:text-ink cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -571,7 +607,7 @@ export default function AddonsManager({
                       key={e}
                       type="button"
                       onClick={() => setDraft({ ...draft, emoji: e })}
-                      className={`h-8 w-8 rounded-lg text-lg flex items-center justify-center transition-transform ${
+                      className={`h-8 w-8 rounded-lg text-lg flex items-center justify-center transition-transform cursor-pointer ${
                         draft.emoji === e
                           ? "bg-saffron-500 text-white scale-110 shadow-xs"
                           : "bg-cream/50 hover:bg-cream border border-saffron-100"
@@ -608,11 +644,129 @@ export default function AddonsManager({
                 />
               </Field>
 
+              {/* Puja Assignments Section */}
+              <div className="pt-3 border-t border-saffron-100 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                  <div>
+                    <label className="block text-xs font-bold text-ink">
+                      Assign to Specific Pujas
+                    </label>
+                    <span className="text-[11px] text-ink-soft">
+                      {draft.assignedPoojaSlugs.length} of {totalPoojas || availablePoojas.length} pujas selected • This chadava will only display on selected pujas
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          assignedPoojaSlugs: availablePoojas.map((p) => p.slug),
+                        }))
+                      }
+                      className="text-[11px] font-bold text-saffron-700 bg-saffron-50 hover:bg-saffron-100 border border-saffron-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          assignedPoojaSlugs: [],
+                        }))
+                      }
+                      className="text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                {/* Puja Search inside Modal */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-soft/50" />
+                  <input
+                    type="text"
+                    value={pujaSearch}
+                    onChange={(e) => setPujaSearch(e.target.value)}
+                    placeholder="Search puja by title, deity or slug to assign..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-saffron-200 bg-cream/30 text-ink placeholder:text-ink-soft/50 focus:border-saffron-400 focus:bg-white focus:outline-none"
+                  />
+                  {pujaSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setPujaSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft hover:text-ink text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Scrollable Puja Selection List */}
+                <div className="max-h-52 overflow-y-auto rounded-xl border border-saffron-200 bg-cream/20 p-2 space-y-1.5">
+                  {availablePoojas
+                    .filter(
+                      (p) =>
+                        !pujaSearch.trim() ||
+                        p.title.toLowerCase().includes(pujaSearch.toLowerCase()) ||
+                        p.slug.toLowerCase().includes(pujaSearch.toLowerCase()) ||
+                        (p.hindiTitle && p.hindiTitle.toLowerCase().includes(pujaSearch.toLowerCase()))
+                    )
+                    .map((pooja) => {
+                      const isChecked = draft.assignedPoojaSlugs.includes(pooja.slug);
+                      return (
+                        <label
+                          key={pooja.id || pooja.slug}
+                          className={`flex items-center justify-between gap-2 p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                            isChecked
+                              ? "bg-purple-50 border-purple-300 shadow-xs font-semibold text-purple-950"
+                              : "bg-white border-slate-200 text-ink hover:border-saffron-300 hover:bg-saffron-50/40"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setDraft((prev) => {
+                                  const next = isChecked
+                                    ? prev.assignedPoojaSlugs.filter((s) => s !== pooja.slug)
+                                    : [...prev.assignedPoojaSlugs, pooja.slug];
+                                  return { ...prev, assignedPoojaSlugs: next };
+                                });
+                              }}
+                              className="h-4 w-4 rounded border-saffron-300 text-purple-600 focus:ring-purple-500 shrink-0 cursor-pointer"
+                            />
+                            <span className="text-base shrink-0">{pooja.emoji || "🪔"}</span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold leading-tight">{pooja.title}</p>
+                              {pooja.hindiTitle && (
+                                <p className="truncate text-[10px] text-ink-soft/70">{pooja.hindiTitle}</p>
+                              )}
+                            </div>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
+                              pooja.active
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {pooja.active ? "Active" : "Inactive"}
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+
               <div className="flex items-center justify-between pt-2 border-t border-saffron-100">
                 <Toggle
                   label="Active Status (checked = active & bookable)"
                   checked={draft.active}
-                  onChange={(checked) => setDraft({ ...draft, active: checked })}
+                  onChange={(checked) => setDraft((prev) => ({ ...prev, active: checked }))}
                 />
               </div>
 
