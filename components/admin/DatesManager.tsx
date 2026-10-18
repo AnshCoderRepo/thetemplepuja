@@ -36,6 +36,7 @@ export default function DatesManager({
   onAuthError: () => void;
 }) {
   const [list, setList] = useState<PoojaDate[]>([]);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -52,6 +53,14 @@ export default function DatesManager({
   }, []);
 
   const upcoming = computeUpcomingDates(list);
+  const activeCount = list.filter((d) => d.active).length;
+  const inactiveCount = list.filter((d) => !d.active).length;
+
+  const filteredList = list.filter((d) => {
+    if (statusFilter === "active") return d.active;
+    if (statusFilter === "inactive") return !d.active;
+    return true;
+  });
 
   const validate = (): string | null => {
     if (!draft.id.trim()) {
@@ -278,15 +287,55 @@ export default function DatesManager({
         </div>
       )}
 
-      {/* Active dates list */}
-      <div className="mt-6 space-y-2.5">
-        {list.length === 0 ? (
+      {/* Status Filter Tabs */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-b border-saffron-100/70 pb-3">
+        <div className="flex items-center gap-1 rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+              statusFilter === "all"
+                ? "bg-white text-saffron-800 shadow-xs"
+                : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            All ({list.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("active")}
+            className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+              statusFilter === "active"
+                ? "bg-white text-emerald-700 shadow-xs"
+                : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("inactive")}
+            className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+              statusFilter === "inactive"
+                ? "bg-white text-slate-700 shadow-xs"
+                : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            Inactive ({inactiveCount})
+          </button>
+        </div>
+      </div>
+
+      {/* Dates list */}
+      <div className="mt-4 space-y-2.5">
+        {filteredList.length === 0 ? (
           <p className="rounded-xl bg-saffron-50 px-4 py-6 text-center text-sm text-ink-soft">
-            No pooja dates configured yet — click &ldquo;+ Add&rdquo; to set
-            recurring dates (e.g. 8th, 16th, 23rd of each month).
+            {statusFilter === "all"
+              ? "No pooja dates configured yet — click \"+ Add\" to set recurring dates (e.g. 8th, 16th, 23rd of each month)."
+              : `No ${statusFilter} pooja dates found.`}
           </p>
         ) : (
-          list.map((d) => (
+          filteredList.map((d) => (
             <div
               key={d.id}
               className="flex flex-wrap items-center gap-3 rounded-2xl border border-saffron-100 bg-cream/40 px-4 py-3"

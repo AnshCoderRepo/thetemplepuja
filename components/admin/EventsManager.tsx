@@ -129,6 +129,25 @@ export default function EventsManager({
   const [poojas, setPoojas] = useState<Pooja[]>([]);
   const [error, setError] = useState("");
 
+  // Status filter for both tabs
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+
+  const activeFestivalsCount = festivals.filter(isFestivalActive).length;
+  const inactiveFestivalsCount = festivals.filter((f) => !isFestivalActive(f)).length;
+  const filteredFestivals = festivals.filter((f) => {
+    if (statusFilter === "active") return isFestivalActive(f);
+    if (statusFilter === "inactive") return !isFestivalActive(f);
+    return true;
+  });
+
+  const activeEventsCount = events.filter(isEventActive).length;
+  const inactiveEventsCount = events.filter((e) => !isEventActive(e)).length;
+  const filteredEvents = events.filter((e) => {
+    if (statusFilter === "active") return isEventActive(e);
+    if (statusFilter === "inactive") return !isEventActive(e);
+    return true;
+  });
+
   useEffect(() => {
     let live = true;
     fetchCatalog().then((c) => {
@@ -726,9 +745,53 @@ export default function EventsManager({
             </div>
           )}
 
+          {/* Status Filter Tabs */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-saffron-100/70 pb-3">
+            <div className="flex items-center gap-1 rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-white text-saffron-800 shadow-xs"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                All ({festivals.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("active")}
+                className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+                  statusFilter === "active"
+                    ? "bg-white text-emerald-700 shadow-xs"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                Active ({activeFestivalsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("inactive")}
+                className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+                  statusFilter === "inactive"
+                    ? "bg-white text-slate-700 shadow-xs"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                Inactive ({inactiveFestivalsCount})
+              </button>
+            </div>
+          </div>
+
           {/* Festivals Grid List */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {festivals.map((fest) => {
+            {filteredFestivals.length === 0 ? (
+              <p className="col-span-full rounded-xl bg-saffron-50 px-4 py-8 text-center text-sm text-ink-soft">
+                No {statusFilter !== "all" ? statusFilter : ""} festivals found.
+              </p>
+            ) : (
+              filteredFestivals.map((fest) => {
               const status = getFestivalStatus(fest);
               const isActive = isFestivalActive(fest);
 
@@ -834,7 +897,7 @@ export default function EventsManager({
                   </div>
                 </ManagerCard>
               );
-            })}
+            }))}
           </div>
         </>
       )}
@@ -1011,11 +1074,55 @@ export default function EventsManager({
             </div>
           )}
 
+          {/* Status Filter Tabs */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-saffron-100/70 pb-3">
+            <div className="flex items-center gap-1 rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-white text-saffron-800 shadow-xs"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                All ({events.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("active")}
+                className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+                  statusFilter === "active"
+                    ? "bg-white text-emerald-700 shadow-xs"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                Active ({activeEventsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("inactive")}
+                className={`rounded-lg px-3 py-1 font-semibold transition-all cursor-pointer ${
+                  statusFilter === "inactive"
+                    ? "bg-white text-slate-700 shadow-xs"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                Inactive ({inactiveEventsCount})
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {events.map((e) => {
-              const isActive = isEventActive(e);
-              return (
-                <ManagerCard key={e.slug} active={isActive}>
+            {filteredEvents.length === 0 ? (
+              <p className="col-span-full rounded-xl bg-saffron-50 px-4 py-8 text-center text-sm text-ink-soft">
+                No {statusFilter !== "all" ? statusFilter : ""} live rituals found.
+              </p>
+            ) : (
+              filteredEvents.map((e) => {
+                const isActive = isEventActive(e);
+                return (
+                  <ManagerCard key={e.slug} active={isActive}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">{e.emoji}</span>
@@ -1086,7 +1193,7 @@ export default function EventsManager({
                   </div>
                 </ManagerCard>
               );
-            })}
+            }))}
           </div>
         </>
       )}

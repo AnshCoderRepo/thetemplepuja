@@ -60,6 +60,7 @@ export default function BookingsTable({
   onRefresh?: () => void;
 }) {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<FlatBooking | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -174,14 +175,12 @@ export default function BookingsTable({
     }
   };
 
-  // Flatten strictly confirmed/rescheduled bookings
-  const successfulBookings = useMemo(() => {
+  // Flatten all bookings
+  const allBookings = useMemo(() => {
     const list: FlatBooking[] = [];
     for (const u of users) {
       for (const b of u.bookings) {
-        if (b.status === "confirmed" || b.status === "rescheduled") {
-          list.push({ booking: b, user: u });
-        }
+        list.push({ booking: b, user: u });
       }
     }
     // Newest first
@@ -190,9 +189,22 @@ export default function BookingsTable({
     );
   }, [users]);
 
+  const activeCount = useMemo(
+    () =>
+      allBookings.filter(
+        ({ booking }) => booking.status === "confirmed" || booking.status === "rescheduled"
+      ).length,
+    [allBookings]
+  );
+  const inactiveCount = allBookings.length - activeCount;
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return successfulBookings.filter(({ booking, user }) => {
+    return allBookings.filter(({ booking, user }) => {
+      const isActive = booking.status === "confirmed" || booking.status === "rescheduled";
+      if (statusFilter === "active" && !isActive) return false;
+      if (statusFilter === "inactive" && isActive) return false;
+
       const matchesSearch =
         !q ||
         booking.bookingId.toLowerCase().includes(q) ||
@@ -213,7 +225,7 @@ export default function BookingsTable({
 
       return matchesSearch && matchesDate;
     });
-  }, [successfulBookings, search, dateFilter]);
+  }, [allBookings, search, dateFilter, statusFilter]);
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
   const paginated = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -295,7 +307,44 @@ export default function BookingsTable({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Status Segmented Buttons */}
+          <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => { setStatusFilter("all"); setPage(1); }}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                statusFilter === "all"
+                  ? "bg-white text-saffron-900 shadow-xs font-bold"
+                  : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              All ({allBookings.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter("active"); setPage(1); }}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                statusFilter === "active"
+                  ? "bg-emerald-600 text-white shadow-xs font-bold"
+                  : "text-emerald-700 hover:text-emerald-800"
+              }`}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter("inactive"); setPage(1); }}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                statusFilter === "inactive"
+                  ? "bg-slate-700 text-white shadow-xs font-bold"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              Inactive ({inactiveCount})
+            </button>
+          </div>
+
           <input
             type="date"
             value={dateFilter}
@@ -309,11 +358,11 @@ export default function BookingsTable({
             className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
           />
 
-          {(search || dateFilter) && (
+          {(search || dateFilter || statusFilter !== "all") && (
             <button
               type="button"
-              onClick={() => { setSearch(""); setDateFilter(""); setPage(1); }}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200"
+              onClick={() => { setSearch(""); setDateFilter(""); setStatusFilter("all"); setPage(1); }}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200 cursor-pointer"
             >
               Reset Filters ✕
             </button>

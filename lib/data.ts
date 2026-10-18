@@ -816,6 +816,7 @@ export interface Addon {
   type?: "chadhava" | "addon";
   badge?: string;
   hindiBadge?: string;
+  assignedPoojaSlugs?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -1131,19 +1132,35 @@ export function getAssignedAddonsForPooja(pooja?: Pooja | null, allAddons?: Addo
   if (!pooja) return [];
   const pool = allAddons && allAddons.length > 0 ? allAddons : defaultAddons;
   const assignedIds = new Set(pooja.assignedAddonIds || []);
-  if (assignedIds.size > 0) {
-    return pool.filter((a) => a.active !== false && (assignedIds.has(a._id) || assignedIds.has(a.id)));
-  }
-  // If legacy chadhavaOptions exists and no assignedAddonIds is set, fall back to matching by name or id
-  if (Array.isArray(pooja.chadhavaOptions) && pooja.chadhavaOptions.length > 0) {
-    const legacySet = new Set(pooja.chadhavaOptions.map((s) => s.trim().toLowerCase()));
-    return pool.filter(
-      (a) =>
-        a.active !== false &&
-        (legacySet.has(a.name.toLowerCase()) || legacySet.has(a.id.toLowerCase()) || legacySet.has(a._id.toLowerCase()))
-    );
-  }
-  return [];
+  const hasExplicitAssignedList = Array.isArray(pooja.assignedAddonIds);
+
+  return pool.filter((a) => {
+    if (a.active === false) return false;
+
+    // Check if explicitly assigned to this pooja by ID
+    if (assignedIds.has(a._id) || assignedIds.has(a.id)) {
+      return true;
+    }
+
+    // Check if addon explicitly assigns this pooja slug
+    if (Array.isArray(a.assignedPoojaSlugs) && a.assignedPoojaSlugs.includes(pooja.slug)) {
+      return true;
+    }
+
+    // Legacy fallback only if pooja has no explicit assignedAddonIds array and addon has no assignedPoojaSlugs
+    if (!hasExplicitAssignedList && (!a.assignedPoojaSlugs || a.assignedPoojaSlugs.length === 0)) {
+      if (Array.isArray(pooja.chadhavaOptions) && pooja.chadhavaOptions.length > 0) {
+        const legacySet = new Set(pooja.chadhavaOptions.map((s) => s.trim().toLowerCase()));
+        return (
+          legacySet.has(a.name.toLowerCase()) ||
+          legacySet.has(a.id.toLowerCase()) ||
+          legacySet.has((a._id || "").toLowerCase())
+        );
+      }
+    }
+
+    return false;
+  });
 }
 
 export function getLocalizedAddonName(addon: Addon, locale?: string): string {

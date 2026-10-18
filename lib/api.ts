@@ -1096,6 +1096,15 @@ export async function exportDevoteesExcelRemote(
 
 // ===================== ADD-ONS API CLIENT =====================
 
+export interface AvailablePoojaOption {
+  id: string;
+  slug: string;
+  title: string;
+  hindiTitle?: string;
+  active: boolean;
+  emoji?: string;
+}
+
 export interface EnrichedAddon extends Addon {
   assignedPoojaCount?: number;
   assignedPoojaSlugs?: string[];
@@ -1105,6 +1114,8 @@ export interface EnrichedAddon extends Addon {
 export async function fetchAdminAddons(token: string): Promise<{
   ok: boolean;
   addons: EnrichedAddon[];
+  totalPoojas?: number;
+  availablePoojas?: AvailablePoojaOption[];
   error?: string;
   status?: number;
 }> {
@@ -1122,14 +1133,19 @@ export async function fetchAdminAddons(token: string): Promise<{
     if (!res.ok) {
       return { ok: false, addons: [], error: data.error || "Failed to fetch add-ons" };
     }
-    return { ok: true, addons: data.addons || [] };
+    return {
+      ok: true,
+      addons: data.addons || [],
+      totalPoojas: typeof data.totalPoojas === "number" ? data.totalPoojas : undefined,
+      availablePoojas: data.availablePoojas || [],
+    };
   } catch (err) {
     return { ok: false, addons: [], error: "Network error fetching add-ons" };
   }
 }
 
 export async function saveAdminAddon(
-  addon: Partial<Addon>,
+  addon: Partial<Addon & { assignedPoojaSlugs?: string[] }>,
   token: string
 ): Promise<{ ok: boolean; addon?: Addon; error?: string; status?: number }> {
   try {

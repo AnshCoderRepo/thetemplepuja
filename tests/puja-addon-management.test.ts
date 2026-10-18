@@ -430,4 +430,104 @@ describe("Puja-wise Add-on Management Specification (13 Scenarios)", () => {
       'Add-on "Inactive Test Addon" is currently inactive.'
     );
   });
+
+  // Scenario 14: Chadava assignment via assignedPoojaSlugs restricts display strictly to the selected puja
+  it("Scenario 14: Chadava with assignedPoojaSlugs only displays on the assigned puja and can be changed to another puja", () => {
+    const targetPuja: Pooja = {
+      slug: "special-navratri-puja",
+      title: "Special Navratri Puja",
+      hindiTitle: "विशेष नवरात्रि पूजा",
+      emoji: "🌸",
+      gradient: "from-amber-500 to-red-600",
+      price: 1501,
+      duration: "2 hours",
+      bestMuhurat: "Navratri",
+      description: "Navratri Special Chandi Path",
+      benefits: ["Shakti Blessings"],
+      assignedAddonIds: [], // Not explicitly mapped on the puja object
+    };
+
+    const otherPuja: Pooja = {
+      slug: "daily-morning-aarti",
+      title: "Daily Morning Aarti",
+      hindiTitle: "दैनिक सुबह आरती",
+      emoji: "🪔",
+      gradient: "from-orange-500 to-amber-600",
+      price: 251,
+      duration: "30 mins",
+      bestMuhurat: "Brahma Muhurat",
+      description: "Morning Aarti",
+      benefits: [],
+      assignedAddonIds: [],
+    };
+
+    const navratriChadava: Addon = {
+      _id: "chadhava-chunari-shringar",
+      id: "chadhava-chunari-shringar",
+      name: "Mata Rani Chunari & Shringar Seva",
+      description: "Red silk chunari and sacred solah shringar offering",
+      price: 251,
+      currency: "INR",
+      active: true,
+      category: "Vastra Seva",
+      assignedPoojaSlugs: ["special-navratri-puja"],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Should display on targetPuja
+    const forTarget = getAssignedAddonsForPooja(targetPuja, [navratriChadava]);
+    expect(forTarget.length).toBe(1);
+    expect(forTarget[0].name).toBe("Mata Rani Chunari & Shringar Seva");
+
+    // 2. Should NOT display on otherPuja
+    const forOther = getAssignedAddonsForPooja(otherPuja, [navratriChadava]);
+    expect(forOther.length).toBe(0);
+
+    // 3. Admin edits Chadava to change puja assignment from special-navratri-puja to daily-morning-aarti
+    const editedChadava: Addon = {
+      ...navratriChadava,
+      assignedPoojaSlugs: ["daily-morning-aarti"],
+    };
+
+    expect(getAssignedAddonsForPooja(targetPuja, [editedChadava]).length).toBe(0);
+    expect(getAssignedAddonsForPooja(otherPuja, [editedChadava]).length).toBe(1);
+    expect(getAssignedAddonsForPooja(otherPuja, [editedChadava])[0].name).toBe(
+      "Mata Rani Chunari & Shringar Seva"
+    );
+  });
+
+  // Scenario 15: Inactive items are excluded by active status filter across items
+  it("Scenario 15: Inactive chadavas are never displayed on frontend even if assigned", () => {
+    const puja: Pooja = {
+      slug: "ganesh-puja",
+      title: "Ganesh Puja",
+      hindiTitle: "गणेश पूजा",
+      emoji: "🐘",
+      gradient: "from-orange-500 to-amber-600",
+      price: 501,
+      duration: "45 mins",
+      bestMuhurat: "Chaturthi",
+      description: "Vighnaharta Puja",
+      benefits: [],
+      assignedAddonIds: ["addon-modak"],
+    };
+
+    const inactiveModak: Addon = {
+      _id: "addon-modak",
+      id: "addon-modak",
+      name: "21 Modak Offering",
+      description: "Sweet offerings to Lord Ganesha",
+      price: 201,
+      currency: "INR",
+      active: false, // marked inactive by admin
+      assignedPoojaSlugs: ["ganesh-puja"],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const assigned = getAssignedAddonsForPooja(puja, [inactiveModak]);
+    expect(assigned).toEqual([]);
+  });
 });
+
