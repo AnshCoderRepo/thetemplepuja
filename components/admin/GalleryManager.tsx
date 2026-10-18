@@ -29,6 +29,7 @@ import {
   extractYouTubeVideoId,
   getYouTubeThumbnailUrl,
   getGalleryItemImages,
+  getGalleryItemVideos,
   hasYouTubeVideo,
 } from "@/lib/gallery-types";
 import {
@@ -49,12 +50,8 @@ interface ItemDraft {
   _id?: string;
   title: string;
   description: string;
-  photo1: string;
-  photo2: string;
-  photo3: string;
-  videoUrl: string;
-  youtubeUrl: string;
-  youtubeVideoId: string;
+  photos: string[];
+  videos: string[];
   thumbnailUrl: string;
   category: string;
   isActive: boolean;
@@ -67,12 +64,8 @@ interface ItemDraft {
 const emptyDraft: ItemDraft = {
   title: "",
   description: "",
-  photo1: "",
-  photo2: "",
-  photo3: "",
-  videoUrl: "",
-  youtubeUrl: "",
-  youtubeVideoId: "",
+  photos: [""],
+  videos: [""],
   thumbnailUrl: "",
   category: "Puja Ceremonies",
   isActive: true,
@@ -100,7 +93,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
   const [formError, setFormError] = useState("");
-  const [uploadingSlot, setUploadingSlot] = useState<1 | 2 | 3 | null>(null);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
   // Delete confirm modal state
   const [itemToDelete, setItemToDelete] = useState<GalleryItem | null>(null);
@@ -133,29 +126,29 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
     loadItems();
   }, [loadItems]);
 
-  // Handle client-side image compression & upload for individual slots (1, 2, or 3)
-  const handleSlotPhotoUpload = (slot: 1 | 2 | 3, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle client-side image compression & upload for photo index
+  const handlePhotoUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setFormError(`Photo ${slot}: Selected file is not an image. Please choose a JPG, PNG, or WebP.`);
+      setFormError(`Photo ${index + 1}: Selected file is not an image. Please choose a JPG, PNG, or WebP.`);
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setFormError(`Photo ${slot}: File size exceeds 5MB limit. Please choose a smaller image.`);
+      setFormError(`Photo ${index + 1}: File size exceeds 5MB limit. Please choose a smaller image.`);
       return;
     }
 
     setFormError("");
-    setUploadingSlot(slot);
+    setUploadingIndex(index);
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const rawDataUrl = event.target?.result as string;
       if (!rawDataUrl) {
-        setUploadingSlot(null);
+        setUploadingIndex(null);
         return;
       }
 
@@ -181,71 +174,84 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
           : rawDataUrl;
 
         setDraft((prev) => {
-          if (slot === 1) return { ...prev, photo1: finalUrl };
-          if (slot === 2) return { ...prev, photo2: finalUrl };
-          return { ...prev, photo3: finalUrl };
+          const nextPhotos = [...prev.photos];
+          nextPhotos[index] = finalUrl;
+          return { ...prev, photos: nextPhotos };
         });
 
-        setUploadingSlot(null);
-        showNotification(`🖼️ Photo ${slot} uploaded and optimized successfully!`);
+        setUploadingIndex(null);
+        showNotification(`🖼️ Photo ${index + 1} uploaded and optimized successfully!`);
       };
 
       img.onerror = () => {
         setDraft((prev) => {
-          if (slot === 1) return { ...prev, photo1: rawDataUrl };
-          if (slot === 2) return { ...prev, photo2: rawDataUrl };
-          return { ...prev, photo3: rawDataUrl };
+          const nextPhotos = [...prev.photos];
+          nextPhotos[index] = rawDataUrl;
+          return { ...prev, photos: nextPhotos };
         });
-        setUploadingSlot(null);
+        setUploadingIndex(null);
       };
 
       img.src = rawDataUrl;
     };
 
     reader.onerror = () => {
-      setFormError(`Photo ${slot}: Could not read image file.`);
-      setUploadingSlot(null);
+      setFormError(`Photo ${index + 1}: Could not read image file.`);
+      setUploadingIndex(null);
     };
 
     reader.readAsDataURL(file);
-    // Reset input value so the same file could be re-selected if desired
     e.target.value = "";
   };
 
-  // Remove individual photo
-  const handleRemovePhoto = (slot: 1 | 2 | 3) => {
+  const handlePhotoUrlChange = (index: number, val: string) => {
     setDraft((prev) => {
-      if (slot === 1) return { ...prev, photo1: "" };
-      if (slot === 2) return { ...prev, photo2: "" };
-      return { ...prev, photo3: "" };
+      const nextPhotos = [...prev.photos];
+      nextPhotos[index] = val;
+      return { ...prev, photos: nextPhotos };
     });
   };
 
-  // Auto-detect and parse YouTube URL changes
-  const handleYouTubeUrlChange = (url: string) => {
-    const videoId = extractYouTubeVideoId(url);
-    setDraft((prev) => {
-      const next = { ...prev, youtubeUrl: url };
-      if (videoId) {
-        next.youtubeVideoId = videoId;
-        if (!prev.thumbnailUrl || prev.thumbnailUrl.includes("img.youtube.com")) {
-          next.thumbnailUrl = getYouTubeThumbnailUrl(videoId) || "";
-        }
-      } else {
-        next.youtubeVideoId = "";
-      }
-      return next;
-    });
-  };
-
-  const handleClearVideo = () => {
+  const handleAddPhotoSlot = () => {
     setDraft((prev) => ({
       ...prev,
-      youtubeUrl: "",
-      youtubeVideoId: "",
-      videoUrl: "",
-      thumbnailUrl: "",
+      photos: [...prev.photos, ""],
     }));
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setDraft((prev) => {
+      const nextPhotos = prev.photos.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        photos: nextPhotos.length > 0 ? nextPhotos : [""],
+      };
+    });
+  };
+
+  const handleVideoUrlChange = (index: number, val: string) => {
+    setDraft((prev) => {
+      const nextVideos = [...prev.videos];
+      nextVideos[index] = val;
+      return { ...prev, videos: nextVideos };
+    });
+  };
+
+  const handleAddVideoSlot = () => {
+    setDraft((prev) => ({
+      ...prev,
+      videos: [...prev.videos, ""],
+    }));
+  };
+
+  const handleRemoveVideo = (index: number) => {
+    setDraft((prev) => {
+      const nextVideos = prev.videos.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        videos: nextVideos.length > 0 ? nextVideos : [""],
+      };
+    });
   };
 
   const openNewItemModal = () => {
@@ -257,17 +263,14 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
 
   const openEditModal = (item: GalleryItem) => {
     const existingPhotos = getGalleryItemImages(item);
+    const existingVideos = getGalleryItemVideos(item).map((v) => v.url);
     setDraft({
       id: item.id || item._id,
       _id: item.id || item._id,
       title: item.title,
       description: item.description || "",
-      photo1: existingPhotos[0] || item.imageUrl || "",
-      photo2: existingPhotos[1] || item.imageUrl2 || "",
-      photo3: existingPhotos[2] || item.imageUrl3 || "",
-      videoUrl: item.videoUrl || "",
-      youtubeUrl: item.youtubeUrl || "",
-      youtubeVideoId: item.youtubeVideoId || (item.youtubeUrl ? extractYouTubeVideoId(item.youtubeUrl) || "" : ""),
+      photos: existingPhotos.length > 0 ? existingPhotos : [""],
+      videos: existingVideos.length > 0 ? existingVideos : [""],
       thumbnailUrl: item.thumbnailUrl || "",
       category: item.category || "Puja Ceremonies",
       isActive: item.isActive !== false,
@@ -289,37 +292,37 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       return;
     }
 
-    // Collect available photos
-    const photos = [draft.photo1.trim(), draft.photo2.trim(), draft.photo3.trim()].filter(Boolean);
+    // Collect available photos & videos
+    const photos = draft.photos.map((p) => p.trim()).filter(Boolean);
+    const videos = draft.videos.map((v) => v.trim()).filter(Boolean);
 
-    // Validate video if provided
-    const hasYt = Boolean(draft.youtubeUrl.trim());
-    if (hasYt) {
-      const id = extractYouTubeVideoId(draft.youtubeUrl);
-      if (!id) {
-        setFormError("Invalid YouTube URL. Please provide a standard YouTube video link (e.g. https://www.youtube.com/watch?v=... or https://youtu.be/...)");
-        return;
-      }
-      if (draft.videoDurationSeconds > 180) {
+    // Validate video durations if YouTube links provided
+    for (const vUrl of videos) {
+      const id = extractYouTubeVideoId(vUrl);
+      if (id && draft.videoDurationSeconds > 180) {
         setFormError("Video duration exceeds the maximum limit of 3 minutes (180 seconds).");
         return;
       }
     }
 
     // Must have at least 1 photo or 1 video
-    if (photos.length === 0 && !hasYt && !draft.videoUrl.trim()) {
-      setFormError("Please upload at least one photo or provide a YouTube video URL.");
+    if (photos.length === 0 && videos.length === 0) {
+      setFormError("Please upload at least one photo or provide a video URL.");
       return;
     }
 
     setSaving(true);
 
+    const hasVideo = videos.length > 0;
     const mediaType: GalleryMediaType =
-      hasYt || draft.videoUrl.trim()
+      hasVideo
         ? photos.length > 0
           ? "mixed"
           : "video"
         : "photo";
+
+    const firstYt = videos.map((v) => ({ url: v, id: extractYouTubeVideoId(v) })).find((v) => v.id);
+    const firstDirect = videos.find((v) => !extractYouTubeVideoId(v));
 
     const payload: Partial<GalleryItem> = {
       id: draft.id,
@@ -331,18 +334,20 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       imageUrl: photos[0] || undefined,
       imageUrl2: photos[1] || undefined,
       imageUrl3: photos[2] || undefined,
-      youtubeUrl: draft.youtubeUrl.trim() || undefined,
-      youtubeVideoId: draft.youtubeVideoId.trim() || undefined,
-      videoUrl: draft.videoUrl.trim() || undefined,
+      videos,
+      videoUrls: videos,
+      youtubeUrl: firstYt?.url || undefined,
+      youtubeVideoId: firstYt?.id || undefined,
+      videoUrl: firstDirect || videos[0] || undefined,
       thumbnailUrl:
         draft.thumbnailUrl.trim() ||
-        (draft.youtubeVideoId ? getYouTubeThumbnailUrl(draft.youtubeVideoId) || undefined : photos[0] || undefined),
+        (firstYt?.id ? getYouTubeThumbnailUrl(firstYt.id) || undefined : photos[0] || undefined),
       category: draft.category,
       isActive: draft.isActive,
       showOnHomepage: draft.showOnHomepage,
       displayOrder: Number(draft.displayOrder) || 1,
       isDemo: draft.isDemo,
-      videoDurationSeconds: hasYt ? Number(draft.videoDurationSeconds) : undefined,
+      videoDurationSeconds: firstYt ? Number(draft.videoDurationSeconds) : undefined,
     };
 
     const res = await saveAdminGalleryItem(payload, token);
@@ -616,8 +621,9 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((item) => {
             const photos = getGalleryItemImages(item);
-            const hasVideo = hasYouTubeVideo(item) || Boolean(item.videoUrl);
-            const hasYouTube = Boolean(item.youtubeUrl || item.youtubeVideoId);
+            const videos = getGalleryItemVideos(item);
+            const hasVideo = videos.length > 0;
+            const hasYouTube = videos.some((v) => v.isYouTube) || hasYouTubeVideo(item);
 
             return (
               <div
@@ -626,10 +632,10 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                   item.isActive ? "border-saffron-200 hover:border-saffron-400" : "border-slate-200 opacity-70 bg-slate-50"
                 }`}
               >
-                {/* 3 Photos + 1 Video Responsive Media Box */}
+                {/* Responsive Media Box */}
                 <div className="relative aspect-[16/10] w-full bg-slate-900 overflow-hidden">
                   {/* Collage view in admin card */}
-                  {photos.length === 3 ? (
+                  {photos.length >= 3 ? (
                     <div className="grid grid-cols-3 gap-0.5 h-full w-full">
                       <div className="col-span-2 relative h-full">
                         <Image
@@ -658,6 +664,11 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                             className="object-cover"
                             sizes="120px"
                           />
+                          {photos.length > 3 && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-[10px] font-bold">
+                              +{photos.length - 2}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -714,12 +725,12 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                     </span>
 
                     <div className="flex items-center gap-1">
-                      {hasYouTube && (
+                      {hasVideo && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
                           <svg className="h-2.5 w-2.5 fill-current" viewBox="0 0 24 24">
                             <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                           </svg>
-                          <span>Video</span>
+                          <span>{videos.length > 1 ? `${videos.length} Videos` : "Video"}</span>
                         </span>
                       )}
 
@@ -912,7 +923,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                 />
               </div>
 
-              {/* ────────────────── SECTION 1: 3 PHOTOS MANAGEMENT ────────────────── */}
+              {/* ────────────────── SECTION 1: UNLIMITED PHOTOS MANAGEMENT ────────────────── */}
               <div className="rounded-2xl border border-saffron-200 bg-saffron-50/40 p-4 sm:p-5 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div className="flex items-center gap-2">
@@ -920,226 +931,126 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       <Camera className="h-3.5 w-3.5" />
                     </span>
                     <h4 className="text-xs sm:text-sm font-bold text-saffron-900">
-                      Gallery Photos (Up to 3 Photos Simultaneously)
+                      Gallery Photos ({draft.photos.filter((p) => p.trim()).length} Added)
                     </h4>
                   </div>
                   <span className="text-[11px] text-ink-soft">
-                    Upload or replace individual photos independently.
+                    Add as many photos as you need. Upload files or paste image URLs.
                   </span>
                 </div>
 
-                {/* 3 Photo Slots Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Photo 1 Slot */}
-                  <div className="rounded-xl border border-saffron-200/80 bg-white p-3 space-y-2 flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-ink flex items-center gap-1">
-                        <span>Photo 1</span>
-                        <span className="rounded bg-saffron-100 px-1 py-0.2 text-[9px] font-bold text-saffron-800">Primary</span>
-                      </span>
-                      {draft.photo1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePhoto(1)}
-                          className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
-                          title="Remove Photo 1"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Preview / Upload Box */}
-                    {draft.photo1 ? (
-                      <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
-                        <Image
-                          src={draft.photo1}
-                          alt="Photo 1"
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <label
-                            htmlFor="photo-upload-1"
-                            className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink hover:bg-white cursor-pointer shadow-xs"
-                          >
-                            Replace
-                          </label>
+                {/* Photo Slots Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {draft.photos.map((photo, idx) => (
+                    <div
+                      key={`draft-photo-${idx}`}
+                      className="rounded-xl border border-saffron-200/80 bg-white p-3 space-y-2 flex flex-col justify-between"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-ink flex items-center gap-1">
+                          <span>Photo {idx + 1}</span>
+                          {idx === 0 && (
+                            <span className="rounded bg-saffron-100 px-1 py-0.2 text-[9px] font-bold text-saffron-800">
+                              Primary
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {photo && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextPhotos = [...draft.photos];
+                                nextPhotos[idx] = "";
+                                setDraft((p) => ({ ...p, photos: nextPhotos }));
+                              }}
+                              className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
+                              title="Clear photo image"
+                            >
+                              Clear
+                            </button>
+                          )}
+                          {draft.photos.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhoto(idx)}
+                              className="text-[10px] font-semibold text-slate-500 hover:text-rose-700 cursor-pointer"
+                              title="Delete photo slot"
+                            >
+                              Remove
+                            </button>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <label
-                        htmlFor="photo-upload-1"
-                        className="flex flex-col items-center justify-center aspect-[4/3] w-full rounded-lg border-2 border-dashed border-saffron-200 bg-cream/30 hover:bg-saffron-50/60 transition-colors cursor-pointer text-center p-3"
-                      >
-                        <Upload className="h-5 w-5 text-saffron-600 mb-1" />
-                        <span className="text-xs font-bold text-saffron-800">
-                          {uploadingSlot === 1 ? "Optimizing..." : "Upload Photo 1"}
-                        </span>
-                        <span className="text-[10px] text-ink-soft">JPG, PNG, WebP (≤5MB)</span>
-                      </label>
-                    )}
 
-                    <input
-                      id="photo-upload-1"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(e) => handleSlotPhotoUpload(1, e)}
-                      disabled={uploadingSlot !== null}
-                      className="hidden"
-                    />
-
-                    {/* Direct URL input */}
-                    <div>
-                      <input
-                        type="url"
-                        value={draft.photo1}
-                        onChange={(e) => setDraft((p) => ({ ...p, photo1: e.target.value }))}
-                        placeholder="Or paste photo 1 URL..."
-                        className="w-full rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Photo 2 Slot */}
-                  <div className="rounded-xl border border-saffron-200/80 bg-white p-3 space-y-2 flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-ink">Photo 2 (Optional)</span>
-                      {draft.photo2 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePhoto(2)}
-                          className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
-                          title="Remove Photo 2"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Preview / Upload Box */}
-                    {draft.photo2 ? (
-                      <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
-                        <Image
-                          src={draft.photo2}
-                          alt="Photo 2"
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <label
-                            htmlFor="photo-upload-2"
-                            className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink hover:bg-white cursor-pointer shadow-xs"
-                          >
-                            Replace
-                          </label>
+                      {/* Preview / Upload Box */}
+                      {photo ? (
+                        <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
+                          <Image
+                            src={photo}
+                            alt={`Photo ${idx + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label
+                              htmlFor={`photo-upload-${idx}`}
+                              className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink hover:bg-white cursor-pointer shadow-xs"
+                            >
+                              Replace
+                            </label>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <label
-                        htmlFor="photo-upload-2"
-                        className="flex flex-col items-center justify-center aspect-[4/3] w-full rounded-lg border-2 border-dashed border-saffron-200 bg-cream/30 hover:bg-saffron-50/60 transition-colors cursor-pointer text-center p-3"
-                      >
-                        <Upload className="h-5 w-5 text-saffron-600 mb-1" />
-                        <span className="text-xs font-bold text-saffron-800">
-                          {uploadingSlot === 2 ? "Optimizing..." : "Upload Photo 2"}
-                        </span>
-                        <span className="text-[10px] text-ink-soft">JPG, PNG, WebP (≤5MB)</span>
-                      </label>
-                    )}
-
-                    <input
-                      id="photo-upload-2"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(e) => handleSlotPhotoUpload(2, e)}
-                      disabled={uploadingSlot !== null}
-                      className="hidden"
-                    />
-
-                    {/* Direct URL input */}
-                    <div>
-                      <input
-                        type="url"
-                        value={draft.photo2}
-                        onChange={(e) => setDraft((p) => ({ ...p, photo2: e.target.value }))}
-                        placeholder="Or paste photo 2 URL..."
-                        className="w-full rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Photo 3 Slot */}
-                  <div className="rounded-xl border border-saffron-200/80 bg-white p-3 space-y-2 flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-ink">Photo 3 (Optional)</span>
-                      {draft.photo3 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePhoto(3)}
-                          className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
-                          title="Remove Photo 3"
+                      ) : (
+                        <label
+                          htmlFor={`photo-upload-${idx}`}
+                          className="flex flex-col items-center justify-center aspect-[4/3] w-full rounded-lg border-2 border-dashed border-saffron-200 bg-cream/30 hover:bg-saffron-50/60 transition-colors cursor-pointer text-center p-3"
                         >
-                          Clear
-                        </button>
+                          <Upload className="h-5 w-5 text-saffron-600 mb-1" />
+                          <span className="text-xs font-bold text-saffron-800">
+                            {uploadingIndex === idx ? "Optimizing..." : `Upload Photo ${idx + 1}`}
+                          </span>
+                          <span className="text-[10px] text-ink-soft">JPG, PNG, WebP (≤5MB)</span>
+                        </label>
                       )}
-                    </div>
 
-                    {/* Preview / Upload Box */}
-                    {draft.photo3 ? (
-                      <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
-                        <Image
-                          src={draft.photo3}
-                          alt="Photo 3"
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <label
-                            htmlFor="photo-upload-3"
-                            className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink hover:bg-white cursor-pointer shadow-xs"
-                          >
-                            Replace
-                          </label>
-                        </div>
-                      </div>
-                    ) : (
-                      <label
-                        htmlFor="photo-upload-3"
-                        className="flex flex-col items-center justify-center aspect-[4/3] w-full rounded-lg border-2 border-dashed border-saffron-200 bg-cream/30 hover:bg-saffron-50/60 transition-colors cursor-pointer text-center p-3"
-                      >
-                        <Upload className="h-5 w-5 text-saffron-600 mb-1" />
-                        <span className="text-xs font-bold text-saffron-800">
-                          {uploadingSlot === 3 ? "Optimizing..." : "Upload Photo 3"}
-                        </span>
-                        <span className="text-[10px] text-ink-soft">JPG, PNG, WebP (≤5MB)</span>
-                      </label>
-                    )}
-
-                    <input
-                      id="photo-upload-3"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(e) => handleSlotPhotoUpload(3, e)}
-                      disabled={uploadingSlot !== null}
-                      className="hidden"
-                    />
-
-                    {/* Direct URL input */}
-                    <div>
                       <input
-                        type="url"
-                        value={draft.photo3}
-                        onChange={(e) => setDraft((p) => ({ ...p, photo3: e.target.value }))}
-                        placeholder="Or paste photo 3 URL..."
-                        className="w-full rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
+                        id={`photo-upload-${idx}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => handlePhotoUpload(idx, e)}
+                        disabled={uploadingIndex !== null}
+                        className="hidden"
                       />
+
+                      {/* Direct URL input */}
+                      <div>
+                        <input
+                          type="url"
+                          value={photo}
+                          onChange={(e) => handlePhotoUrlChange(idx, e.target.value)}
+                          placeholder={`Or paste photo ${idx + 1} URL...`}
+                          className="w-full rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+
+                {/* + Add Another Photo Button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAddPhotoSlot}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-saffron-400 bg-white px-4 py-2 text-xs font-bold text-saffron-800 hover:bg-saffron-50 hover:border-saffron-600 transition-colors cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5 text-saffron-600" />
+                    <span>+ Add Another Photo</span>
+                  </button>
                 </div>
               </div>
 
-              {/* ────────────────── SECTION 2: 1 OPTIONAL VIDEO ────────────────── */}
+              {/* ────────────────── SECTION 2: UNLIMITED VIDEOS MANAGEMENT ────────────────── */}
               <div className="rounded-2xl border border-red-200/80 bg-red-50/30 p-4 sm:p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1147,87 +1058,104 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       <Film className="h-3.5 w-3.5" />
                     </span>
                     <h4 className="text-xs sm:text-sm font-bold text-ink">
-                      Video (1 Optional YouTube Video)
+                      Gallery Videos ({draft.videos.filter((v) => v.trim()).length} Added)
                     </h4>
                   </div>
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-800">
-                    Max 3 Mins (180s)
+                    Max 3 Mins (180s) each
                   </span>
                 </div>
 
-                {/* YouTube URL input */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-ink">
-                      YouTube Video URL
-                    </label>
-                    {draft.youtubeUrl && (
-                      <button
-                        type="button"
-                        onClick={handleClearVideo}
-                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
+                {/* Video Links List */}
+                <div className="space-y-3">
+                  {draft.videos.map((videoUrl, idx) => {
+                    const videoId = extractYouTubeVideoId(videoUrl);
+                    return (
+                      <div
+                        key={`draft-video-${idx}`}
+                        className="rounded-xl border border-red-200 bg-white p-3 space-y-2"
                       >
-                        Remove Video
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="url"
-                      value={draft.youtubeUrl}
-                      onChange={(e) => handleYouTubeUrlChange(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                      className="w-full rounded-xl border border-saffron-200 bg-white pl-3.5 pr-24 py-2 text-xs sm:text-sm text-ink placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
-                    />
-                    {draft.youtubeVideoId && (
-                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-bold text-red-600">
-                        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
-                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                        </svg>
-                        <span>Verified</span>
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-ink">
+                            Video {idx + 1} URL (YouTube or Direct Video)
+                          </label>
+                          {draft.videos.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVideo(idx)}
+                              className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
+                            >
+                              Remove Video {idx + 1}
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="relative">
+                          <input
+                            type="url"
+                            value={videoUrl}
+                            onChange={(e) => handleVideoUrlChange(idx, e.target.value)}
+                            placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/... or MP4 link"
+                            className="w-full rounded-xl border border-saffron-200 bg-white pl-3.5 pr-24 py-2 text-xs sm:text-sm text-ink placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
+                          />
+                          {videoId && (
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-bold text-red-600">
+                              <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                              </svg>
+                              <span>Verified</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* YouTube Preview if valid ID */}
+                        {videoId && (
+                          <div className="flex flex-col sm:flex-row items-center gap-3 rounded-lg border border-red-100 bg-red-50/30 p-2.5">
+                            <div className="relative aspect-video w-full sm:w-32 rounded overflow-hidden bg-black shrink-0">
+                              <Image
+                                src={getYouTubeThumbnailUrl(videoId) || "/logo.jpeg"}
+                                alt={`Video ${idx + 1} Preview`}
+                                fill
+                                className="object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white shadow-md">
+                                  <Play className="h-3 w-3 fill-white ml-0.5" />
+                                </span>
+                              </div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-mono text-ink-soft">
+                                YouTube ID: {videoId}
+                              </p>
+                              <a
+                                href={videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-saffron-800 hover:text-saffron-950 mt-0.5"
+                              >
+                                <span>Open on YouTube</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
 
-                {/* Video Preview if valid YouTube URL provided */}
-                {draft.youtubeVideoId && (
-                  <div className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-red-200 bg-white p-3">
-                    <div className="relative aspect-video w-full sm:w-40 rounded-lg overflow-hidden bg-black shrink-0">
-                      <Image
-                        src={getYouTubeThumbnailUrl(draft.youtubeVideoId) || "/logo.jpeg"}
-                        alt="YouTube Preview"
-                        fill
-                        className="object-cover"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md">
-                          <Play className="h-4 w-4 fill-white ml-0.5" />
-                        </span>
-                      </div>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-red-600">
-                        <svg className="h-4 w-4 fill-current shrink-0" viewBox="0 0 24 24">
-                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                        </svg>
-                        <span>YouTube Video Attached</span>
-                      </div>
-                      <p className="text-[11px] font-mono text-ink-soft mt-0.5">
-                        ID: {draft.youtubeVideoId}
-                      </p>
-                      <a
-                        href={draft.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-saffron-800 hover:text-saffron-950 mt-1"
-                      >
-                        <span>Open on YouTube</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </div>
-                )}
+                {/* + Add Another Video Button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAddVideoSlot}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-red-300 bg-white px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-50 hover:border-red-500 transition-colors cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5 text-red-600" />
+                    <span>+ Add Another Video Link</span>
+                  </button>
+                </div>
               </div>
 
               {/* Display & Order Settings */}
@@ -1288,7 +1216,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
 
                 <button
                   type="submit"
-                  disabled={saving || uploadingSlot !== null}
+                  disabled={saving || uploadingIndex !== null}
                   className="btn-primary !py-2 !px-5 !text-xs font-bold inline-flex items-center gap-2 cursor-pointer"
                 >
                   {saving ? (

@@ -6,6 +6,7 @@ import { Reveal } from "@/components/common";
 import { contactInfo } from "@/lib/data";
 import { useI18n } from "@/components/providers";
 import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
+import { trackLead, trackContact } from "@/lib/meta-pixel";
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
@@ -16,6 +17,12 @@ export default function Contact() {
     const data = new FormData(e.currentTarget);
     const name = String(data.get("name") ?? "").trim();
     const message = String(data.get("message") ?? "").trim();
+
+    trackLead({
+      form_name: "Contact Us Form",
+      content_name: "General Devotee Enquiry",
+    });
+
     // Deliver the enquiry straight to the team's WhatsApp
     const text =
       `🙏 New enquiry — ${SITE_CONFIG.brandName}\n\n` +
@@ -53,6 +60,14 @@ export default function Contact() {
                     href={info.href}
                     target={info.href.startsWith("http") ? "_blank" : undefined}
                     rel={info.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                    onClick={() => {
+                      const method = info.href.startsWith("tel:")
+                        ? "phone"
+                        : info.href.startsWith("mailto:")
+                        ? "email"
+                        : "whatsapp";
+                      trackContact({ method, label: info.label });
+                    }}
                     className="card flex items-center justify-between p-4 group transition-all hover:border-saffron-300 hover:shadow-card cursor-pointer"
                   >
                     <div className="flex items-center gap-4">

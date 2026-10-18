@@ -12,6 +12,7 @@ import {
   saveOrder,
   addDevoteeEntitlement,
 } from "@/lib/server-store";
+import { sendCapiPurchaseEvent } from "@/lib/meta-capi";
 import type { UserProfile } from "@/lib/storage";
 
 /**
@@ -130,6 +131,27 @@ export async function POST(req: NextRequest) {
       verifiedVia: "server_api",
       signature,
     },
+  });
+
+  // Dispatch Meta Conversions API (CAPI) Purchase event (non-blocking, deduplicated by eventId)
+  void sendCapiPurchaseEvent({
+    booking: {
+      bookingId,
+      orderId,
+      paymentId,
+      poojaSlug,
+      poojaTitle,
+      amount: safeAmount,
+      currency: "INR",
+    },
+    user: {
+      name,
+      phone: customerPhone,
+      city,
+    },
+    req,
+  }).catch((err) => {
+    console.warn("[meta-capi] verify route dispatch error:", err?.message);
   });
 
   return NextResponse.json({

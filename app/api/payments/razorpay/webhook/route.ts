@@ -9,6 +9,7 @@ import {
   saveOrder,
   addDevoteeEntitlement,
 } from "@/lib/server-store";
+import { sendCapiPurchaseEvent } from "@/lib/meta-capi";
 
 import type { UserProfile } from "@/lib/storage";
 
@@ -135,6 +136,28 @@ export async function POST(req: NextRequest) {
           notes,
           capturedAt: payment?.created_at,
         },
+      });
+
+      // Dispatch Meta Conversions API (CAPI) Purchase event (non-blocking, deduplicated by eventId)
+      void sendCapiPurchaseEvent({
+        booking: {
+          bookingId,
+          orderId,
+          paymentId,
+          poojaSlug,
+          poojaTitle: notes?.poojaTitle || "Sacred Puja Seva",
+          amount: amountRupees,
+          currency,
+        },
+        user: {
+          name: notes?.name,
+          phone: customerPhone,
+          email: notes?.email,
+          city: notes?.city,
+        },
+        req,
+      }).catch((err) => {
+        console.warn("[meta-capi] webhook dispatch error:", err?.message);
       });
 
       console.log(`[razorpay-webhook] verified payment ${paymentId} for phone ${customerPhone} (account ${isNewAccount ? "created (pending activation)" : "updated"})`);

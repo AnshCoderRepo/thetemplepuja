@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarDays, Play, Video } from "lucide-react";
 import { cancelBookingRemote, rescheduleBookingRemote } from "@/features/bookings";
 import { fetchUserByPhone } from "../api/devoteeApi";
-import type { BookingRecord, UserProfile } from "@/lib/storage";
+import { getDevoteePhone, type BookingRecord, type UserProfile } from "@/lib/storage";
 import { ContinueBookingSection } from "@/components/common";
 import DevoteeBookingsList from "./DevoteeBookingsList";
 import DevoteeLookupGate from "./DevoteeLookupGate";
@@ -46,8 +46,9 @@ export default function DevoteeProfileView() {
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("phone") ?? "";
-    if (p) {
-      void refresh(p);
+    const activePhone = p || getDevoteePhone() || "";
+    if (activePhone) {
+      void refresh(activePhone);
     }
     setMounted(true);
   }, []);
@@ -134,6 +135,14 @@ export default function DevoteeProfileView() {
         <>
           <DevoteeProfileCard profile={profile} />
 
+          {/* Continue Incomplete Bookings / Resume Payment - Prominently right below profile card */}
+          <ContinueBookingSection
+            phone={profile.phone}
+            contained={false}
+            defaultExpanded={true}
+            className="mt-6"
+          />
+
           {profile.videos && profile.videos.length > 0 && (
             <div className="mt-8 rounded-3xl border border-saffron-100 bg-white p-6 shadow-card space-y-4">
               <h3 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
@@ -184,9 +193,6 @@ export default function DevoteeProfileView() {
             </div>
           )}
 
-          {/* Continue Incomplete Bookings / Resume Payment */}
-          <ContinueBookingSection phone={profile.phone} contained={false} />
-
           <h3 className="mb-4 mt-10 flex items-center gap-2 font-display text-xl font-bold text-ink">
             <CalendarDays className="h-5 w-5 text-saffron-600" />
             Your Bookings
@@ -234,13 +240,16 @@ export default function DevoteeProfileView() {
           </p>
         </>
       ) : (
-        <DevoteeLookupGate
-          inputPhone={inputPhone}
-          onPhoneChange={setInputPhone}
-          notFound={notFound}
-          onLookup={lookup}
-          inputCls={inputCls}
-        />
+        <>
+          <ContinueBookingSection contained={false} defaultExpanded={true} className="mb-6" />
+          <DevoteeLookupGate
+            inputPhone={inputPhone}
+            onPhoneChange={setInputPhone}
+            notFound={notFound}
+            onLookup={lookup}
+            inputCls={inputCls}
+          />
+        </>
       )}
     </div>
   );

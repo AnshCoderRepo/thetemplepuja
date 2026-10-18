@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Search, X, ArrowUpDown, RotateCcw, SlidersHorizontal, Sparkles, ChevronDown } from "lucide-react";
+import { trackSearch } from "@/lib/meta-pixel";
 
 export interface CategoryItem {
   name: string;
@@ -89,6 +90,16 @@ export default function PoojaFilters({
   const normalizedCategories = useMemo<CategoryItem[]>(() => {
     return categories.map((c) => (typeof c === "string" ? { name: c } : c));
   }, [categories]);
+
+  // Debounced search event tracking to avoid firing on every single keystroke
+  useEffect(() => {
+    const query = search.trim();
+    if (query.length < 2) return;
+    const timer = setTimeout(() => {
+      trackSearch(query);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const hasActiveFilters = Boolean(
     search.trim() ||

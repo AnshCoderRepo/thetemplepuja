@@ -19,6 +19,7 @@ import { fetchPublicGallery } from "@/lib/api";
 import { useBookingModal, useI18n } from "@/components/providers";
 import GalleryCard, { type GalleryCardOpenOptions } from "@/components/gallery/GalleryCard";
 import GalleryModal from "@/components/gallery/GalleryModal";
+import { trackCustomEvent } from "@/lib/meta-pixel";
 
 const PAGE_SIZE = 9;
 
@@ -61,6 +62,7 @@ export default function GalleryClient() {
 
   useEffect(() => {
     loadGallery();
+    trackCustomEvent("GalleryView");
 
     const handleCatalogUpdate = () => {
       loadGallery();

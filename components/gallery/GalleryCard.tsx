@@ -5,6 +5,7 @@ import { Camera, Play, Sparkles } from "lucide-react";
 import {
   type GalleryItem,
   getGalleryItemImages,
+  getGalleryItemVideos,
   hasYouTubeVideo,
   getYouTubeThumbnailUrl,
 } from "@/lib/gallery-types";
@@ -22,8 +23,9 @@ interface GalleryCardProps {
 
 export default function GalleryCard({ item, onOpen, priority = false }: GalleryCardProps) {
   const photos = getGalleryItemImages(item);
-  const hasVideo = hasYouTubeVideo(item) || Boolean(item.videoUrl);
-  const hasYouTube = Boolean(item.youtubeUrl || item.youtubeVideoId);
+  const videos = getGalleryItemVideos(item);
+  const hasVideo = videos.length > 0;
+  const hasYouTube = videos.some((v) => v.isYouTube) || hasYouTubeVideo(item);
 
   const handleCardClick = () => {
     // If the card has photos, open on photos; if video only, open on video
@@ -58,10 +60,10 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
       aria-label={`View gallery card ${item.title}`}
       className="group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-saffron-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-saffron-400 hover:shadow-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-saffron-500 focus:ring-offset-2"
     >
-      {/* ────────────────── 3 PHOTOS + 1 VIDEO RESPONSIVE MEDIA CONTAINER ────────────────── */}
+      {/* ────────────────── RESPONSIVE MEDIA CONTAINER (UNLIMITED PHOTOS & VIDEOS) ────────────────── */}
       <div className="relative aspect-[16/10] sm:aspect-[4/3] w-full overflow-hidden bg-slate-900/10">
-        {/* ── 3 PHOTOS SIMULTANEOUSLY ── */}
-        {photos.length === 3 && (
+        {/* ── 3 OR MORE PHOTOS COLLAGE ── */}
+        {photos.length >= 3 && (
           <div className="grid grid-cols-3 gap-1 h-full w-full">
             {/* Main Primary Photo (2 Columns Wide) */}
             <div
@@ -95,9 +97,9 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
                 />
               </div>
               <div
-                className="relative h-full overflow-hidden cursor-pointer"
+                className="relative h-full overflow-hidden cursor-pointer group/more"
                 onClick={(e) => handlePhotoClick(e, 2)}
-                title="Click to view photo 3"
+                title={photos.length > 3 ? `View all ${photos.length} photos` : "Click to view photo 3"}
               >
                 <Image
                   src={photos[2]}
@@ -106,6 +108,16 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
                   sizes="(max-width: 640px) 33vw, (max-width: 1024px) 16vw, 11vw"
                   className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                 />
+                {photos.length > 3 && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-white transition-colors group-hover/more:bg-black/75">
+                    <span className="font-extrabold text-xs sm:text-sm md:text-base leading-none">
+                      +{photos.length - 2}
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-amber-300">
+                      More
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -190,20 +202,20 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
           </span>
 
           <div className="flex items-center gap-1.5 pointer-events-auto">
-            {/* If YouTube video is provided: show YouTube Icon / Button */}
-            {hasYouTube && (
+            {/* If video is provided: show Video Button */}
+            {hasVideo && (
               <button
                 type="button"
                 onClick={handleVideoClick}
                 className="inline-flex items-center gap-1.5 rounded-full bg-red-600 hover:bg-red-700 px-2.5 py-1 text-[10px] sm:text-[11px] font-bold text-white shadow-md border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                title="Play YouTube Video"
-                aria-label={`Play YouTube video for ${item.title}`}
+                title={videos.length > 1 ? `Play ${videos.length} Videos` : "Play Video"}
+                aria-label={`Play video for ${item.title}`}
               >
-                {/* Authentic YouTube Icon */}
+                {/* Authentic YouTube / Video Icon */}
                 <svg className="h-3.5 w-3.5 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                 </svg>
-                <span>Video</span>
+                <span>{videos.length > 1 ? `${videos.length} Videos` : "Video"}</span>
               </button>
             )}
 
@@ -224,7 +236,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
               type="button"
               onClick={handleVideoClick}
               className="pointer-events-auto flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-red-600/90 text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-115 hover:bg-red-600 ring-4 ring-white/30 cursor-pointer"
-              title="Play Video"
+              title={videos.length > 1 ? `Play ${videos.length} Videos` : "Play Video"}
               aria-label={`Play Video for ${item.title}`}
             >
               <Play className="h-5 w-5 sm:h-6 sm:w-6 fill-white ml-0.5" />
@@ -249,9 +261,9 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
         <div className="mt-3 flex items-center justify-between border-t border-saffron-100/70 pt-2.5 text-xs">
           <span className="font-semibold text-saffron-700 group-hover:text-saffron-900 transition-colors inline-flex items-center gap-1">
             {hasVideo && photos.length > 0
-              ? `View ${photos.length} ${photos.length === 1 ? "Photo" : "Photos"} & Video →`
+              ? `View ${photos.length} ${photos.length === 1 ? "Photo" : "Photos"} & ${videos.length} ${videos.length === 1 ? "Video" : "Videos"} →`
               : hasVideo
-              ? "Watch Sacred Video →"
+              ? (videos.length > 1 ? `Watch ${videos.length} Sacred Videos →` : "Watch Sacred Video →")
               : `View ${photos.length} ${photos.length === 1 ? "Photo" : "Photos"} →`}
           </span>
 

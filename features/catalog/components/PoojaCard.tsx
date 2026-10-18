@@ -20,6 +20,7 @@ import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
 import { PoojaImage } from "@/components/common";
 import { useCatalog } from "../hooks/useCatalog";
+import { trackBookingStart } from "@/lib/meta-pixel";
 
 export interface PoojaCardProps {
   pooja: Pooja;
@@ -41,6 +42,13 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
     : p.templeName || null;
 
   const handleNavigateToPooja = () => {
+    trackBookingStart({
+      content_name: poojaTitle,
+      content_ids: [p.slug],
+      value: p.price,
+      currency: "INR",
+    });
+
     if (p.ctaLink && p.ctaLink.trim()) {
       router.push(p.ctaLink.trim());
     } else {

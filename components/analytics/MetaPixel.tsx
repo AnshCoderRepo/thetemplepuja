@@ -10,12 +10,18 @@ function MetaPixelTracker() {
   const isFirstRender = useRef(true);
 
   useEffect(() => {
-    // Initial page load is handled by the base script in <head>.
+    // Exclude admin dashboard operations from tracking
+    if (pathname && pathname.startsWith("/admin")) {
+      return;
+    }
+
+    // Initial page load is handled by the official base script in <head>.
     // Subsequent client-side navigations trigger pageview().
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
+
     pageview();
   }, [pathname, searchParams]);
 
@@ -31,4 +37,3 @@ export default function MetaPixel() {
     </Suspense>
   );
 }
-

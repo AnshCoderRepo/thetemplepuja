@@ -18,7 +18,7 @@ import {
 import { getWhatsAppUrl } from "@/lib/config";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
-import { event as trackMetaEvent } from "@/lib/meta-pixel";
+import { trackPurchase } from "@/lib/meta-pixel";
 import type { ConfirmedBooking } from "../types/booking.types";
 
 interface BookingConfirmationProps {
@@ -48,16 +48,21 @@ export default function BookingConfirmation({
   const [isRedirectPaused, setIsRedirectPaused] = useState(false);
 
   useEffect(() => {
-    if (confirmed?.id) {
-      trackMetaEvent("Purchase", {
-        value: confirmed.total,
-        currency: "INR",
-        content_name: confirmed.poojaTitle,
-        content_type: "product",
-        order_id: confirmed.id,
-      });
+    if (confirmed?.id && typeof confirmed?.total === "number") {
+      const eventId = `pur_${confirmed.id}`;
+      trackPurchase(
+        {
+          order_id: confirmed.id,
+          value: confirmed.total,
+          currency: "INR",
+          content_name: confirmed.poojaTitle || "Sacred Pooja Seva",
+          content_type: "product",
+          num_items: 1 + (confirmed.addons?.length || 0),
+        },
+        eventId
+      );
     }
-  }, [confirmed?.id, confirmed?.total, confirmed?.poojaTitle]);
+  }, [confirmed?.id, confirmed?.total, confirmed?.poojaTitle, confirmed?.addons]);
 
   const handleGoHome = useCallback(() => {
     if (onClose) {

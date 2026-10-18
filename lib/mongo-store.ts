@@ -681,3 +681,63 @@ export async function markOtpChallengeUsed(id: string): Promise<void> {
   await col.updateOne({ _id: id }, { $set: { isUsed: true } });
 }
 
+// ============ META CONVERSIONS API (CAPI) PERSISTENCE ============
+
+export interface CapiEventDoc extends Document {
+  _id: string;
+  eventId: string;
+  eventName: string;
+  status: "sent" | "failed" | "skipped";
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+export async function capiEventsCol(): Promise<Collection<CapiEventDoc>> {
+  const db = await getDb();
+  const col = db.collection<CapiEventDoc>("capi_events");
+  try {
+    await col.createIndex({ eventId: 1 }, { unique: true });
+  } catch {}
+  return col;
+}
+
+export async function recordCapiEvent(
+  eventId: string,
+  eventName: string,
+  status: "sent" | "failed" | "skipped" = "sent",
+  metadata?: Record<string, unknown>
+): Promise<boolean> {
+  if (!eventId) return true;
+  try {
+    const col = await capiEventsCol();
+    const res = await col.updateOne(
+      { _id: eventId as any },
+      {
+        $setOnInsert: {
+          _id: eventId as any,
+          eventId,
+          eventName,
+          status,
+          timestamp: new Date().toISOString(),
+          metadata,
+        },
+      },
+      { upsert: true }
+    );
+    return Boolean(res.upsertedCount > 0);
+  } catch (err: any) {
+    if (err?.code === 11000) return false;
+    return true;
+  }
+}
+
+export async function findCapiEvent(eventId: string): Promise<CapiEventDoc | null> {
+  if (!eventId) return null;
+  try {
+    const col = await capiEventsCol();
+    return await col.findOne({ eventId });
+  } catch {
+    return null;
+  }
+}
+

@@ -4,6 +4,7 @@ import {
   extractYouTubeVideoId,
   getYouTubeThumbnailUrl,
   getGalleryItemImages,
+  getGalleryItemVideos,
   hasYouTubeVideo,
   type GalleryItem,
 } from "@/lib/gallery-types";
@@ -277,17 +278,22 @@ describe("Our Gallery System Test Suite", () => {
     });
   });
 
-  describe("6. 3 Photos + 1 Video Feature & Server Enforcement", () => {
-    it("getGalleryItemImages extracts up to 3 photos from images array and legacy fields without duplicates", () => {
+  describe("6. Unlimited Photos & Videos Feature", () => {
+    it("getGalleryItemImages extracts all photos from images array and legacy fields without duplicates or restrictions", () => {
       const itemWithArray: GalleryItem = {
         id: "multi-img-1",
         title: "Multi Photo Item",
         category: "Puja Ceremonies",
         mediaType: "photo",
+        description: "Test description",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
         images: [
           "https://example.com/p1.jpg",
           "https://example.com/p2.jpg",
           "https://example.com/p3.jpg",
+          "https://example.com/p4.jpg",
+          "https://example.com/p5.jpg",
         ],
         isActive: true,
         showOnHomepage: true,
@@ -299,6 +305,8 @@ describe("Our Gallery System Test Suite", () => {
         "https://example.com/p1.jpg",
         "https://example.com/p2.jpg",
         "https://example.com/p3.jpg",
+        "https://example.com/p4.jpg",
+        "https://example.com/p5.jpg",
       ]);
 
       const itemWithLegacyFields: GalleryItem = {
@@ -306,6 +314,9 @@ describe("Our Gallery System Test Suite", () => {
         title: "Legacy Fields Item",
         category: "Puja Ceremonies",
         mediaType: "photo",
+        description: "Test description",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
         imageUrl: "https://example.com/p1.jpg",
         imageUrl2: "https://example.com/p2.jpg",
         imageUrl3: "https://example.com/p3.jpg",
@@ -382,7 +393,7 @@ describe("Our Gallery System Test Suite", () => {
       expect(data.item.mediaType).toBe("mixed");
     });
 
-    it("SERVER ENFORCEMENT: rejects more than 3 photos with 400 Bad Request", async () => {
+    it("SERVER: accepts and saves unrestricted number of photos (> 3 photos) successfully", async () => {
       const req = new Request("http://localhost/api/admin/gallery", {
         method: "POST",
         headers: {
@@ -390,24 +401,27 @@ describe("Our Gallery System Test Suite", () => {
           Authorization: `Bearer ${validAdminToken}`,
         },
         body: JSON.stringify({
-          title: "Too Many Photos Card",
+          title: "Many Photos Card",
           category: "Puja Ceremonies",
           images: [
             "https://example.com/p1.jpg",
             "https://example.com/p2.jpg",
             "https://example.com/p3.jpg",
             "https://example.com/p4.jpg",
+            "https://example.com/p5.jpg",
           ],
         }),
       });
 
       const res = await postAdminGallery(req as any);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.error).toContain("Maximum of 3 photos allowed");
+      expect(data.ok).toBe(true);
+      expect(data.item.images).toHaveLength(5);
+      expect(getGalleryItemImages(data.item)).toHaveLength(5);
     });
 
-    it("SERVER ENFORCEMENT: rejects more than 1 distinct video with 400 Bad Request", async () => {
+    it("SERVER: accepts and saves multiple videos (> 1 video) successfully", async () => {
       const req = new Request("http://localhost/api/admin/gallery", {
         method: "POST",
         headers: {
@@ -418,15 +432,19 @@ describe("Our Gallery System Test Suite", () => {
           title: "Multiple Videos Card",
           category: "Puja Ceremonies",
           imageUrl: "https://example.com/p1.jpg",
-          youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-          videoUrl: "https://example.com/another-video.mp4",
+          videos: [
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://example.com/another-video.mp4",
+          ],
         }),
       });
 
       const res = await postAdminGallery(req as any);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.error).toContain("Only 1 video is allowed");
+      expect(data.ok).toBe(true);
+      expect(data.item.videos).toHaveLength(2);
+      expect(getGalleryItemVideos(data.item)).toHaveLength(2);
     });
 
     it("SERVER ENFORCEMENT: rejects invalid image format with 400 Bad Request", async () => {

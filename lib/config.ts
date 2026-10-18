@@ -14,7 +14,7 @@
 export const SITE_CONFIG = {
   // Brand & Domain
   brandName: "templepujasewa",
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://thetemplepuja.com",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://templepujasewa.com",
 
 
   // Business Contact Details (Easily replaceable for client handoff)

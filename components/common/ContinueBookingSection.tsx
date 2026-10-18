@@ -26,6 +26,7 @@ interface ContinueBookingSectionProps {
   phone?: string | null;
   className?: string;
   contained?: boolean;
+  defaultExpanded?: boolean;
 }
 
 const STORAGE_EXPANDED_KEY = "ttp_continue_booking_expanded";
@@ -34,12 +35,13 @@ export default function ContinueBookingSection({
   phone,
   className = "",
   contained = true,
+  defaultExpanded = false,
 }: ContinueBookingSectionProps) {
   const { openBooking, isOpen: isBookingModalOpen } = useBookingModal();
   const [drafts, setDrafts] = useState<IncompleteBooking[]>([]);
   const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState<string>("");
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => defaultExpanded || !contained);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const refreshDrafts = useCallback(() => {
@@ -76,10 +78,10 @@ export default function ContinueBookingSection({
     setMounted(true);
     refreshDrafts();
 
-    // Check stored user preference for expansion state (default collapsed)
+    // Check stored user preference for expansion state (default collapsed on floating, expanded on panel)
     try {
       const stored = localStorage.getItem(STORAGE_EXPANDED_KEY);
-      if (stored === "true") {
+      if (stored === "true" || (stored === null && (defaultExpanded || !contained))) {
         setIsExpanded(true);
       }
     } catch {
@@ -339,7 +341,7 @@ export default function ContinueBookingSection({
                         }}
                         className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-600 hover:to-saffron-700 text-white px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold shadow-2xs hover:shadow-xs transition-all"
                       >
-                        <span>Resume</span>
+                        <span>{isPaymentPending || isPaymentFailed ? "Resume Payment" : "Continue Booking"}</span>
                         <ArrowRight className="h-3 w-3" />
                       </button>
                     </div>

@@ -18,6 +18,7 @@ import {
   requestActivationOtpRemote,
   verifyActivationOtpRemote,
 } from "../api/authApi";
+import { trackCompleteRegistration } from "@/lib/meta-pixel";
 import { isFirebaseConfigured, setupRecaptcha, sendFirebasePhoneOtp } from "@/lib/firebase";
 
 const inputCls =
@@ -181,6 +182,7 @@ export default function DevoteeActivateForm() {
     }
 
     setStep("success");
+    trackCompleteRegistration({ method: "phone_otp" });
     setTimeout(() => {
       router.push(`/profile?phone=${cleanPhone}`);
     }, 2000);

@@ -16,7 +16,9 @@ import {
 import {
   type GalleryItem,
   getGalleryItemImages,
+  getGalleryItemVideos,
   hasYouTubeVideo,
+  getYouTubeThumbnailUrl,
 } from "@/lib/gallery-types";
 import { useBookingModal } from "@/components/providers";
 
@@ -37,18 +39,21 @@ export default function GalleryModal({
   const modalRef = useRef<HTMLDivElement>(null);
 
   const photos = item ? getGalleryItemImages(item) : [];
-  const hasVideo = item ? hasYouTubeVideo(item) || Boolean(item.videoUrl) : false;
-  const hasYouTube = Boolean(item?.youtubeUrl || item?.youtubeVideoId);
+  const videos = item ? getGalleryItemVideos(item) : [];
+  const hasVideo = videos.length > 0;
+  const hasYouTube = videos.some((v) => v.isYouTube) || (item ? hasYouTubeVideo(item) : false);
 
   const [activeTab, setActiveTab] = useState<"photos" | "video">("photos");
   const [photoIndex, setPhotoIndex] = useState<number>(0);
+  const [videoIndex, setVideoIndex] = useState<number>(0);
 
   // Sync state whenever the selected item changes
   useEffect(() => {
     if (!item) return;
 
     const itemPhotos = getGalleryItemImages(item);
-    const itemHasVideo = hasYouTubeVideo(item) || Boolean(item.videoUrl);
+    const itemVideos = getGalleryItemVideos(item);
+    const itemHasVideo = itemVideos.length > 0;
 
     if (initialTab === "video" && itemHasVideo) {
       setActiveTab("video");
@@ -69,6 +74,7 @@ export default function GalleryModal({
     } else {
       setPhotoIndex(0);
     }
+    setVideoIndex(0);
   }, [item, initialTab, initialPhotoIndex]);
 
   const handlePrevPhoto = useCallback(() => {
@@ -108,6 +114,7 @@ export default function GalleryModal({
   if (!item) return null;
 
   const currentPhoto = photos[photoIndex] || item.imageUrl || item.thumbnailUrl || "/logo.jpeg";
+  const currentVideo = videos[videoIndex] || videos[0];
 
   return (
     <div
@@ -176,15 +183,15 @@ export default function GalleryModal({
                   <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                   </svg>
-                  <span>Video</span>
+                  <span>{videos.length > 1 ? `Videos (${videos.length})` : "Video"}</span>
                 </button>
               </div>
             )}
 
-            {/* YouTube Direct Link (if provided) */}
-            {hasYouTube && item.youtubeUrl && (
+            {/* YouTube Direct Link (if current video is YouTube) */}
+            {currentVideo?.isYouTube && currentVideo.url && (
               <a
-                href={item.youtubeUrl}
+                href={currentVideo.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors"
@@ -213,25 +220,29 @@ export default function GalleryModal({
         {/* Modal Media Body */}
         <div className="relative flex-1 min-h-[260px] sm:min-h-[380px] md:min-h-[460px] bg-black flex items-center justify-center overflow-hidden">
           {activeTab === "video" ? (
-            hasYouTube && item.youtubeVideoId ? (
-              <div className="relative w-full h-full aspect-video">
-                <iframe
-                  src={`https://www.youtube.com/embed/${item.youtubeVideoId}?autoplay=1&rel=0&modestbranding=1`}
-                  title={item.title}
-                  className="w-full h-full absolute inset-0 border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-            ) : item.videoUrl ? (
-              <video
-                src={item.videoUrl}
-                controls
-                autoPlay
-                className="max-h-[70vh] w-full object-contain"
-              >
-                Your browser does not support the video tag.
-              </video>
+            currentVideo ? (
+              currentVideo.isYouTube && currentVideo.youtubeId ? (
+                <div className="relative w-full h-full aspect-video">
+                  <iframe
+                    key={currentVideo.youtubeId}
+                    src={`https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
+                    title={`${item.title} - Video ${videoIndex + 1}`}
+                    className="w-full h-full absolute inset-0 border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <video
+                  key={currentVideo.url}
+                  src={currentVideo.url}
+                  controls
+                  autoPlay
+                  className="max-h-[70vh] w-full object-contain"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )
             ) : (
               <div className="p-8 text-center text-white">
                 <Film className="h-10 w-10 text-white/40 mx-auto mb-2" />
@@ -316,6 +327,32 @@ export default function GalleryModal({
                   <span className="absolute bottom-0 right-0 bg-black/80 px-1 text-[9px] font-bold text-white">
                     {idx + 1}
                   </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Video Selector Row (When viewing Video tab with > 1 video) */}
+        {activeTab === "video" && videos.length > 1 && (
+          <div className="bg-slate-950/90 border-t border-white/10 px-4 py-2.5 flex items-center justify-center gap-2 overflow-x-auto">
+            {videos.map((vid, idx) => {
+              const isSelected = idx === videoIndex;
+              return (
+                <button
+                  key={`${vid.url}-${idx}`}
+                  type="button"
+                  onClick={() => setVideoIndex(idx)}
+                  className={`relative flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all cursor-pointer shrink-0 text-xs font-bold ${
+                    isSelected
+                      ? "bg-red-600 text-white border-red-500 shadow-md ring-2 ring-red-400"
+                      : "bg-white/10 text-white/80 border-white/20 hover:bg-white/20 hover:text-white"
+                  }`}
+                  aria-label={`Select video ${idx + 1}`}
+                >
+                  <Play className="h-3 w-3 fill-current" />
+                  <span>Video {idx + 1}</span>
+                  {vid.isYouTube && <span className="text-[10px] opacity-80">(YouTube)</span>}
                 </button>
               );
             })}
