@@ -1237,6 +1237,18 @@ export interface Pooja {
   // ── Recency & Creation (optional) ──
   createdAt?: string;
   isNew?: boolean;
+
+  // ── Service Card Customization (Admin Editable) ──
+  /** Custom badge text (e.g. "DEMO", "Live Demo", "Special Seva", "Most Popular") */
+  badge?: string;
+  /** Badge visibility toggle — when false, the badge is hidden */
+  showBadge?: boolean;
+  /** Display order priority for custom ranking in catalog */
+  displayOrder?: number;
+  /** Custom CTA button label (defaults to "Book Now") */
+  ctaText?: string;
+  /** Custom CTA button URL/link (defaults to /book/[slug]) */
+  ctaLink?: string;
 }
 
 /** Get localized title for a pooja based on active locale */
@@ -1484,6 +1496,17 @@ export const DEFAULT_POOJA_SLUGS: readonly string[] = [
  */
 export function sortPoojasByRecent(list: Pooja[]): Pooja[] {
   return [...list].sort((a, b) => {
+    // 0. Explicit displayOrder ranking (lower number = higher priority)
+    if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+      if (a.displayOrder !== b.displayOrder) {
+        return a.displayOrder - b.displayOrder;
+      }
+    } else if (a.displayOrder !== undefined) {
+      return -1;
+    } else if (b.displayOrder !== undefined) {
+      return 1;
+    }
+
     // 1. Explicit isNew flag
     if (a.isNew && !b.isNew) return -1;
     if (!a.isNew && b.isNew) return 1;
@@ -1586,6 +1609,12 @@ export const DEMO_POOJA: Pooja = {
     { name: "Couple / Dampati", price: 1, description: "Husband & Wife Joint Sankalp (₹1)" },
     { name: "Family / Kul Sankalp", price: 1, description: "Complete Family Sankalp (₹1)" },
   ],
+  badge: "DEMO",
+  showBadge: true,
+  displayOrder: 1,
+  ctaText: "Book for ₹1 →",
+  ctaLink: "/book/demo-pooja",
+  active: true,
 };
 
 export const DEMO_POOJA_SLUGS = [

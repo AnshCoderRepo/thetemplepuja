@@ -21,12 +21,15 @@ import {
   ExternalLink,
   Clock,
   Play,
+  RotateCcw,
 } from "lucide-react";
 import type { GalleryItem, GalleryMediaType } from "@/lib/gallery-types";
 import {
   GALLERY_CATEGORIES,
   extractYouTubeVideoId,
   getYouTubeThumbnailUrl,
+  getGalleryItemImages,
+  hasYouTubeVideo,
 } from "@/lib/gallery-types";
 import {
   fetchAdminGallery,
@@ -46,8 +49,9 @@ interface ItemDraft {
   _id?: string;
   title: string;
   description: string;
-  mediaType: GalleryMediaType;
-  imageUrl: string;
+  photo1: string;
+  photo2: string;
+  photo3: string;
   videoUrl: string;
   youtubeUrl: string;
   youtubeVideoId: string;
@@ -63,8 +67,9 @@ interface ItemDraft {
 const emptyDraft: ItemDraft = {
   title: "",
   description: "",
-  mediaType: "photo",
-  imageUrl: "",
+  photo1: "",
+  photo2: "",
+  photo3: "",
   videoUrl: "",
   youtubeUrl: "",
   youtubeVideoId: "",
@@ -87,7 +92,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
   // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "photo" | "video">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "photo" | "video" | "mixed">("all");
   const [homepageFilter, setHomepageFilter] = useState<"all" | "homepage">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -95,7 +100,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
   const [formError, setFormError] = useState("");
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadingSlot, setUploadingSlot] = useState<1 | 2 | 3 | null>(null);
 
   // Delete confirm modal state
   const [itemToDelete, setItemToDelete] = useState<GalleryItem | null>(null);
@@ -128,24 +133,29 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
     loadItems();
   }, [loadItems]);
 
-  // Handle client-side image compression & upload
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle client-side image compression & upload for individual slots (1, 2, or 3)
+  const handleSlotPhotoUpload = (slot: 1 | 2 | 3, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setFormError("Selected file is not an image. Please choose a JPG, PNG, or WebP.");
+      setFormError(`Photo ${slot}: Selected file is not an image. Please choose a JPG, PNG, or WebP.`);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFormError(`Photo ${slot}: File size exceeds 5MB limit. Please choose a smaller image.`);
       return;
     }
 
     setFormError("");
-    setIsUploadingPhoto(true);
+    setUploadingSlot(slot);
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const rawDataUrl = event.target?.result as string;
       if (!rawDataUrl) {
-        setIsUploadingPhoto(false);
+        setUploadingSlot(null);
         return;
       }
 
@@ -166,35 +176,49 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressed = canvas.toDataURL("image/jpeg", 0.84);
-          setDraft((prev) => ({
-            ...prev,
-            imageUrl: compressed,
-            thumbnailUrl: prev.thumbnailUrl || compressed,
-          }));
-        } else {
-          setDraft((prev) => ({
-            ...prev,
-            imageUrl: rawDataUrl,
-            thumbnailUrl: prev.thumbnailUrl || rawDataUrl,
-          }));
-        }
-        setIsUploadingPhoto(false);
-        showNotification("🖼️ Photo uploaded and optimized successfully!");
+        const finalUrl = ctx
+          ? (ctx.drawImage(img, 0, 0, width, height), canvas.toDataURL("image/jpeg", 0.84))
+          : rawDataUrl;
+
+        setDraft((prev) => {
+          if (slot === 1) return { ...prev, photo1: finalUrl };
+          if (slot === 2) return { ...prev, photo2: finalUrl };
+          return { ...prev, photo3: finalUrl };
+        });
+
+        setUploadingSlot(null);
+        showNotification(`🖼️ Photo ${slot} uploaded and optimized successfully!`);
       };
+
       img.onerror = () => {
-        setDraft((prev) => ({ ...prev, imageUrl: rawDataUrl }));
-        setIsUploadingPhoto(false);
+        setDraft((prev) => {
+          if (slot === 1) return { ...prev, photo1: rawDataUrl };
+          if (slot === 2) return { ...prev, photo2: rawDataUrl };
+          return { ...prev, photo3: rawDataUrl };
+        });
+        setUploadingSlot(null);
       };
+
       img.src = rawDataUrl;
     };
+
     reader.onerror = () => {
-      setFormError("Could not read image file.");
-      setIsUploadingPhoto(false);
+      setFormError(`Photo ${slot}: Could not read image file.`);
+      setUploadingSlot(null);
     };
+
     reader.readAsDataURL(file);
+    // Reset input value so the same file could be re-selected if desired
+    e.target.value = "";
+  };
+
+  // Remove individual photo
+  const handleRemovePhoto = (slot: 1 | 2 | 3) => {
+    setDraft((prev) => {
+      if (slot === 1) return { ...prev, photo1: "" };
+      if (slot === 2) return { ...prev, photo2: "" };
+      return { ...prev, photo3: "" };
+    });
   };
 
   // Auto-detect and parse YouTube URL changes
@@ -207,9 +231,21 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
         if (!prev.thumbnailUrl || prev.thumbnailUrl.includes("img.youtube.com")) {
           next.thumbnailUrl = getYouTubeThumbnailUrl(videoId) || "";
         }
+      } else {
+        next.youtubeVideoId = "";
       }
       return next;
     });
+  };
+
+  const handleClearVideo = () => {
+    setDraft((prev) => ({
+      ...prev,
+      youtubeUrl: "",
+      youtubeVideoId: "",
+      videoUrl: "",
+      thumbnailUrl: "",
+    }));
   };
 
   const openNewItemModal = () => {
@@ -220,20 +256,22 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
   };
 
   const openEditModal = (item: GalleryItem) => {
+    const existingPhotos = getGalleryItemImages(item);
     setDraft({
       id: item.id || item._id,
       _id: item.id || item._id,
       title: item.title,
       description: item.description || "",
-      mediaType: item.mediaType || "photo",
-      imageUrl: item.imageUrl || "",
+      photo1: existingPhotos[0] || item.imageUrl || "",
+      photo2: existingPhotos[1] || item.imageUrl2 || "",
+      photo3: existingPhotos[2] || item.imageUrl3 || "",
       videoUrl: item.videoUrl || "",
       youtubeUrl: item.youtubeUrl || "",
-      youtubeVideoId: item.youtubeVideoId || "",
+      youtubeVideoId: item.youtubeVideoId || (item.youtubeUrl ? extractYouTubeVideoId(item.youtubeUrl) || "" : ""),
       thumbnailUrl: item.thumbnailUrl || "",
       category: item.category || "Puja Ceremonies",
       isActive: item.isActive !== false,
-      showOnHomepage: Boolean(item.showOnHomepage),
+      showOnHomepage: item.showOnHomepage !== false,
       displayOrder: item.displayOrder || 1,
       isDemo: Boolean(item.isDemo),
       videoDurationSeconds: item.videoDurationSeconds || 60,
@@ -251,22 +289,16 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       return;
     }
 
-    if (draft.mediaType === "photo") {
-      if (!draft.imageUrl.trim()) {
-        setFormError("Please upload a photo or provide an Image URL.");
+    // Collect available photos
+    const photos = [draft.photo1.trim(), draft.photo2.trim(), draft.photo3.trim()].filter(Boolean);
+
+    // Validate video if provided
+    const hasYt = Boolean(draft.youtubeUrl.trim());
+    if (hasYt) {
+      const id = extractYouTubeVideoId(draft.youtubeUrl);
+      if (!id) {
+        setFormError("Invalid YouTube URL. Please provide a standard YouTube video link (e.g. https://www.youtube.com/watch?v=... or https://youtu.be/...)");
         return;
-      }
-    } else {
-      if (!draft.youtubeUrl.trim() && !draft.videoUrl.trim()) {
-        setFormError("Please provide a valid YouTube URL or direct video URL.");
-        return;
-      }
-      if (draft.youtubeUrl.trim()) {
-        const id = extractYouTubeVideoId(draft.youtubeUrl);
-        if (!id) {
-          setFormError("Invalid YouTube URL. Please provide a standard YouTube video link.");
-          return;
-        }
       }
       if (draft.videoDurationSeconds > 180) {
         setFormError("Video duration exceeds the maximum limit of 3 minutes (180 seconds).");
@@ -274,13 +306,43 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       }
     }
 
+    // Must have at least 1 photo or 1 video
+    if (photos.length === 0 && !hasYt && !draft.videoUrl.trim()) {
+      setFormError("Please upload at least one photo or provide a YouTube video URL.");
+      return;
+    }
+
     setSaving(true);
+
+    const mediaType: GalleryMediaType =
+      hasYt || draft.videoUrl.trim()
+        ? photos.length > 0
+          ? "mixed"
+          : "video"
+        : "photo";
+
     const payload: Partial<GalleryItem> = {
-      ...draft,
+      id: draft.id,
+      _id: draft._id,
       title: draft.title.trim(),
       description: draft.description.trim(),
+      mediaType,
+      images: photos,
+      imageUrl: photos[0] || undefined,
+      imageUrl2: photos[1] || undefined,
+      imageUrl3: photos[2] || undefined,
+      youtubeUrl: draft.youtubeUrl.trim() || undefined,
+      youtubeVideoId: draft.youtubeVideoId.trim() || undefined,
+      videoUrl: draft.videoUrl.trim() || undefined,
+      thumbnailUrl:
+        draft.thumbnailUrl.trim() ||
+        (draft.youtubeVideoId ? getYouTubeThumbnailUrl(draft.youtubeVideoId) || undefined : photos[0] || undefined),
+      category: draft.category,
+      isActive: draft.isActive,
+      showOnHomepage: draft.showOnHomepage,
       displayOrder: Number(draft.displayOrder) || 1,
-      videoDurationSeconds: draft.mediaType === "video" ? Number(draft.videoDurationSeconds) : undefined,
+      isDemo: draft.isDemo,
+      videoDurationSeconds: hasYt ? Number(draft.videoDurationSeconds) : undefined,
     };
 
     const res = await saveAdminGalleryItem(payload, token);
@@ -295,7 +357,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       return;
     }
 
-    showNotification(draft.id ? "✅ Gallery item updated successfully!" : "✨ New gallery item added!");
+    showNotification(draft.id ? "✅ Gallery card updated successfully!" : "✨ New gallery card added!");
     setIsEditorOpen(false);
     loadItems();
     onRefresh?.();
@@ -350,14 +412,22 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
     }
   };
 
-  // Filtered gallery items
+  // Filtered items
   const filtered = useMemo(() => {
     return items.filter((item) => {
       if (statusFilter === "active" && !item.isActive) return false;
       if (statusFilter === "inactive" && item.isActive) return false;
-      if (typeFilter !== "all" && item.mediaType !== typeFilter) return false;
+
+      if (typeFilter === "photo" && item.mediaType !== "photo") return false;
+      if (typeFilter === "video" && item.mediaType !== "video") return false;
+      if (typeFilter === "mixed" && item.mediaType !== "mixed") return false;
+
       if (homepageFilter === "homepage" && !item.showOnHomepage) return false;
-      if (categoryFilter !== "all" && item.category.toLowerCase() !== categoryFilter.toLowerCase()) return false;
+
+      if (categoryFilter !== "all" && item.category.toLowerCase() !== categoryFilter.toLowerCase()) {
+        return false;
+      }
+
       if (search.trim()) {
         const q = search.toLowerCase().trim();
         const mTitle = item.title.toLowerCase().includes(q);
@@ -365,88 +435,89 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
         const mCat = item.category?.toLowerCase().includes(q);
         if (!mTitle && !mDesc && !mCat) return false;
       }
+
       return true;
     });
   }, [items, statusFilter, typeFilter, homepageFilter, categoryFilter, search]);
 
   const activeCount = useMemo(() => items.filter((i) => i.isActive).length, [items]);
-  const inactiveCount = useMemo(() => items.filter((i) => !i.isActive).length, [items]);
-  const homepageCount = useMemo(() => items.filter((i) => i.showOnHomepage && i.isActive).length, [items]);
-  const photoCount = useMemo(() => items.filter((i) => i.mediaType === "photo").length, [items]);
-  const videoCount = useMemo(() => items.filter((i) => i.mediaType === "video").length, [items]);
+  const videoCardsCount = useMemo(() => items.filter((i) => hasYouTubeVideo(i) || i.videoUrl).length, [items]);
 
   return (
     <div className="space-y-6">
       {/* Notifications */}
       {notification && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs sm:text-sm font-semibold text-emerald-800 flex items-center justify-between shadow-xs animate-fadeIn">
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs sm:text-sm font-semibold text-emerald-800 animate-slideDown shadow-xs">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
           <span>{notification}</span>
-          <button onClick={() => setNotification("")} className="text-emerald-600 hover:text-emerald-900">
-            <X className="h-4 w-4" />
-          </button>
         </div>
       )}
 
       {errorMessage && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs sm:text-sm font-semibold text-red-800 flex items-center justify-between shadow-xs animate-fadeIn">
+        <div className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs sm:text-sm font-semibold text-rose-800 shadow-xs">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
           <span>{errorMessage}</span>
-          <button onClick={() => setErrorMessage("")} className="text-red-600 hover:text-red-900">
-            <X className="h-4 w-4" />
+          <button
+            type="button"
+            onClick={loadItems}
+            className="ml-auto underline hover:text-rose-950 text-xs"
+          >
+            Retry
           </button>
         </div>
       )}
 
-      {/* Header & Main Add CTA */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-saffron-100 pb-5">
+      {/* Top Header & Actions */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-saffron-100 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-xl sm:text-2xl font-bold text-ink">
-              Our Gallery Management
-            </h1>
-            <span className="rounded-full bg-saffron-100 px-2.5 py-0.5 text-xs font-bold text-saffron-800">
-              {items.length} Total
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-saffron-50 text-saffron-700 border border-saffron-200">
+              <Camera className="h-4 w-4" />
             </span>
+            <h2 className="font-display text-lg sm:text-xl font-bold text-ink">
+              Gallery Management (3 Photos + 1 Video)
+            </h2>
           </div>
           <p className="text-xs sm:text-sm text-ink-soft mt-1">
-            Manage authentic puja ceremony photos and short videos (max 3 mins) displayed on homepage and dedicated gallery.
+            Each gallery card supports up to <strong>3 photos simultaneously</strong> and <strong>1 optional YouTube video</strong>. Replace individual photos anytime without re-uploading all three.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openNewItemModal}
-          className="btn-primary !py-2.5 !px-4 !text-xs sm:!text-sm inline-flex items-center gap-2 shrink-0 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="h-4 w-4 stroke-[3]" />
-          <span>Add Gallery Item</span>
-        </button>
-      </div>
-
-      {/* KPI Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="rounded-2xl border border-saffron-100 bg-white p-3.5 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Active Items</span>
-          <p className="font-display text-lg font-bold text-emerald-600 mt-0.5">{activeCount}</p>
-        </div>
-        <div className="rounded-2xl border border-saffron-100 bg-white p-3.5 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Inactive Items</span>
-          <p className="font-display text-lg font-bold text-slate-500 mt-0.5">{inactiveCount}</p>
-        </div>
-        <div className="rounded-2xl border border-saffron-100 bg-white p-3.5 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">On Homepage</span>
-          <p className="font-display text-lg font-bold text-saffron-700 mt-0.5">{homepageCount}</p>
-        </div>
-        <div className="rounded-2xl border border-saffron-100 bg-white p-3.5 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Photos</span>
-          <p className="font-display text-lg font-bold text-indigo-600 mt-0.5">{photoCount}</p>
-        </div>
-        <div className="rounded-2xl border border-saffron-100 bg-white p-3.5 shadow-2xs col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Videos (≤3m)</span>
-          <p className="font-display text-lg font-bold text-rose-600 mt-0.5">{videoCount}</p>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={openNewItemModal}
+            className="btn-primary !py-2.5 !px-4 !text-xs sm:!text-sm inline-flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Gallery Card</span>
+          </button>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Stats Quick Badges */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-2xl border border-saffron-100 bg-[#FFFDF9] p-3 text-center shadow-2xs">
+          <span className="text-[10px] uppercase font-bold text-ink-soft">Total Cards</span>
+          <p className="font-display text-lg font-bold text-ink">{items.length}</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3 text-center shadow-2xs">
+          <span className="text-[10px] uppercase font-bold text-emerald-800">Active Cards</span>
+          <p className="font-display text-lg font-bold text-emerald-900">{activeCount}</p>
+        </div>
+        <div className="rounded-2xl border border-red-100 bg-red-50/40 p-3 text-center shadow-2xs">
+          <span className="text-[10px] uppercase font-bold text-red-800">Video Cards</span>
+          <p className="font-display text-lg font-bold text-red-900">{videoCardsCount}</p>
+        </div>
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/40 p-3 text-center shadow-2xs">
+          <span className="text-[10px] uppercase font-bold text-amber-800">Homepage Pinned</span>
+          <p className="font-display text-lg font-bold text-amber-900">
+            {items.filter((i) => i.showOnHomepage && i.isActive).length}
+          </p>
+        </div>
+      </div>
+
+      {/* Filters Toolbar */}
       <div className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-2xs space-y-3">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search Input */}
@@ -463,7 +534,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-ink"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-ink cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -475,7 +546,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200"
+              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200 cursor-pointer"
             >
               <option value="all">Status: All</option>
               <option value="active">Active Only</option>
@@ -485,17 +556,18 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as any)}
-              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200"
+              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200 cursor-pointer"
             >
-              <option value="all">Type: All</option>
+              <option value="all">Media: All</option>
               <option value="photo">Photos Only</option>
-              <option value="video">Videos Only</option>
+              <option value="mixed">Mixed (Photos + Video)</option>
+              <option value="video">Video Only</option>
             </select>
 
             <select
               value={homepageFilter}
               onChange={(e) => setHomepageFilter(e.target.value as any)}
-              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200"
+              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200 cursor-pointer"
             >
               <option value="all">Visibility: All</option>
               <option value="homepage">Homepage Only</option>
@@ -504,7 +576,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200"
+              className="rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-saffron-200 cursor-pointer"
             >
               <option value="all">Category: All</option>
               {GALLERY_CATEGORIES.map((c) => (
@@ -519,15 +591,15 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       {loading ? (
         <div className="py-12 text-center space-y-3">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-3 border-saffron-600 border-t-transparent" />
-          <p className="text-xs text-ink-soft">Loading gallery records from database...</p>
+          <p className="text-xs text-ink-soft">Loading gallery cards from database...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-saffron-200 bg-white p-12 text-center max-w-md mx-auto">
           <span className="text-4xl block mb-2">🖼️</span>
-          <h3 className="font-display text-base font-bold text-ink">No Gallery Items Found</h3>
+          <h3 className="font-display text-base font-bold text-ink">No Gallery Cards Found</h3>
           <p className="text-xs text-ink-soft mt-1">
             {items.length === 0
-              ? "You haven't added any gallery items yet. Click '+ Add Gallery Item' above to get started."
+              ? "You haven't added any gallery items yet. Click '+ Add Gallery Card' above to get started."
               : "No items match your active search or filter criteria."}
           </p>
           {items.length === 0 && (
@@ -536,71 +608,142 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
               onClick={openNewItemModal}
               className="btn-primary mt-4 !py-2 !px-4 !text-xs"
             >
-              + Add First Gallery Item
+              + Add First Gallery Card
             </button>
           )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((item) => {
-            const isVideo = item.mediaType === "video";
-            const hasYouTube = Boolean(isVideo && item.youtubeUrl && item.youtubeVideoId);
-            const thumb = item.thumbnailUrl || item.imageUrl || "/logo.jpeg";
+            const photos = getGalleryItemImages(item);
+            const hasVideo = hasYouTubeVideo(item) || Boolean(item.videoUrl);
+            const hasYouTube = Boolean(item.youtubeUrl || item.youtubeVideoId);
 
             return (
               <div
                 key={item.id || item._id}
                 className={`flex flex-col rounded-2xl border transition-all duration-200 bg-white shadow-2xs overflow-hidden ${
-                  item.isActive ? "border-saffron-200 hover:border-saffron-400" : "border-slate-200 opacity-65 bg-slate-50"
+                  item.isActive ? "border-saffron-200 hover:border-saffron-400" : "border-slate-200 opacity-70 bg-slate-50"
                 }`}
               >
-                {/* Media Thumbnail Container */}
-                <div className="relative aspect-video w-full bg-slate-900 overflow-hidden">
-                  <Image
-                    src={thumb}
-                    alt={item.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 360px"
-                  />
+                {/* 3 Photos + 1 Video Responsive Media Box */}
+                <div className="relative aspect-[16/10] w-full bg-slate-900 overflow-hidden">
+                  {/* Collage view in admin card */}
+                  {photos.length === 3 ? (
+                    <div className="grid grid-cols-3 gap-0.5 h-full w-full">
+                      <div className="col-span-2 relative h-full">
+                        <Image
+                          src={photos[0]}
+                          alt={`${item.title} - 1`}
+                          fill
+                          className="object-cover"
+                          sizes="240px"
+                        />
+                      </div>
+                      <div className="col-span-1 grid grid-rows-2 gap-0.5 h-full">
+                        <div className="relative h-full">
+                          <Image
+                            src={photos[1]}
+                            alt={`${item.title} - 2`}
+                            fill
+                            className="object-cover"
+                            sizes="120px"
+                          />
+                        </div>
+                        <div className="relative h-full">
+                          <Image
+                            src={photos[2]}
+                            alt={`${item.title} - 3`}
+                            fill
+                            className="object-cover"
+                            sizes="120px"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : photos.length === 2 ? (
+                    <div className="grid grid-cols-2 gap-0.5 h-full w-full">
+                      <div className="relative h-full">
+                        <Image
+                          src={photos[0]}
+                          alt={`${item.title} - 1`}
+                          fill
+                          className="object-cover"
+                          sizes="180px"
+                        />
+                      </div>
+                      <div className="relative h-full">
+                        <Image
+                          src={photos[1]}
+                          alt={`${item.title} - 2`}
+                          fill
+                          className="object-cover"
+                          sizes="180px"
+                        />
+                      </div>
+                    </div>
+                  ) : photos.length === 1 ? (
+                    <div className="relative h-full w-full">
+                      <Image
+                        src={photos[0]}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        sizes="360px"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative h-full w-full">
+                      <Image
+                        src={item.thumbnailUrl || (item.youtubeVideoId ? getYouTubeThumbnailUrl(item.youtubeVideoId) || "/logo.jpeg" : "/logo.jpeg")}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        sizes="360px"
+                      />
+                    </div>
+                  )}
+
+                  {/* Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/30 pointer-events-none" />
 
                   {/* Top Overlay Badges */}
-                  <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1 pointer-events-none">
-                    <span className="rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white border border-white/20">
+                  <div className="absolute top-2 inset-x-2 flex items-center justify-between gap-1 pointer-events-none">
+                    <span className="rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white border border-white/20 truncate max-w-[120px]">
                       {item.category}
                     </span>
 
                     <div className="flex items-center gap-1">
                       {hasYouTube && (
-                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                          YouTube
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                          <svg className="h-2.5 w-2.5 fill-current" viewBox="0 0 24 24">
+                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                          </svg>
+                          <span>Video</span>
                         </span>
                       )}
-                      <span className="rounded-full bg-white/90 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-ink">
-                        {isVideo ? (
-                          <span className="flex items-center gap-1">
-                            <Play className="h-2.5 w-2.5 fill-saffron-600 text-saffron-600" />
-                            {item.videoDurationSeconds ? `${item.videoDurationSeconds}s` : "Video"}
-                          </span>
-                        ) : (
-                          "Photo"
-                        )}
-                      </span>
+
+                      {photos.length > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-ink">
+                          <Camera className="h-2.5 w-2.5 text-saffron-600" />
+                          <span>{photos.length} {photos.length === 1 ? "Photo" : "Photos"}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Center Play Button for Videos */}
-                  {isVideo && (
+                  {/* Play Icon if video is present */}
+                  {hasVideo && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-saffron-600/90 text-white shadow-md">
-                        <Play className="h-5 w-5 fill-white ml-0.5" />
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600/90 text-white shadow-md">
+                        <Play className="h-4 w-4 fill-white ml-0.5" />
                       </span>
                     </div>
                   )}
 
                   {/* Display Order Pill */}
-                  <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300">
-                    Order #{item.displayOrder}
+                  <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300">
+                    #{item.displayOrder}
                   </span>
                 </div>
 
@@ -608,7 +751,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                 <div className="flex flex-1 flex-col justify-between p-4 space-y-3">
                   <div>
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-display text-sm font-bold text-ink leading-tight">
+                      <h3 className="font-display text-sm font-bold text-ink leading-tight truncate">
                         {item.title}
                       </h3>
                       {item.isDemo && (
@@ -634,6 +777,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : "bg-slate-100 text-slate-500 border border-slate-200"
                       }`}
+                      title={item.isActive ? "Click to deactivate" : "Click to activate"}
                     >
                       <span className={`h-2 w-2 rounded-full ${item.isActive ? "bg-emerald-500" : "bg-slate-400"}`} />
                       <span>{item.isActive ? "Active" : "Inactive"}</span>
@@ -660,7 +804,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       type="button"
                       onClick={() => setPreviewItem(item)}
                       className="p-1.5 rounded-lg text-ink-soft hover:bg-saffron-50 hover:text-saffron-800 transition-colors cursor-pointer"
-                      title="Preview Media"
+                      title="Preview Card"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
@@ -669,7 +813,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       type="button"
                       onClick={() => openEditModal(item)}
                       className="p-1.5 rounded-lg text-ink-soft hover:bg-saffron-50 hover:text-saffron-800 transition-colors cursor-pointer"
-                      title="Edit Item"
+                      title="Edit Gallery Card"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -692,24 +836,30 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
 
       {/* ==================== CREATE / EDIT MODAL ==================== */}
       {isEditorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border border-saffron-100 bg-white shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="relative flex flex-col w-full max-w-3xl max-h-[92vh] overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-2xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-saffron-100 px-6 py-4 bg-[#FFFDF9] shrink-0">
-              <h3 className="font-display text-base sm:text-lg font-bold text-ink">
-                {draft.id ? "Edit Gallery Item" : "Add New Gallery Item"}
-              </h3>
+              <div>
+                <h3 className="font-display text-base sm:text-lg font-bold text-ink">
+                  {draft.id ? "Edit Gallery Card" : "Add New Gallery Card"}
+                </h3>
+                <p className="text-xs text-ink-soft">
+                  Configure up to 3 photos and 1 optional YouTube video.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsEditorOpen(false)}
-                className="rounded-full p-1 text-ink-soft hover:bg-saffron-50 hover:text-ink"
+                className="rounded-full p-1.5 text-ink-soft hover:bg-saffron-50 hover:text-ink cursor-pointer"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Modal Form Body */}
-            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5">
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
               {formError && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700 animate-shake">
                   ⚠️ {formError}
@@ -720,7 +870,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-ink mb-1">
-                    Title <span className="text-rose-500">*</span>
+                    Card Title <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -739,7 +889,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                   <select
                     value={draft.category}
                     onChange={(e) => setDraft((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-sm text-ink focus:border-saffron-500 focus:outline-none focus:ring-2 focus:ring-saffron-200"
+                    className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-sm text-ink focus:border-saffron-500 focus:outline-none focus:ring-2 focus:ring-saffron-200 cursor-pointer"
                   >
                     {GALLERY_CATEGORIES.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -762,191 +912,325 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                 />
               </div>
 
-              {/* Media Type Selector */}
-              <div>
-                <label className="block text-xs font-bold text-ink mb-1.5">
-                  Media Type <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDraft((p) => ({ ...p, mediaType: "photo" }))}
-                    className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                      draft.mediaType === "photo"
-                        ? "border-saffron-500 bg-saffron-50 text-saffron-900 ring-2 ring-saffron-400/40"
-                        : "border-saffron-200 bg-white text-ink-soft hover:bg-slate-50"
-                    }`}
-                  >
-                    <Camera className="h-4 w-4" />
-                    <span>Photo</span>
-                  </button>
+              {/* ────────────────── SECTION 1: 3 PHOTOS MANAGEMENT ────────────────── */}
+              <div className="rounded-2xl border border-saffron-200 bg-saffron-50/40 p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-saffron-100 text-saffron-800">
+                      <Camera className="h-3.5 w-3.5" />
+                    </span>
+                    <h4 className="text-xs sm:text-sm font-bold text-saffron-900">
+                      Gallery Photos (Up to 3 Photos Simultaneously)
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-ink-soft">
+                    Upload or replace individual photos independently.
+                  </span>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setDraft((p) => ({ ...p, mediaType: "video" }))}
-                    className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                      draft.mediaType === "video"
-                        ? "border-saffron-500 bg-saffron-50 text-saffron-900 ring-2 ring-saffron-400/40"
-                        : "border-saffron-200 bg-white text-ink-soft hover:bg-slate-50"
-                    }`}
-                  >
-                    <Film className="h-4 w-4" />
-                    <span>Video (≤ 3 Minutes)</span>
-                  </button>
+                {/* 3 Photo Slots Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Photo 1 Slot */}
+                  <div className="rounded-xl border border-saffron-200/80 bg-white p-3 space-y-2 flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-ink flex items-center gap-1">
+                        <span>Photo 1</span>
+                        <span className="rounded bg-saffron-100 px-1 py-0.2 text-[9px] font-bold text-saffron-800">Primary</span>
+                      </span>
+                      {draft.photo1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(1)}
+                          className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
+                          title="Remove Photo 1"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Preview / Upload Box */}
+                    {draft.photo1 ? (
+                      <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
+                        <Image
+                          src={draft.photo1}
+                          alt="Photo 1"
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label
+                            htmlFor="photo-upload-1"
+                            className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink hover:bg-white cursor-pointer shadow-xs"
+                          >
+                            Replace
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="photo-upload-1"
+                        className="flex flex-col items-center justify-center aspect-[4/3] w-full rounded-lg border-2 border-dashed border-saffron-200 bg-cream/30 hover:bg-saffron-50/60 transition-colors cursor-pointer text-center p-3"
+                      >
+                        <Upload className="h-5 w-5 text-saffron-600 mb-1" />
+                        <span className="text-xs font-bold text-saffron-800">
+                          {uploadingSlot === 1 ? "Optimizing..." : "Upload Photo 1"}
+                        </span>
+                        <span className="text-[10px] text-ink-soft">JPG, PNG, WebP (≤5MB)</span>
+                      </label>
+                    )}
+
+                    <input
+                      id="photo-upload-1"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => handleSlotPhotoUpload(1, e)}
+                      disabled={uploadingSlot !== null}
+                      className="hidden"
+                    />
+
+                    {/* Direct URL input */}
+                    <div>
+                      <input
+                        type="url"
+                        value={draft.photo1}
+                        onChange={(e) => setDraft((p) => ({ ...p, photo1: e.target.value }))}
+                        placeholder="Or paste photo 1 URL..."
+                        className="w-full rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Photo 2 Slot */}
+                  <div className="rounded-xl border border-saffron-200/80 bg-white p-3 space-y-2 flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-ink">Photo 2 (Optional)</span>
+                      {draft.photo2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(2)}
+                          className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
+                          title="Remove Photo 2"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Preview / Upload Box */}
+                    {draft.photo2 ? (
+                      <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
+                        <Image
+                          src={draft.photo2}
+                          alt="Photo 2"
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label
+                            htmlFor="photo-upload-2"
+                            className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink hover:bg-white cursor-pointer shadow-xs"
+                          >
+                            Replace
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="photo-upload-2"
+                        className="flex flex-col items-center justify-center aspect-[4/3] w-full rounded-lg border-2 border-dashed border-saffron-200 bg-cream/30 hover:bg-saffron-50/60 transition-colors cursor-pointer text-center p-3"
+                      >
+                        <Upload className="h-5 w-5 text-saffron-600 mb-1" />
+                        <span className="text-xs font-bold text-saffron-800">
+                          {uploadingSlot === 2 ? "Optimizing..." : "Upload Photo 2"}
+                        </span>
+                        <span className="text-[10px] text-ink-soft">JPG, PNG, WebP (≤5MB)</span>
+                      </label>
+                    )}
+
+                    <input
+                      id="photo-upload-2"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => handleSlotPhotoUpload(2, e)}
+                      disabled={uploadingSlot !== null}
+                      className="hidden"
+                    />
+
+                    {/* Direct URL input */}
+                    <div>
+                      <input
+                        type="url"
+                        value={draft.photo2}
+                        onChange={(e) => setDraft((p) => ({ ...p, photo2: e.target.value }))}
+                        placeholder="Or paste photo 2 URL..."
+                        className="w-full rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Photo 3 Slot */}
+                  <div className="rounded-xl border border-saffron-200/80 bg-white p-3 space-y-2 flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-ink">Photo 3 (Optional)</span>
+                      {draft.photo3 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(3)}
+                          className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
+                          title="Remove Photo 3"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Preview / Upload Box */}
+                    {draft.photo3 ? (
+                      <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
+                        <Image
+                          src={draft.photo3}
+                          alt="Photo 3"
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label
+                            htmlFor="photo-upload-3"
+                            className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink hover:bg-white cursor-pointer shadow-xs"
+                          >
+                            Replace
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="photo-upload-3"
+                        className="flex flex-col items-center justify-center aspect-[4/3] w-full rounded-lg border-2 border-dashed border-saffron-200 bg-cream/30 hover:bg-saffron-50/60 transition-colors cursor-pointer text-center p-3"
+                      >
+                        <Upload className="h-5 w-5 text-saffron-600 mb-1" />
+                        <span className="text-xs font-bold text-saffron-800">
+                          {uploadingSlot === 3 ? "Optimizing..." : "Upload Photo 3"}
+                        </span>
+                        <span className="text-[10px] text-ink-soft">JPG, PNG, WebP (≤5MB)</span>
+                      </label>
+                    )}
+
+                    <input
+                      id="photo-upload-3"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => handleSlotPhotoUpload(3, e)}
+                      disabled={uploadingSlot !== null}
+                      className="hidden"
+                    />
+
+                    {/* Direct URL input */}
+                    <div>
+                      <input
+                        type="url"
+                        value={draft.photo3}
+                        onChange={(e) => setDraft((p) => ({ ...p, photo3: e.target.value }))}
+                        placeholder="Or paste photo 3 URL..."
+                        className="w-full rounded-lg border border-saffron-200 bg-white px-2.5 py-1 text-[11px] text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* PHOTO CONTROLS */}
-              {draft.mediaType === "photo" && (
-                <div className="rounded-2xl border border-saffron-200 bg-saffron-50/40 p-4 space-y-3">
-                  <h4 className="text-xs font-bold text-saffron-800 flex items-center gap-1.5">
-                    <Camera className="h-3.5 w-3.5" />
-                    <span>Photo Upload & Source</span>
-                  </h4>
-
-                  {/* Upload from Computer */}
-                  <div>
-                    <label
-                      htmlFor="photo-upload-input"
-                      className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-saffron-300 bg-white py-3 text-xs font-bold text-saffron-800 hover:bg-saffron-50 transition-all cursor-pointer"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>{isUploadingPhoto ? "Optimizing & Compressing..." : "Upload Photo from Computer"}</span>
-                    </label>
-                    <input
-                      id="photo-upload-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      disabled={isUploadingPhoto}
-                      className="hidden"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs text-ink-soft">
-                    <span className="flex-1 h-px bg-saffron-200" />
-                    <span>OR PASTE IMAGE URL</span>
-                    <span className="flex-1 h-px bg-saffron-200" />
-                  </div>
-
-                  {/* Direct Image URL input */}
-                  <div>
-                    <input
-                      type="url"
-                      value={draft.imageUrl}
-                      onChange={(e) =>
-                        setDraft((p) => ({
-                          ...p,
-                          imageUrl: e.target.value,
-                          thumbnailUrl: p.thumbnailUrl || e.target.value,
-                        }))
-                      }
-                      placeholder="https://example.com/photo.jpg"
-                      className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Image Preview */}
-                  {draft.imageUrl && (
-                    <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-saffron-200 bg-slate-100">
-                      <Image
-                        src={draft.imageUrl}
-                        alt="Preview"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* VIDEO CONTROLS */}
-              {draft.mediaType === "video" && (
-                <div className="rounded-2xl border border-saffron-200 bg-saffron-50/40 p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-saffron-800 flex items-center gap-1.5">
+              {/* ────────────────── SECTION 2: 1 OPTIONAL VIDEO ────────────────── */}
+              <div className="rounded-2xl border border-red-200/80 bg-red-50/30 p-4 sm:p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-100 text-red-700">
                       <Film className="h-3.5 w-3.5" />
-                      <span>Video Details & YouTube Link</span>
-                    </h4>
-                    <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-bold text-rose-800">
-                      Max Duration: 3 Mins (180s)
                     </span>
+                    <h4 className="text-xs sm:text-sm font-bold text-ink">
+                      Video (1 Optional YouTube Video)
+                    </h4>
                   </div>
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-800">
+                    Max 3 Mins (180s)
+                  </span>
+                </div>
 
-                  {/* YouTube URL input */}
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      YouTube URL (Supports Standard, Shorts, and youtu.be)
+                {/* YouTube URL input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-ink">
+                      YouTube Video URL
                     </label>
+                    {draft.youtubeUrl && (
+                      <button
+                        type="button"
+                        onClick={handleClearVideo}
+                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 cursor-pointer"
+                      >
+                        Remove Video
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
                     <input
                       type="url"
                       value={draft.youtubeUrl}
                       onChange={(e) => handleYouTubeUrlChange(e.target.value)}
                       placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                      className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
+                      className="w-full rounded-xl border border-saffron-200 bg-white pl-3.5 pr-24 py-2 text-xs sm:text-sm text-ink placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
                     />
                     {draft.youtubeVideoId && (
-                      <p className="text-[11px] text-emerald-700 font-semibold mt-1">
-                        ✓ Valid YouTube Video ID: {draft.youtubeVideoId}
-                      </p>
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-bold text-red-600">
+                        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                        </svg>
+                        <span>Verified</span>
+                      </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Duration Control */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        Video Duration (Seconds) <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={180}
-                        value={draft.videoDurationSeconds}
-                        onChange={(e) =>
-                          setDraft((p) => ({ ...p, videoDurationSeconds: Math.min(180, Number(e.target.value)) }))
-                        }
-                        className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-ink focus:border-saffron-500 focus:outline-none"
-                      />
-                      <p className="text-[10px] text-ink-soft mt-0.5">
-                        {Math.floor(draft.videoDurationSeconds / 60)}m {draft.videoDurationSeconds % 60}s (Must be ≤ 180s)
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        Custom Thumbnail (Optional)
-                      </label>
-                      <input
-                        type="url"
-                        value={draft.thumbnailUrl}
-                        onChange={(e) => setDraft((p) => ({ ...p, thumbnailUrl: e.target.value }))}
-                        placeholder="https://example.com/thumbnail.jpg"
-                        className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Video Thumbnail Preview */}
-                  {draft.thumbnailUrl && (
-                    <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-saffron-200 bg-slate-900">
+                {/* Video Preview if valid YouTube URL provided */}
+                {draft.youtubeVideoId && (
+                  <div className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-red-200 bg-white p-3">
+                    <div className="relative aspect-video w-full sm:w-40 rounded-lg overflow-hidden bg-black shrink-0">
                       <Image
-                        src={draft.thumbnailUrl}
-                        alt="Video Thumbnail Preview"
+                        src={getYouTubeThumbnailUrl(draft.youtubeVideoId) || "/logo.jpeg"}
+                        alt="YouTube Preview"
                         fill
                         className="object-cover"
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-saffron-600/90 text-white shadow-md">
-                          <Play className="h-5 w-5 fill-white ml-0.5" />
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md">
+                          <Play className="h-4 w-4 fill-white ml-0.5" />
                         </span>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-red-600">
+                        <svg className="h-4 w-4 fill-current shrink-0" viewBox="0 0 24 24">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                        </svg>
+                        <span>YouTube Video Attached</span>
+                      </div>
+                      <p className="text-[11px] font-mono text-ink-soft mt-0.5">
+                        ID: {draft.youtubeVideoId}
+                      </p>
+                      <a
+                        href={draft.youtubeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-saffron-800 hover:text-saffron-950 mt-1"
+                      >
+                        <span>Open on YouTube</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              {/* Display Settings: Order, Active, Homepage */}
+              {/* Display & Order Settings */}
               <div className="rounded-2xl border border-saffron-100 bg-cream/40 p-4 space-y-3">
                 <h4 className="text-xs font-bold text-ink">Display & Visibility Settings</h4>
 
@@ -970,7 +1254,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       id="is-active-check"
                       checked={draft.isActive}
                       onChange={(e) => setDraft((p) => ({ ...p, isActive: e.target.checked }))}
-                      className="h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-400"
+                      className="h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-400 cursor-pointer"
                     />
                     <label htmlFor="is-active-check" className="text-xs font-bold text-ink cursor-pointer">
                       Active (Visible to Public)
@@ -983,7 +1267,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       id="show-homepage-check"
                       checked={draft.showOnHomepage}
                       onChange={(e) => setDraft((p) => ({ ...p, showOnHomepage: e.target.checked }))}
-                      className="h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-400"
+                      className="h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-400 cursor-pointer"
                     />
                     <label htmlFor="show-homepage-check" className="text-xs font-bold text-ink cursor-pointer">
                       Show on Homepage
@@ -992,30 +1276,30 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                 </div>
               </div>
 
-              {/* Form Action Buttons */}
+              {/* Form Action Buttons: Save Changes & Cancel */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-saffron-100">
                 <button
                   type="button"
                   onClick={() => setIsEditorOpen(false)}
-                  className="rounded-xl border border-saffron-200 bg-white px-4 py-2 text-xs font-bold text-ink hover:bg-saffron-50 transition-colors"
+                  className="rounded-xl border border-saffron-200 bg-white px-4 py-2 text-xs font-bold text-ink hover:bg-saffron-50 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  disabled={saving || isUploadingPhoto}
-                  className="btn-primary !py-2 !px-5 !text-xs font-bold inline-flex items-center gap-2"
+                  disabled={saving || uploadingSlot !== null}
+                  className="btn-primary !py-2 !px-5 !text-xs font-bold inline-flex items-center gap-2 cursor-pointer"
                 >
                   {saving ? (
                     <>
                       <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      <span>Saving...</span>
+                      <span>Saving Changes...</span>
                     </>
                   ) : (
                     <>
                       <Check className="h-4 w-4" />
-                      <span>{draft.id ? "Update Item" : "Save Item"}</span>
+                      <span>{draft.id ? "Save Changes" : "Create Card"}</span>
                     </>
                   )}
                 </button>
@@ -1035,7 +1319,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
               </span>
               <div>
                 <h3 className="font-display text-base font-bold text-ink">
-                  Delete Gallery Item?
+                  Delete Gallery Card?
                 </h3>
                 <p className="text-xs text-ink-soft">
                   Are you sure you want to remove &quot;{itemToDelete.title}&quot;?
@@ -1044,14 +1328,14 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
             </div>
 
             <p className="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              This action cannot be undone. You can also choose to deactivate the item instead so it is hidden from the public without deleting.
+              This action cannot be undone. You can also deactivate the card instead so it stays saved in your admin dashboard while hidden from the public gallery.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setItemToDelete(null)}
-                className="rounded-xl border border-saffron-200 px-4 py-2 text-xs font-bold text-ink hover:bg-saffron-50"
+                className="rounded-xl border border-saffron-200 px-4 py-2 text-xs font-bold text-ink hover:bg-saffron-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -1059,9 +1343,9 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                 type="button"
                 onClick={handleDeleteConfirm}
                 disabled={saving}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition-colors"
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition-colors cursor-pointer"
               >
-                {saving ? "Deleting..." : "Yes, Delete Item"}
+                {saving ? "Deleting..." : "Yes, Delete Card"}
               </button>
             </div>
           </div>

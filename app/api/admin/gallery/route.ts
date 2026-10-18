@@ -83,10 +83,60 @@ export async function POST(req: Request) {
       );
     }
 
-    const mediaType: GalleryMediaType =
-      body.mediaType === "video" ? "video" : "photo";
+    // Collect up to 3 photos from images array and legacy fields
+    let rawImages: string[] = [];
+    if (Array.isArray(body.images)) {
+      rawImages.push(...body.images);
+    }
+    if (body.imageUrl && typeof body.imageUrl === "string") rawImages.push(body.imageUrl);
+    if (body.imageUrl2 && typeof body.imageUrl2 === "string") rawImages.push(body.imageUrl2);
+    if (body.imageUrl3 && typeof body.imageUrl3 === "string") rawImages.push(body.imageUrl3);
 
-    let imageUrl = (body.imageUrl || "").trim();
+    // Normalize and validate images
+    const images: string[] = [];
+    for (const raw of rawImages) {
+      if (typeof raw !== "string") continue;
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+
+      // Validate format
+      if (
+        !trimmed.startsWith("http://") &&
+        !trimmed.startsWith("https://") &&
+        !trimmed.startsWith("data:image/") &&
+        !trimmed.startsWith("/")
+      ) {
+        return NextResponse.json(
+          { ok: false, error: "Invalid image format. Images must be valid URLs or web-safe images (JPG, PNG, WebP)." },
+          { status: 400 }
+        );
+      }
+
+      // Validate file size for data URLs (max 5MB)
+      if (trimmed.startsWith("data:image/")) {
+        const base64Length = trimmed.length - (trimmed.indexOf(",") + 1);
+        const approxBytes = (base64Length * 3) / 4;
+        if (approxBytes > 5 * 1024 * 1024) {
+          return NextResponse.json(
+            { ok: false, error: "Image file size exceeds the 5MB limit. Please upload a compressed image." },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (!images.includes(trimmed)) {
+        images.push(trimmed);
+      }
+    }
+
+    // SERVER ENFORCEMENT: Max 3 photos simultaneously
+    if (images.length > 3) {
+      return NextResponse.json(
+        { ok: false, error: "Maximum of 3 photos allowed per gallery card." },
+        { status: 400 }
+      );
+    }
+
     let videoUrl = (body.videoUrl || "").trim();
     let youtubeUrl = (body.youtubeUrl || "").trim();
     let youtubeVideoId = body.youtubeVideoId ? String(body.youtubeVideoId).trim() : undefined;
@@ -96,84 +146,86 @@ export async function POST(req: Request) {
       : undefined;
     let durationVerified = Boolean(body.durationVerified);
 
-    if (mediaType === "photo") {
-      if (!imageUrl) {
+    // SERVER ENFORCEMENT: Max 1 video allowed
+    if (youtubeUrl && videoUrl && youtubeUrl !== videoUrl) {
+      return NextResponse.json(
+        { ok: false, error: "Only 1 video is allowed per gallery card." },
+        { status: 400 }
+      );
+    }
+
+    // Must have at least 1 media item (photo or video)
+    if (images.length === 0 && !youtubeUrl && !videoUrl) {
+      return NextResponse.json(
+        { ok: false, error: "Please provide at least one photo or video for the gallery card." },
+        { status: 400 }
+      );
+    }
+
+    // YouTube Video Validation
+    if (youtubeUrl) {
+      const extractedId = extractYouTubeVideoId(youtubeUrl);
+      if (!extractedId) {
         return NextResponse.json(
-          { ok: false, error: "Image URL or photo upload is required for photo gallery items." },
+          {
+            ok: false,
+            error:
+              "Invalid YouTube URL. Please provide a standard YouTube video link (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)",
+          },
           { status: 400 }
         );
       }
-      if (!thumbnailUrl) {
-        thumbnailUrl = imageUrl;
-      }
-    } else {
-      // Video Item Validation
-      if (!youtubeUrl && !videoUrl) {
-        return NextResponse.json(
-          { ok: false, error: "A YouTube URL or direct video URL is required for video items." },
-          { status: 400 }
-        );
+      youtubeVideoId = extractedId;
+
+      // Auto fallback thumbnail from YouTube HQ if none provided and no photos
+      if (!thumbnailUrl && images.length === 0) {
+        thumbnailUrl = getYouTubeThumbnailUrl(extractedId) || "";
       }
 
-      if (youtubeUrl) {
-        const extractedId = extractYouTubeVideoId(youtubeUrl);
-        if (!extractedId) {
+      // Server-side YouTube duration check if API key exists
+      const apiCheck = await verifyYouTubeDuration(extractedId);
+      if (apiCheck.verified && typeof apiCheck.durationSeconds === "number") {
+        if (apiCheck.durationSeconds > 180) {
           return NextResponse.json(
             {
               ok: false,
-              error:
-                "Invalid YouTube URL. Please provide a standard YouTube video link (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)",
+              error: `Video exceeds the maximum duration limit of 3 minutes (180 seconds). Actual duration: ${apiCheck.durationSeconds}s.`,
             },
             { status: 400 }
           );
         }
-        youtubeVideoId = extractedId;
-
-        // Auto fallback thumbnail from YouTube HQ if none provided
-        if (!thumbnailUrl) {
-          thumbnailUrl = getYouTubeThumbnailUrl(extractedId);
-        }
-
-        // Server-side YouTube duration check if API key exists
-        const apiCheck = await verifyYouTubeDuration(extractedId);
-        if (apiCheck.verified && typeof apiCheck.durationSeconds === "number") {
-          if (apiCheck.durationSeconds > 180) {
-            return NextResponse.json(
-              {
-                ok: false,
-                error: `Video exceeds the maximum duration limit of 3 minutes (180 seconds). Actual duration: ${apiCheck.durationSeconds}s.`,
-              },
-              { status: 400 }
-            );
-          }
-          videoDurationSeconds = apiCheck.durationSeconds;
-          durationVerified = true;
-        } else {
-          // If admin manually supplied a duration, validate limit
-          if (videoDurationSeconds !== undefined && videoDurationSeconds > 180) {
-            return NextResponse.json(
-              {
-                ok: false,
-                error: "Video duration exceeds the maximum limit of 3 minutes (180 seconds).",
-              },
-              { status: 400 }
-            );
-          }
-          durationVerified = false;
-        }
-      } else if (videoUrl) {
-        // Direct video upload duration check
+        videoDurationSeconds = apiCheck.durationSeconds;
+        durationVerified = true;
+      } else {
+        // If admin manually supplied a duration, validate limit
         if (videoDurationSeconds !== undefined && videoDurationSeconds > 180) {
           return NextResponse.json(
             {
               ok: false,
-              error: "Direct video exceeds the maximum duration limit of 3 minutes (180 seconds).",
+              error: "Video duration exceeds the maximum limit of 3 minutes (180 seconds).",
             },
             { status: 400 }
           );
         }
+        durationVerified = false;
+      }
+    } else if (videoUrl) {
+      // Direct video upload duration check
+      if (videoDurationSeconds !== undefined && videoDurationSeconds > 180) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Direct video exceeds the maximum duration limit of 3 minutes (180 seconds).",
+          },
+          { status: 400 }
+        );
       }
     }
+
+    const hasVideo = Boolean(youtubeUrl || videoUrl);
+    const mediaType: GalleryMediaType = hasVideo
+      ? (images.length > 0 ? "mixed" : "video")
+      : "photo";
 
     const id = body.id || body._id || `gal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const existing = await findGalleryItemById(id);
@@ -184,18 +236,21 @@ export async function POST(req: Request) {
       title,
       description: (body.description || "").trim(),
       mediaType,
-      imageUrl: mediaType === "photo" ? imageUrl : undefined,
-      videoUrl: mediaType === "video" ? videoUrl : undefined,
-      youtubeUrl: mediaType === "video" && youtubeUrl ? youtubeUrl : undefined,
-      youtubeVideoId: mediaType === "video" && youtubeVideoId ? youtubeVideoId : undefined,
-      thumbnailUrl: thumbnailUrl || imageUrl || undefined,
+      images,
+      imageUrl: images[0] || undefined,
+      imageUrl2: images[1] || undefined,
+      imageUrl3: images[2] || undefined,
+      thumbnailUrl: thumbnailUrl || images[0] || (youtubeVideoId ? getYouTubeThumbnailUrl(youtubeVideoId) || undefined : undefined),
+      youtubeUrl: youtubeUrl || undefined,
+      youtubeVideoId: youtubeVideoId || undefined,
+      videoUrl: videoUrl || undefined,
+      videoDurationSeconds,
+      durationVerified,
       category: (body.category || "Puja Ceremonies").trim(),
       isActive: body.isActive !== false,
       showOnHomepage: Boolean(body.showOnHomepage),
       displayOrder: Number.isFinite(Number(body.displayOrder)) ? Number(body.displayOrder) : 1,
       isDemo: Boolean(body.isDemo),
-      videoDurationSeconds,
-      durationVerified,
       createdAt: existing?.createdAt || body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
