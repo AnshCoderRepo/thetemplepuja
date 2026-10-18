@@ -266,12 +266,6 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
               ? (videos.length > 1 ? `Watch ${videos.length} Sacred Videos →` : "Watch Sacred Video →")
               : `View ${photos.length} ${photos.length === 1 ? "Photo" : "Photos"} →`}
           </span>
-
-          {item.isDemo && (
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Demo
-            </span>
-          )}
         </div>
       </div>
     </div>
