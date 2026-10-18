@@ -5,7 +5,7 @@ import { X, Sparkles } from "lucide-react";
 import { useBookingModal, useI18n } from "@/components/providers";
 import { useCatalog } from "@/features/catalog";
 import { getLocalizedPoojaTitle, getLocalizedPoojaDescription } from "@/lib/data";
-import { event as trackMetaEvent } from "@/lib/meta-pixel";
+import { trackBookingStart } from "@/lib/meta-pixel";
 import BookingFlow from "./BookingFlow";
 
 export default function BookingModal() {
@@ -34,12 +34,12 @@ export default function BookingModal() {
     }
   }, [isOpen, selectedPoojaSlug]);
 
-  // Track Meta Pixel InitiateCheckout event
+  // Track Meta Pixel BookingStart event when devotee begins booking process
   useEffect(() => {
     if (isOpen && selectedPooja) {
-      trackMetaEvent("InitiateCheckout", {
+      trackBookingStart({
         content_name: selectedPooja.title,
-        content_category: "Pooja",
+        content_ids: [selectedPooja.slug],
         value: selectedPooja.price,
         currency: "INR",
       });

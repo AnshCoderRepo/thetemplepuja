@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Globe } from "lucide-react";
 import { useI18n } from "@/components/providers";
 import { SUPPORTED_LANGUAGES, type Locale } from "@/lib/i18n";
+import { trackCustomEvent } from "@/lib/meta-pixel";
 
 export default function LanguageToggle({
   className = "",
@@ -76,6 +77,7 @@ export default function LanguageToggle({
                   role="menuitem"
                   onClick={() => {
                     setLocale(lang.code as Locale);
+                    trackCustomEvent("LanguageChange", { language: lang.code, language_name: lang.label });
                     setOpen(false);
                   }}
                   className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs transition-colors ${

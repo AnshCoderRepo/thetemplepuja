@@ -17,6 +17,7 @@ import { isValidIndianPhone, normalizePhone } from "@/lib/validation";
 import { bookingRateLimiter } from "@/lib/rate-limit";
 import { broadcastRealtime } from "@/lib/realtime";
 import { SITE_CONFIG } from "@/lib/config";
+import { sendCapiPurchaseEvent } from "@/lib/meta-capi";
 
 interface PaymentProof {
   method?: "upi_qr" | "razorpay" | "simulated";
@@ -305,6 +306,28 @@ export async function POST(req: NextRequest) {
         password: passToSend,
         loginUrl: `${siteUrl}/login`,
       },
+    });
+
+    // Dispatch Meta Conversions API (CAPI) Purchase event (non-blocking, deduplicated)
+    void sendCapiPurchaseEvent({
+      booking: {
+        bookingId: booking.bookingId,
+        orderId: booking.razorpayOrderId,
+        paymentId: booking.razorpayPaymentId || booking.upiTransactionId,
+        poojaSlug: booking.poojaSlug,
+        poojaTitle: booking.poojaTitle,
+        amount: booking.amount,
+        currency: "INR",
+      },
+      user: {
+        name: body.name.trim(),
+        phone: normalizedPhone,
+        email: typeof body.email === "string" ? body.email : undefined,
+        city: typeof body.city === "string" ? body.city : undefined,
+      },
+      req,
+    }).catch((err) => {
+      console.warn("[meta-capi] booking dispatch error:", err?.message);
     });
   }
 

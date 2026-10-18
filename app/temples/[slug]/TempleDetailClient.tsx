@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -37,6 +37,7 @@ import { useCatalog } from "@/features/catalog";
 import { useI18n } from "@/components/providers";
 import { PoojaImage, TempleImage } from "@/components/common";
 import { formatINR } from "@/lib/format";
+import { trackViewContent } from "@/lib/meta-pixel";
 
 interface TempleDetailClientProps {
   initialTemple: Temple;
@@ -58,6 +59,16 @@ export default function TempleDetailClient({
     }
     return initialTemple;
   }, [catalogTemples, initialTemple]);
+
+  useEffect(() => {
+    if (temple) {
+      trackViewContent({
+        content_name: temple.name,
+        content_ids: [temple.slug],
+        content_type: "temple",
+      });
+    }
+  }, [temple?.slug, temple?.name]);
 
   const allPoojas = useMemo(() => {
     if (catalogPoojas && catalogPoojas.length > 0) return catalogPoojas;

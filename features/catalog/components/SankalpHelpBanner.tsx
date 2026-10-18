@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Headphones } from "lucide-react";
 import { useI18n } from "@/components/providers";
 import { getWhatsAppUrl } from "@/lib/config";
+import { trackContact, trackCustomEvent } from "@/lib/meta-pixel";
 
 export interface SankalpHelpBannerProps {
   className?: string;
@@ -54,6 +55,10 @@ export default function SankalpHelpBanner({
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => {
+            trackCustomEvent("BookingHelpClick", { source: "sankalp_help_banner" });
+            trackContact({ method: "whatsapp", label: "Sankalp Help WhatsApp" });
+          }}
           aria-label={`${t("book.sankalpHelpCta")} - WhatsApp Support`}
           className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-saffron-500 to-amber-500 hover:from-saffron-600 hover:to-amber-600 text-white px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold shadow-soft hover:shadow-glow transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2"
         >

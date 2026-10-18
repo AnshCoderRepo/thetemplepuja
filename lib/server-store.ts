@@ -835,12 +835,15 @@ import {
   findOrderByOrderId as mongoFindOrderByOrderId,
   findOrdersByPhone as mongoFindOrdersByPhone,
   recordWebhookEvent as mongoRecordWebhookEvent,
+  recordCapiEvent as mongoRecordCapiEvent,
+  findCapiEvent as mongoFindCapiEvent,
   type OrderDoc,
 } from "./mongo-store";
 import { getPhoneLookupVariants } from "./phone";
 
 const inMemoryOrders = new Map<string, OrderDoc>();
 const inMemoryWebhooks = new Set<string>();
+const inMemoryCapiEvents = new Set<string>();
 
 export async function saveOrder(order: OrderDoc): Promise<void> {
   inMemoryOrders.set(order.orderId, order);
@@ -886,6 +889,40 @@ export async function recordWebhookEvent(
   }
   try {
     return await mongoRecordWebhookEvent(eventId, eventType);
+  } catch {
+    return true;
+  }
+}
+
+export async function isCapiEventRecorded(eventId: string): Promise<boolean> {
+  if (!eventId) return false;
+  if (inMemoryCapiEvents.has(eventId)) return true;
+  if (process.env.TTP_STORE === "memory" || !process.env.MONGODB_URI) {
+    return false;
+  }
+  try {
+    const found = await mongoFindCapiEvent(eventId);
+    return Boolean(found);
+  } catch {
+    return false;
+  }
+}
+
+export async function recordCapiEvent(
+  eventId: string,
+  eventName: string,
+  status: "sent" | "failed" | "skipped" = "sent",
+  metadata?: Record<string, unknown>
+): Promise<boolean> {
+  if (!eventId) return true;
+  if (inMemoryCapiEvents.has(eventId)) return false;
+  inMemoryCapiEvents.add(eventId);
+
+  if (process.env.TTP_STORE === "memory" || !process.env.MONGODB_URI) {
+    return true;
+  }
+  try {
+    return await mongoRecordCapiEvent(eventId, eventName, status, metadata);
   } catch {
     return true;
   }

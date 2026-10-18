@@ -23,6 +23,8 @@ export const STORAGE_KEYS = {
   CATALOG_BLOGS: "ttp_catalog_blogs_v1",
   /** Incomplete booking drafts for resume checkout. */
   INCOMPLETE_BOOKINGS: "ttp_incomplete_bookings_v1",
+  /** Active in-progress booking session for refresh persistence. */
+  ACTIVE_BOOKING_SESSION: "ttp_active_booking_session_v1",
   /** Catalog version counter for cross-tab sync. */
   CATALOG_VERSION: "ttp_catalog_version_v1",
 } as const;

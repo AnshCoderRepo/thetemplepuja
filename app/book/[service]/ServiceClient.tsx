@@ -36,6 +36,7 @@ import {
   isPoojaLiveStreamAvailable,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
+import { trackViewContent, trackBookingStart } from "@/lib/meta-pixel";
 
 function ServiceInner({ service }: { service: string }) {
   const { locale, t } = useI18n();
@@ -82,7 +83,17 @@ function ServiceInner({ service }: { service: string }) {
     document.title = locTitle
       ? `${locTitle} | templepujasewa`
       : "Book Pooja Online | templepujasewa";
-  }, [locTitle]);
+
+    if (pooja && isPoojaActive(pooja)) {
+      trackViewContent({
+        content_name: locTitle || pooja.title,
+        content_ids: [pooja.slug],
+        content_type: "product",
+        value: pooja.price,
+        currency: "INR",
+      });
+    }
+  }, [locTitle, pooja?.slug, pooja?.price]);
 
   if (pooja === undefined) {
     return (
@@ -122,6 +133,12 @@ function ServiceInner({ service }: { service: string }) {
   const bannerImage = getPoojaBannerImage(pooja);
 
   const handleBookNowClick = () => {
+    trackBookingStart({
+      content_name: locTitle || pooja.title,
+      content_ids: [pooja.slug],
+      value: pooja.price,
+      currency: "INR",
+    });
     openBooking(pooja.slug);
   };
 

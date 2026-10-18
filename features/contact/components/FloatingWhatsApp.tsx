@@ -8,7 +8,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
-import { event as trackMetaEvent } from "@/lib/meta-pixel";
+import { trackContact } from "@/lib/meta-pixel";
 import { useBookingModal } from "@/components/providers";
 
 function WhatsAppIcon({ className = "h-8 w-8" }: { className?: string }) {
@@ -130,7 +130,7 @@ export default function FloatingWhatsApp() {
             title="Email Support"
             aria-label="Email Support"
             onClick={() => {
-              trackMetaEvent("Contact", { method: "email" });
+              trackContact({ method: "email", label: "Floating Email Support" });
               setIsOpen(false);
             }}
             className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-saffron-500 to-amber-600 text-white shadow-xl shadow-saffron-500/30 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"
@@ -149,8 +149,7 @@ export default function FloatingWhatsApp() {
             title="Call Helpline"
             aria-label="Call Helpline"
             onClick={() => {
-              trackMetaEvent("Contact", { method: "phone" });
-              trackMetaEvent("Lead");
+              trackContact({ method: "phone", label: "Floating Helpline" });
               setIsOpen(false);
             }}
             className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"
@@ -171,8 +170,7 @@ export default function FloatingWhatsApp() {
             title="Chat on WhatsApp"
             aria-label="Chat on WhatsApp"
             onClick={() => {
-              trackMetaEvent("Contact", { method: "whatsapp" });
-              trackMetaEvent("Lead");
+              trackContact({ method: "whatsapp", label: "Floating WhatsApp Chat" });
               setIsOpen(false);
             }}
             className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-[#128C7E] via-[#25D366] to-[#128C7E] text-white shadow-xl shadow-[#25D366]/35 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"

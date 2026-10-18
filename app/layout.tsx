@@ -20,7 +20,6 @@ const devanagari = Noto_Sans_Devanagari({
   variable: "--font-devanagari",
   display: "swap",
 });
-
 import { SITE_URL } from "@/lib/seo";
 import { ErrorBoundary } from "@/components/common";
 import { FloatingWhatsApp } from "@/features/contact";

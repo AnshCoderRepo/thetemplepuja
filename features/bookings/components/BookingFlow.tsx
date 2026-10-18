@@ -35,6 +35,11 @@ import { formatINR } from "@/lib/format";
 import { isValidIndianPhone } from "@/lib/validation";
 import type { BookingAddonItem, BookingRecord } from "@/lib/storage";
 import { saveIncompleteBooking, removeIncompleteBooking } from "@/lib/incomplete-booking";
+import {
+  saveActiveBookingSession,
+  clearActiveBookingSession,
+  getActiveBookingSession,
+} from "@/lib/booking-session";
 import type { ResumeBookingData } from "@/components/providers/BookingModalContext";
 import { useCatalog } from "@/features/catalog";
 import { useI18n } from "@/components/providers";
@@ -62,6 +67,14 @@ import { COMMON_GOTRAS } from "../types/booking.types";
 import { calculatePackagePrice } from "./BookingPackages";
 import BookingConfirmation from "./BookingConfirmation";
 import UpiQrCheckout from "@/features/payments/components/UpiQrCheckout";
+import {
+  trackInitiateCheckout,
+  trackAddPaymentInfo,
+  trackPaymentInitiated,
+  trackPaymentFailed,
+  trackPurchase,
+  trackCustomEvent,
+} from "@/lib/meta-pixel";
 
 export interface BookingFlowProps {
   pooja?: Pooja;
@@ -92,52 +105,60 @@ export default function BookingFlow({
   // Step 2: Select Chadhava (with price and multiple items stepper)
   // Step 3: Enter Name(s) & Gotra(s) + 1 Mobile Number
   // Step 4: Pay via UPI & QR Code / Gateway
+  const activeSession = typeof window !== "undefined" ? getActiveBookingSession() : null;
+  const targetSlug = pooja?.slug ?? initialPoojaSlug;
+  const effectiveResume =
+    resumeData ||
+    (activeSession && (!targetSlug || activeSession.poojaSlug === targetSlug)
+      ? activeSession
+      : null);
+
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(
-    () => (resumeData?.step as 1 | 2 | 3 | 4) || 1
+    () => (effectiveResume?.step as 1 | 2 | 3 | 4) || 1
   );
 
   const [prayerSlug, setPrayerSlug] = useState<string>(
-    resumeData?.poojaSlug ?? pooja?.slug ?? initialPoojaSlug ?? (catalogPoojas[0]?.slug || "satyanarayan-katha")
+    effectiveResume?.poojaSlug ?? pooja?.slug ?? initialPoojaSlug ?? (catalogPoojas[0]?.slug || "satyanarayan-katha")
   );
   const [selectedTier, setSelectedTier] = useState<PackageTier>(
-    resumeData?.packageTier || "single"
+    effectiveResume?.packageTier || "single"
   );
   const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>(
-    resumeData?.addons || {}
+    effectiveResume?.addons || {}
   );
 
   // Single Devotee state:
   const resolvedPrimaryName =
-    resumeData?.primaryName ||
-    (resumeData as { devoteeName?: string })?.devoteeName ||
+    effectiveResume?.primaryName ||
+    (effectiveResume as { devoteeName?: string })?.devoteeName ||
     "";
   const resolvedGotra =
-    resumeData?.gotra ||
-    (resumeData as { devoteeGotra?: string })?.devoteeGotra ||
+    effectiveResume?.gotra ||
+    (effectiveResume as { devoteeGotra?: string })?.devoteeGotra ||
     "";
 
   const [name, setName] = useState(resolvedPrimaryName);
   const [gotra, setGotra] = useState(resolvedGotra);
 
   // Couple Partner state (2 names & 2 gotras):
-  const [partnerName, setPartnerName] = useState(resumeData?.partnerName || "");
-  const [partnerGotra, setPartnerGotra] = useState(resumeData?.partnerGotra || "");
+  const [partnerName, setPartnerName] = useState(effectiveResume?.partnerName || "");
+  const [partnerGotra, setPartnerGotra] = useState(effectiveResume?.partnerGotra || "");
 
   // Family dynamic members list (unlimited people with name & gotra):
   const [familyMembers, setFamilyMembers] = useState<DevoteeMember[]>(
-    resumeData?.familyMembers && resumeData.familyMembers.length > 0
-      ? resumeData.familyMembers
+    effectiveResume?.familyMembers && effectiveResume.familyMembers.length > 0
+      ? effectiveResume.familyMembers
       : [
           { id: "1", name: resolvedPrimaryName, gotra: resolvedGotra },
           { id: "2", name: "", gotra: "" },
         ]
   );
 
-  const [phone, setPhone] = useState(resumeData?.phone || "");
-  const [activeBookingId, setActiveBookingId] = useState(resumeData?.bookingId || "");
+  const [phone, setPhone] = useState(effectiveResume?.phone || "");
+  const [activeBookingId, setActiveBookingId] = useState(effectiveResume?.bookingId || "");
   const [formError, setFormError] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
+  const [couponCode, setCouponCode] = useState(effectiveResume?.couponCode || "");
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmed, setConfirmed] = useState<ConfirmedBooking | null>(null);
@@ -164,7 +185,21 @@ export default function BookingFlow({
     if (resumeData.phone) setPhone(resumeData.phone);
     if (resumeData.bookingId) setActiveBookingId(resumeData.bookingId);
     if (resumeData.step) setCurrentStep(resumeData.step as 1 | 2 | 3 | 4);
-  }, [resumeData]);
+    if (resumeData.couponCode) {
+      const code = resumeData.couponCode.trim().toUpperCase();
+      setCouponCode(code);
+      if (coupons && coupons[code]) {
+        const c = coupons[code];
+        setAppliedCoupon({
+          code,
+          label: c.label,
+          description: c.description,
+          kind: c.kind,
+          value: c.value,
+        });
+      }
+    }
+  }, [resumeData, coupons]);
 
   // Sync primary devotee name & gotra with familyMembers[0]
   const handlePrimaryNameChange = (val: string) => {
@@ -392,6 +427,28 @@ export default function BookingFlow({
       status: draftStatus,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+    });
+
+    saveActiveBookingSession({
+      bookingId: bId,
+      poojaSlug: selectedPooja.slug,
+      poojaTitle: selectedPooja.title,
+      step: currentStep,
+      packageTier: selectedTier,
+      addons: selectedAddons,
+      primaryName: name.trim(),
+      gotra: gotra.trim(),
+      phone: phone.trim(),
+      partnerName: selectedTier === "couple" ? partnerName.trim() : "",
+      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : "",
+      familyMembers: selectedTier === "family" ? familyMembers : [],
+      amount: finalTotal,
+      discount,
+      couponCode: appliedCoupon?.code ?? couponCode.trim(),
+      date: initialDate || selectedPooja.startDate || new Date().toISOString().slice(0, 10),
+      time: initialTime || selectedPooja.eventTime || selectedPooja.bestMuhurat || "06:30 PM IST",
+      isOpen: true,
+      lastActiveAt: Date.now(),
     });
   }, [
     confirmed,
@@ -621,6 +678,20 @@ export default function BookingFlow({
 
     setIsProcessingPayment(true);
 
+    // Track Meta Pixel InitiateCheckout event with stable event ID
+    const checkoutEventId = `ic_${bId}`;
+    trackInitiateCheckout(
+      {
+        content_name: selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Pooja",
+        content_ids: [selectedPooja?.slug || prayerSlug],
+        content_type: "product",
+        value: finalTotal,
+        currency: "INR",
+        num_items: 1 + addonItems.length,
+      },
+      checkoutEventId
+    );
+
     // Record pending booking immediately in database and client storage so admin orders/analytics reflects it
     try {
       await submitBooking({
@@ -638,6 +709,19 @@ export default function BookingFlow({
     // When UPI QR payment mode is active, proceed directly to Step 4 (UPI & QR payment screen)
     if (SITE_CONFIG.payment.mode === "upi_qr") {
       setIsProcessingPayment(false);
+      trackAddPaymentInfo({
+        content_name: selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Pooja",
+        content_ids: [selectedPooja?.slug || prayerSlug],
+        value: finalTotal,
+        currency: "INR",
+        payment_type: "upi_qr",
+      });
+      trackPaymentInitiated({
+        order_id: bId,
+        value: finalTotal,
+        currency: "INR",
+        method: "upi_qr",
+      });
       setCurrentStep(4);
       scrollToTop();
       return;
@@ -654,6 +738,14 @@ export default function BookingFlow({
 
       if (orderResult.configured && orderResult.orderId && orderResult.keyId) {
         pendingBookingRecord.razorpayOrderId = orderResult.orderId;
+
+        trackAddPaymentInfo({
+          content_name: selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Pooja",
+          content_ids: [selectedPooja?.slug || prayerSlug],
+          value: finalTotal,
+          currency: "INR",
+          payment_type: "razorpay",
+        });
 
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
@@ -684,6 +776,10 @@ export default function BookingFlow({
             ondismiss: async () => {
               setIsProcessingPayment(false);
               setFormError("Payment was cancelled or closed. You can retry paying whenever you are ready.");
+              trackPaymentFailed({
+                order_id: orderResult.orderId,
+                error_description: "Payment dismissed or cancelled by devotee at gateway",
+              });
               const dismissedRecord: BookingRecord = {
                 ...pendingBookingRecord,
                 status: "failed",
@@ -747,6 +843,11 @@ export default function BookingFlow({
               "Payment declined or failed at bank/UPI";
             setFormError(`Payment failed: ${failureDesc}`);
 
+            trackPaymentFailed({
+              order_id: response?.error?.metadata?.order_id || orderResult.orderId,
+              error_description: failureDesc,
+            });
+
             const failedRecord: BookingRecord = {
               ...pendingBookingRecord,
               status: "failed",
@@ -769,6 +870,13 @@ export default function BookingFlow({
             }
           });
         }
+
+        trackPaymentInitiated({
+          order_id: orderResult.orderId,
+          value: (orderResult.amount ?? Math.round(finalTotal * 100)) / 100,
+          currency: orderResult.currency || "INR",
+          method: "razorpay",
+        });
 
         rzp.open();
         return;
@@ -927,7 +1035,23 @@ export default function BookingFlow({
         email: userEmail,
       },
     });
+
+    // Track Meta Pixel verified purchase
+    trackPurchase(
+      {
+        order_id: bId,
+        value: finalTotal,
+        currency: "INR",
+        content_name: selectedPooja?.title || "Sacred Pooja",
+        content_ids: [selectedPooja?.slug || prayerSlug],
+        content_type: "product",
+        num_items: 1 + addonItems.length,
+      },
+      `pur_${bId}`
+    );
+
     removeIncompleteBooking(bId);
+    clearActiveBookingSession();
     setIsProcessingPayment(false);
   };
 
@@ -1052,7 +1176,23 @@ export default function BookingFlow({
         email: userEmail,
       },
     });
+
+    // Track Meta Pixel verified purchase
+    trackPurchase(
+      {
+        order_id: bookingId,
+        value: paidTotal,
+        currency: "INR",
+        content_name: selectedPooja?.title || "Sacred Pooja",
+        content_ids: [selectedPooja?.slug || prayerSlug],
+        content_type: "product",
+        num_items: 1 + addonItems.length,
+      },
+      `pur_${bookingId}`
+    );
+
     removeIncompleteBooking(bookingId);
+    clearActiveBookingSession();
   };
 
   if (confirmed) {
@@ -1236,7 +1376,15 @@ export default function BookingFlow({
                   key={opt.id}
                   type="button"
                   id={`booking-package-${opt.id}`}
-                  onClick={() => setSelectedTier(opt.id)}
+                  onClick={() => {
+                    setSelectedTier(opt.id);
+                    trackCustomEvent("SelectPackage", {
+                      pooja_slug: prayerSlug,
+                      package_tier: opt.id,
+                      package_name: opt.label,
+                      price: opt.price,
+                    });
+                  }}
                   className={`group flex items-center justify-between rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer touch-manipulation ${
                     isSelected
                       ? "border-saffron-500 bg-saffron-50/70 shadow-sm ring-2 ring-saffron-400/40"

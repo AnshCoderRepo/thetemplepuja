@@ -25,6 +25,7 @@ import {
 import { getResolvedCatalog } from "@/lib/server-store";
 import { SITE_CONFIG } from "@/lib/config";
 import { SITE_URL } from "@/lib/seo";
+import { BlogViewTracker } from "@/components/analytics";
 
 export async function generateStaticParams() {
   const catalog = await getResolvedCatalog();
@@ -148,6 +149,7 @@ export default async function BlogPostPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingLd) }}
       />
+      <BlogViewTracker title={post.title} slug={post.slug} />
       <main className="bg-cream min-h-screen pt-20 sm:pt-32 md:pt-40 lg:pt-44 pb-20">
         {/* Breadcrumbs Navigation */}
         <nav aria-label="Breadcrumb" className="container-px max-w-4xl mx-auto py-3">

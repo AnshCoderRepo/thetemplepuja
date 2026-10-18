@@ -6,17 +6,19 @@ export interface GalleryItem {
   title: string;
   description: string;
   mediaType: GalleryMediaType;
-  /** Up to 3 photos per card */
+  /** Photos per card (unrestricted number of photos) */
   images?: string[];
   imageUrl?: string; // Photo 1 (legacy & backward-compatible)
   imageUrl2?: string; // Photo 2
   imageUrl3?: string; // Photo 3
   thumbnailUrl?: string;
 
-  /** Single optional video */
-  videoUrl?: string;
-  youtubeUrl?: string;
+  /** Videos per card (unrestricted number of videos) */
+  videoUrl?: string; // First video (legacy & backward-compatible)
+  youtubeUrl?: string; // First YouTube video (legacy & backward-compatible)
   youtubeVideoId?: string;
+  videos?: string[]; // All videos (YouTube URLs or direct video URLs)
+  videoUrls?: string[]; // Alias for videos
   videoDurationSeconds?: number;
   durationVerified?: boolean;
 
@@ -41,9 +43,10 @@ export const GALLERY_CATEGORIES = [
 export type GalleryCategory = (typeof GALLERY_CATEGORIES)[number];
 
 /**
- * Normalizes and extracts up to 3 valid image URLs from a gallery item.
+ * Normalizes and extracts all valid image URLs from a gallery item.
  * Preserves backward compatibility with legacy `imageUrl`, `thumbnailUrl`,
  * and new `images` array / `imageUrl2`, `imageUrl3`.
+ * No limit on the number of photos returned.
  */
 export function getGalleryItemImages(item?: Partial<GalleryItem> | null): string[] {
   if (!item) return [];
@@ -74,17 +77,72 @@ export function getGalleryItemImages(item?: Partial<GalleryItem> | null): string
     add(item.thumbnailUrl);
   }
 
-  return list.slice(0, 3);
+  return list;
+}
+
+export interface GalleryVideo {
+  url: string;
+  youtubeId?: string;
+  isYouTube: boolean;
 }
 
 /**
- * Checks whether the gallery item has a valid playable YouTube video attached.
+ * Normalizes and extracts all valid videos from a gallery item.
+ * Returns array of objects with url, youtubeId (if applicable), and isYouTube flag.
+ */
+export function getGalleryItemVideos(item?: Partial<GalleryItem> | null): GalleryVideo[] {
+  if (!item) return [];
+  const rawUrls: string[] = [];
+
+  const add = (val?: string | null) => {
+    if (!val || typeof val !== "string") return;
+    const clean = val.trim();
+    if (clean && !rawUrls.includes(clean)) {
+      rawUrls.push(clean);
+    }
+  };
+
+  if (Array.isArray(item.videos)) {
+    for (const v of item.videos) add(v);
+  }
+  if (Array.isArray(item.videoUrls)) {
+    for (const v of item.videoUrls) add(v);
+  }
+  add(item.youtubeUrl);
+  add(item.videoUrl);
+
+  return rawUrls.map((url) => {
+    const ytId = extractYouTubeVideoId(url);
+    const isYt = Boolean(ytId || (url === item.youtubeUrl && item.youtubeVideoId));
+    return {
+      url,
+      youtubeId: ytId || (url === item.youtubeUrl && item.youtubeVideoId ? item.youtubeVideoId : undefined),
+      isYouTube: isYt,
+    };
+  });
+}
+
+/**
+ * Checks whether the gallery item has any valid playable YouTube video attached.
  */
 export function hasYouTubeVideo(item?: Partial<GalleryItem> | null): boolean {
   if (!item) return false;
+  if ((item.youtubeVideoId && item.youtubeVideoId.trim()) || (item.youtubeUrl && extractYouTubeVideoId(item.youtubeUrl))) {
+    return true;
+  }
+  return getGalleryItemVideos(item).some((v) => v.isYouTube);
+}
+
+/**
+ * Checks whether the gallery item has any video attached (YouTube or direct URL).
+ */
+export function hasAnyVideo(item?: Partial<GalleryItem> | null): boolean {
+  if (!item) return false;
   return Boolean(
+    (item.videoUrl && item.videoUrl.trim()) ||
+    (item.youtubeUrl && item.youtubeUrl.trim()) ||
     (item.youtubeVideoId && item.youtubeVideoId.trim()) ||
-    (item.youtubeUrl && extractYouTubeVideoId(item.youtubeUrl))
+    getGalleryItemVideos(item).length > 0
   );
 }
 

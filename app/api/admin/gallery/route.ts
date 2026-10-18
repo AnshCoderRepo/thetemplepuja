@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Collect up to 3 photos from images array and legacy fields
+    // Collect photos from images array and legacy fields (unlimited)
     let rawImages: string[] = [];
     if (Array.isArray(body.images)) {
       rawImages.push(...body.images);
@@ -129,61 +129,78 @@ export async function POST(req: Request) {
       }
     }
 
-    // SERVER ENFORCEMENT: Max 3 photos simultaneously
-    if (images.length > 3) {
-      return NextResponse.json(
-        { ok: false, error: "Maximum of 3 photos allowed per gallery card." },
-        { status: 400 }
-      );
+    // Collect all videos from videos array, videoUrls array, and legacy fields (unlimited)
+    let rawVideos: string[] = [];
+    if (Array.isArray(body.videos)) {
+      rawVideos.push(...body.videos);
     }
+    if (Array.isArray(body.videoUrls)) {
+      rawVideos.push(...body.videoUrls);
+    }
+    if (body.youtubeUrl && typeof body.youtubeUrl === "string") rawVideos.push(body.youtubeUrl);
+    if (body.videoUrl && typeof body.videoUrl === "string") rawVideos.push(body.videoUrl);
 
-    let videoUrl = (body.videoUrl || "").trim();
-    let youtubeUrl = (body.youtubeUrl || "").trim();
-    let youtubeVideoId = body.youtubeVideoId ? String(body.youtubeVideoId).trim() : undefined;
-    let thumbnailUrl = (body.thumbnailUrl || "").trim();
-    let videoDurationSeconds = body.videoDurationSeconds
-      ? Number(body.videoDurationSeconds)
-      : undefined;
-    let durationVerified = Boolean(body.durationVerified);
-
-    // SERVER ENFORCEMENT: Max 1 video allowed
-    if (youtubeUrl && videoUrl && youtubeUrl !== videoUrl) {
-      return NextResponse.json(
-        { ok: false, error: "Only 1 video is allowed per gallery card." },
-        { status: 400 }
-      );
+    const videos: string[] = [];
+    for (const raw of rawVideos) {
+      if (typeof raw !== "string") continue;
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      if (!videos.includes(trimmed)) {
+        videos.push(trimmed);
+      }
     }
 
     // Must have at least 1 media item (photo or video)
-    if (images.length === 0 && !youtubeUrl && !videoUrl) {
+    if (images.length === 0 && videos.length === 0) {
       return NextResponse.json(
         { ok: false, error: "Please provide at least one photo or video for the gallery card." },
         { status: 400 }
       );
     }
 
-    // YouTube Video Validation
-    if (youtubeUrl) {
-      const extractedId = extractYouTubeVideoId(youtubeUrl);
-      if (!extractedId) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "Invalid YouTube URL. Please provide a standard YouTube video link (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)",
-          },
-          { status: 400 }
-        );
-      }
-      youtubeVideoId = extractedId;
+    let thumbnailUrl = (body.thumbnailUrl || "").trim();
+    let videoDurationSeconds = body.videoDurationSeconds
+      ? Number(body.videoDurationSeconds)
+      : undefined;
+    let durationVerified = Boolean(body.durationVerified);
 
-      // Auto fallback thumbnail from YouTube HQ if none provided and no photos
-      if (!thumbnailUrl && images.length === 0) {
-        thumbnailUrl = getYouTubeThumbnailUrl(extractedId) || "";
-      }
+    // Validate YouTube URLs among videos and extract primary YouTube details
+    let primaryYouTubeUrl: string | undefined = undefined;
+    let primaryYouTubeId: string | undefined = undefined;
+    let primaryDirectVideoUrl: string | undefined = undefined;
 
-      // Server-side YouTube duration check if API key exists
-      const apiCheck = await verifyYouTubeDuration(extractedId);
+    for (const vUrl of videos) {
+      const extractedId = extractYouTubeVideoId(vUrl);
+      if (extractedId) {
+        if (!primaryYouTubeUrl) {
+          primaryYouTubeUrl = vUrl;
+          primaryYouTubeId = extractedId;
+        }
+      } else {
+        // Direct video URL validation
+        if (
+          !vUrl.startsWith("http://") &&
+          !vUrl.startsWith("https://") &&
+          !vUrl.startsWith("/") &&
+          !vUrl.startsWith("data:video/")
+        ) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: `Invalid video URL: "${vUrl}". Please provide a valid YouTube video link or web video URL.`,
+            },
+            { status: 400 }
+          );
+        }
+        if (!primaryDirectVideoUrl) {
+          primaryDirectVideoUrl = vUrl;
+        }
+      }
+    }
+
+    // If primary YouTube ID found, check duration
+    if (primaryYouTubeId) {
+      const apiCheck = await verifyYouTubeDuration(primaryYouTubeId);
       if (apiCheck.verified && typeof apiCheck.durationSeconds === "number") {
         if (apiCheck.durationSeconds > 180) {
           return NextResponse.json(
@@ -197,7 +214,6 @@ export async function POST(req: Request) {
         videoDurationSeconds = apiCheck.durationSeconds;
         durationVerified = true;
       } else {
-        // If admin manually supplied a duration, validate limit
         if (videoDurationSeconds !== undefined && videoDurationSeconds > 180) {
           return NextResponse.json(
             {
@@ -207,10 +223,12 @@ export async function POST(req: Request) {
             { status: 400 }
           );
         }
-        durationVerified = false;
       }
-    } else if (videoUrl) {
-      // Direct video upload duration check
+
+      if (!thumbnailUrl && images.length === 0) {
+        thumbnailUrl = getYouTubeThumbnailUrl(primaryYouTubeId) || "";
+      }
+    } else if (primaryDirectVideoUrl) {
       if (videoDurationSeconds !== undefined && videoDurationSeconds > 180) {
         return NextResponse.json(
           {
@@ -222,7 +240,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const hasVideo = Boolean(youtubeUrl || videoUrl);
+    const hasVideo = videos.length > 0;
     const mediaType: GalleryMediaType = hasVideo
       ? (images.length > 0 ? "mixed" : "video")
       : "photo";
@@ -240,10 +258,12 @@ export async function POST(req: Request) {
       imageUrl: images[0] || undefined,
       imageUrl2: images[1] || undefined,
       imageUrl3: images[2] || undefined,
-      thumbnailUrl: thumbnailUrl || images[0] || (youtubeVideoId ? getYouTubeThumbnailUrl(youtubeVideoId) || undefined : undefined),
-      youtubeUrl: youtubeUrl || undefined,
-      youtubeVideoId: youtubeVideoId || undefined,
-      videoUrl: videoUrl || undefined,
+      thumbnailUrl: thumbnailUrl || images[0] || (primaryYouTubeId ? getYouTubeThumbnailUrl(primaryYouTubeId) || undefined : undefined),
+      videos,
+      videoUrls: videos,
+      youtubeUrl: primaryYouTubeUrl || undefined,
+      youtubeVideoId: primaryYouTubeId || undefined,
+      videoUrl: primaryDirectVideoUrl || videos[0] || undefined,
       videoDurationSeconds,
       durationVerified,
       category: (body.category || "Puja Ceremonies").trim(),
