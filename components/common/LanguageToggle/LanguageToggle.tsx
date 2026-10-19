@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Globe } from "lucide-react";
 import { useI18n } from "@/components/providers";
-import { SUPPORTED_LANGUAGES, type Locale } from "@/lib/i18n";
+import { SUPPORTED_LANGUAGES, DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 import { trackCustomEvent } from "@/lib/meta-pixel";
 
 export default function LanguageToggle({
@@ -37,7 +37,9 @@ export default function LanguageToggle({
   }, [open]);
 
   const currentLang =
-    SUPPORTED_LANGUAGES.find((l) => l.code === locale) || SUPPORTED_LANGUAGES[0];
+    SUPPORTED_LANGUAGES.find((l) => l.code === locale) ||
+    SUPPORTED_LANGUAGES.find((l) => l.code === DEFAULT_LOCALE) ||
+    SUPPORTED_LANGUAGES[0];
 
   return (
     <div ref={containerRef} className={`relative inline-block text-left ${className}`}>

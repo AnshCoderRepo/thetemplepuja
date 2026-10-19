@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
   translations,
+  DEFAULT_LOCALE,
   type Locale,
   type TranslationKey,
 } from "@/lib/i18n";
@@ -42,7 +43,7 @@ function getStoredLocale(): Locale | null {
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("en");
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
   // Load saved locale from localStorage or cookie on mount
   useEffect(() => {
@@ -50,6 +51,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     if (saved) {
       setLocaleState(saved);
       document.documentElement.lang = saved;
+    } else {
+      document.documentElement.lang = DEFAULT_LOCALE;
     }
   }, []);
 
@@ -100,8 +103,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const t = useCallback(
     (key: TranslationKey): string => {
       const activeDict = translations[locale] as Record<string, string> | undefined;
+      const hiDict = translations.hi as Record<string, string>;
       const enDict = translations.en as Record<string, string>;
-      return activeDict?.[key] ?? enDict[key] ?? key;
+      return activeDict?.[key] ?? hiDict?.[key] ?? enDict[key] ?? key;
     },
     [locale]
   );

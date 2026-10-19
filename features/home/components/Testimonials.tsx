@@ -2,19 +2,34 @@
 
 import { SectionHeading } from "@/components/common";
 import { StaggerTestimonials } from "@/components/ui/stagger-testimonials";
-import { testimonials } from "@/lib/data";
+import {
+  getLocalizedTestimonialLocation,
+  getLocalizedTestimonialName,
+  getLocalizedTestimonialText,
+  testimonials as defaultTestimonials,
+} from "@/lib/data";
+import { useCatalog } from "@/features/catalog";
 import { useI18n } from "@/components/providers";
 
 export default function Testimonials() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const { testimonials: catalogTestimonials } = useCatalog();
 
-  const deck = testimonials.length % 2 === 0
-    ? [...testimonials, testimonials[0]]
-    : testimonials;
+  const activeTestimonials = (
+    catalogTestimonials && catalogTestimonials.length > 0
+      ? catalogTestimonials
+      : defaultTestimonials
+  ).filter((item) => item.active !== false);
+
+  const deck =
+    activeTestimonials.length % 2 === 0
+      ? [...activeTestimonials, activeTestimonials[0]]
+      : activeTestimonials;
+
   const items = deck.map((item, i) => ({
     id: `${item.name}-${i}`,
-    quote: item.text,
-    by: `${item.name}, ${item.location}`,
+    quote: getLocalizedTestimonialText(item, locale),
+    by: `${getLocalizedTestimonialName(item, locale)}, ${getLocalizedTestimonialLocation(item, locale)}`,
     avatar: item.avatar,
     avatarColor: item.color,
   }));

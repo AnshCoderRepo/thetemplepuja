@@ -10,7 +10,10 @@ import { useCatalog } from "@/features/catalog";
 import { useUpcomingFestivals } from "@/features/festivals";
 import {
   getLocalizedFestivalBadge,
+  getLocalizedFestivalCountdown,
   getLocalizedFestivalCta,
+  getLocalizedFestivalName,
+  getLocalizedFestivalSecondaryCta,
   getLocalizedFestivalSubtitle,
   getLocalizedFestivalTitle,
   getLocalizedPoojaTitle,
@@ -19,14 +22,67 @@ import {
   type Pooja,
 } from "@/lib/data";
 
-const TICKER_ITEMS = [
-  { icon: "✨", label: "Sacred Yantra" },
-  { icon: "🛕", label: "Secure Booking" },
-  { icon: "📹", label: "Live Pooja Access" },
-  { icon: "📦", label: "Prasad Delivery" },
-  { icon: "👥", label: "Trusted by Devotees" },
-  { icon: "🪔", label: "Authentic Pooja" },
-];
+const TICKER_ITEMS_MAP: Record<string, { icon: string; label: string }[]> = {
+  hi: [
+    { icon: "✨", label: "सिद्ध वैदिक यंत्र" },
+    { icon: "🛕", label: "सुरक्षित बुकिंग" },
+    { icon: "📹", label: "लाइव पूजा दर्शन" },
+    { icon: "📦", label: "प्रसाद होम डिलीवरी" },
+    { icon: "👥", label: "लाखों श्रद्धालुओं का विश्वास" },
+    { icon: "🪔", label: "प्रामाणिक वैदिक अनुष्ठान" },
+  ],
+  te: [
+    { icon: "✨", label: "పవిత్ర యంత్రం" },
+    { icon: "🛕", label: "సురక్షిత బుకింగ్" },
+    { icon: "📹", label: "ప్రత్యక్ష పూజ దర్శనం" },
+    { icon: "📦", label: "ప్రసాదం హోమ్ డెలివరీ" },
+    { icon: "👥", label: "భక్తుల విశ్వాసం" },
+    { icon: "🪔", label: "ప్రామాణిక పూజలు" },
+  ],
+  ta: [
+    { icon: "✨", label: "புனித யந்திரம்" },
+    { icon: "🛕", label: "பாதுகாப்பான முன்பதிவு" },
+    { icon: "📹", label: "நேரலை பூஜை தரிசனம்" },
+    { icon: "📦", label: "பிரசாதம் விநியோகம்" },
+    { icon: "👥", label: "பக்தர்களின் நம்பிக்கை" },
+    { icon: "🪔", label: "வேத முறை பூசைகள்" },
+  ],
+  en: [
+    { icon: "✨", label: "Sacred Yantra" },
+    { icon: "🛕", label: "Secure Booking" },
+    { icon: "📹", label: "Live Pooja Access" },
+    { icon: "📦", label: "Prasad Delivery" },
+    { icon: "👥", label: "Trusted by Devotees" },
+    { icon: "🪔", label: "Authentic Pooja" },
+  ],
+};
+
+const STATS_LABELS: Record<string, { devotees: string; pandits: string; temples: string; rating: string }> = {
+  hi: {
+    devotees: "श्रद्धालु जुड़े",
+    pandits: "प्रमाणित पंडित",
+    temples: "सहयोगी मंदिर",
+    rating: "औसत रेटिंग",
+  },
+  te: {
+    devotees: "సేవలు పొందిన భక్తులు",
+    pandits: "ధృవీకరించబడిన పండితులు",
+    temples: "భాగస్వామ్య దేవాలయాలు",
+    rating: "సగటు రేటింగ్",
+  },
+  ta: {
+    devotees: "பயனடைந்த பக்தர்கள்",
+    pandits: "சரிபார்க்கப்பட்ட பண்டிதர்கள்",
+    temples: "இணைப்பு கோயில்கள்",
+    rating: "சராசரி மதிப்பீடு",
+  },
+  en: {
+    devotees: "Devotees Served",
+    pandits: "Verified Pandits",
+    temples: "Partner Temples",
+    rating: "Average Rating",
+  },
+};
 
 export default function Hero() {
   const router = useRouter();
@@ -111,22 +167,74 @@ export default function Hero() {
   // Background visual image: White Marble Lord Ganesha sanctum as the hero backdrop
   const heroBackground = "/hero-ganesha-marble.jpg";
 
-  // Localized texts
+  const tickerItems = TICKER_ITEMS_MAP[locale] || TICKER_ITEMS_MAP.en;
+  const statsLabels = STATS_LABELS[locale] || STATS_LABELS.en;
+
+  // Localized texts with high-quality regional fallbacks
+  const fallbackBadge =
+    locale === "hi"
+      ? "🪔 60+ प्रमाणित वैदिक सेवाएं"
+      : locale === "te"
+      ? "🪔 60+ ధృవీకరించబడిన సేవలు"
+      : locale === "ta"
+      ? "🪔 60+ சரிபார்க்கப்பட்ட சேவைகள்"
+      : "🪔 60+ Verified Services";
+
+  const fallbackTitle =
+    locale === "hi"
+      ? "घर पर पाएं प्रभु का पावन आशीर्वाद"
+      : locale === "te"
+      ? "మీ ఇంటికి దైవిక ఆశీస్సులు"
+      : locale === "ta"
+      ? "உங்கள் இல்லத்திற்கே இறையருள்"
+      : "Bring the Divine Home";
+
+  const fallbackSubtitle =
+    locale === "hi"
+      ? "प्रमाणित पंडित। वैदिक अनुष्ठान। भारत और दुनिया भर के लाखों श्रद्धालुओं का अटूट विश्वास।"
+      : locale === "te"
+      ? "ధృవీకరించబడిన పండితులు. ప్రామాణిక పూజలు. భారతదేశం మరియు ప్రపంచవ్యాప్తంగా లక్షలాది భక్తుల నమ్మకం."
+      : locale === "ta"
+      ? "சரிபார்க்கப்பட்ட பண்டிதர்கள். வேத முறை பூஜைகள். இந்தியா மற்றும் உலகெங்கிலும் உள்ள லட்சக்கணக்கான பக்தர்களின் நம்பிக்கை."
+      : "Verified pandits. Authentic rituals. Trusted by lakhs of devotees across India & worldwide.";
+
+  const fallbackCta =
+    locale === "hi"
+      ? "पूजाएं देखें"
+      : locale === "te"
+      ? "పూజలను అన్వేషించండి"
+      : locale === "ta"
+      ? "பூஜைகளை ஆராயுங்கள்"
+      : "Explore Poojas";
+
+  const fallbackSecondaryCta =
+    locale === "hi"
+      ? "सभी पूजाएं देखें"
+      : locale === "te"
+      ? "అన్ని పూజలను చూడండి"
+      : locale === "ta"
+      ? "அனைத்து பூஜைகளையும் காண்க"
+      : "Explore All Pujas";
+
   const displayBadge = activeFestival
     ? getLocalizedFestivalBadge(activeFestival, locale)
-    : "🪔 60+ Verified Services";
+    : fallbackBadge;
 
   const displayTitle = activeFestival
     ? getLocalizedFestivalTitle(activeFestival, locale)
-    : "Bring the Divine Home";
+    : fallbackTitle;
 
   const displaySubtitle = activeFestival
     ? getLocalizedFestivalSubtitle(activeFestival, locale)
-    : "Verified pandits. Authentic rituals. Trusted by lakhs of devotees across India & worldwide.";
+    : fallbackSubtitle;
 
   const displayCta = activeFestival
     ? getLocalizedFestivalCta(activeFestival, locale)
-    : "Explore Poojas";
+    : fallbackCta;
+
+  const displaySecondaryCta = activeFestival
+    ? getLocalizedFestivalSecondaryCta(activeFestival, locale)
+    : fallbackSecondaryCta;
 
   return (
     <section
@@ -146,7 +254,7 @@ export default function Hero() {
           className="object-cover object-[center_28%] transition-transform duration-700 scale-100 opacity-95"
         />
 
-        {/* Uniform subtle warm spiritual scrim across entire canvas - NO 50% black split */}
+        {/* Uniform subtle warm spiritual scrim across entire canvas */}
         <div className="absolute inset-0 bg-stone-950/25" />
 
         {/* Soft top vignette for transparent navbar clarity */}
@@ -162,7 +270,7 @@ export default function Hero() {
       {/* Main Hero Content Container */}
       <div className="container-px relative z-10 mx-auto w-full max-w-7xl flex-1 flex flex-col justify-center py-1 sm:pt-8 md:pt-10 pb-2 min-h-0">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center">
-          {/* Left Column: Glassmorphic Devotional Card (Comfortably sized so Lord Ganesha in center is fully visible) */}
+          {/* Left Column: Glassmorphic Devotional Card */}
           <div className="lg:col-span-6 xl:col-span-5 mt-12 flex flex-col items-start text-left bg-stone-950/50 sm:bg-stone-950/40 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-amber-300/20 p-4 sm:p-5 lg:p-6 shadow-2xl">
             {/* Top Pill Badges: Festival Name & Countdown / Live Status */}
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -171,23 +279,30 @@ export default function Hero() {
                 {displayBadge}
               </span>
 
-              {activeFestival?.status && (
+              {activeFestival && (
                 <span
                   className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-md transition-colors ${
-                    activeFestival.status.isLive
+                    activeFestival.status?.isLive
                       ? "border border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
                       : "border border-amber-400/30 bg-amber-950/70 text-amber-200"
                   }`}
                 >
                   <Clock className="h-3 w-3 shrink-0" />
-                  {activeFestival.status.countdownText}
+                  {getLocalizedFestivalCountdown(activeFestival, locale)}
                 </span>
               )}
             </div>
 
             {/* Main Headline */}
             <h1 className="mt-2 sm:mt-2.5 font-display text-2xl sm:text-3xl md:text-3.5xl lg:text-4xl xl:text-4.5xl font-bold tracking-tight text-white leading-[1.14]">
-              {displayTitle.includes("with") ? (
+              {displayTitle.includes(":") ? (
+                <>
+                  <span>{displayTitle.split(":")[0]}:</span>
+                  <span className="block bg-gradient-to-r from-saffron-400 via-amber-200 to-saffron-300 bg-clip-text text-transparent">
+                    {displayTitle.split(":")[1]}
+                  </span>
+                </>
+              ) : displayTitle.includes("with") ? (
                 <>
                   {displayTitle.split("with")[0]}
                   <span className="block bg-gradient-to-r from-saffron-400 via-amber-200 to-saffron-300 bg-clip-text text-transparent">
@@ -228,7 +343,7 @@ export default function Hero() {
                 href="#poojas"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-white backdrop-blur-md transition-all duration-300 hover:border-saffron-400/50 hover:bg-white/10"
               >
-                {activeFestival?.secondaryCtaText || "Explore All Pujas"}
+                {displaySecondaryCta}
               </a>
             </div>
 
@@ -237,11 +352,26 @@ export default function Hero() {
               <div className="mt-2.5 w-full max-w-2xl">
                 <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-saffron-300/90 mb-1.5 flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3 text-saffron-400" />
-                  <span>{activeFestival ? `Sacred Pujas For ${activeFestival.name}` : "Featured Sacred Rituals"}:</span>
+                  <span>
+                    {activeFestival
+                      ? locale === "hi"
+                        ? `${getLocalizedFestivalName(activeFestival, locale)} विशेष पूजाएं:`
+                        : locale === "te"
+                        ? `${getLocalizedFestivalName(activeFestival, locale)} ప్రత్యేక పూజలు:`
+                        : locale === "ta"
+                        ? `${getLocalizedFestivalName(activeFestival, locale)} சிறப்பு பூஜைகள்:`
+                        : `Sacred Pujas For ${activeFestival.name}:`
+                      : locale === "hi"
+                      ? "विशेष वैदिक अनुष्ठान:"
+                      : locale === "te"
+                      ? "ప్రత్యేక వేద పూజలు:"
+                      : locale === "ta"
+                      ? "சிறப்பு வேத சடங்குகள்:"
+                      : "Featured Sacred Rituals:"}
+                  </span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {heroPoojas.slice(0, 2).map((pooja) => {
-                    const schedule = getPoojaSchedule(pooja);
                     return (
                       <button
                         key={pooja.slug}
@@ -275,7 +405,15 @@ export default function Hero() {
                 <div className="flex items-center gap-2">
                   <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-300">
-                    {activeFestival ? activeFestival.name : "Pratham Pujya Seva"}
+                    {activeFestival
+                      ? getLocalizedFestivalName(activeFestival, locale)
+                      : locale === "hi"
+                      ? "प्रथम पूज्य सेवा"
+                      : locale === "te"
+                      ? "ప్రథమ పూజ్య సేవ"
+                      : locale === "ta"
+                      ? "முதன்மை பூஜை சேவை"
+                      : "Pratham Pujya Seva"}
                   </span>
                 </div>
                 {featuredPooja && (
@@ -299,17 +437,27 @@ export default function Hero() {
                     <span suppressHydrationWarning>{featuredSchedule.date}</span>
                   </span>
                   <span className="text-xs text-saffron-400 group-hover:translate-x-0.5 transition-transform font-bold flex items-center gap-0.5">
-                    Book <ArrowRight className="h-3 w-3 inline" />
+                    {locale === "hi" ? "बुक करें" : locale === "te" ? "బుక్ చేయండి" : locale === "ta" ? "பதிவு செய்க" : "Book"}{" "}
+                    <ArrowRight className="h-3 w-3 inline" />
                   </span>
                 </div>
               ) : (
                 <div className="mt-2 flex items-center justify-between text-[11px] text-amber-200/90 border-t border-white/10 pt-2">
                   <span className="flex items-center gap-1 font-medium">
                     <Sparkles className="h-3 w-3 text-amber-400 shrink-0" />
-                    <span>Live Video & Sankalp</span>
+                    <span>
+                      {locale === "hi"
+                        ? "लाइव वीडियो व संकल्प"
+                        : locale === "te"
+                        ? "లైవ్ వీడియో & సంకల్పం"
+                        : locale === "ta"
+                        ? "நேரலை வீடியோ & சங்கல்பம்"
+                        : "Live Video & Sankalp"}
+                    </span>
                   </span>
                   <span className="text-xs text-saffron-400 group-hover:translate-x-0.5 transition-transform font-bold flex items-center gap-0.5">
-                    Book <ArrowRight className="h-3 w-3 inline" />
+                    {locale === "hi" ? "बुक करें" : locale === "te" ? "బుక్ చేయండి" : locale === "ta" ? "பதிவு செய்க" : "Book"}{" "}
+                    <ArrowRight className="h-3 w-3 inline" />
                   </span>
                 </div>
               )}
@@ -325,26 +473,26 @@ export default function Hero() {
               <div className="font-display text-base sm:text-lg lg:text-xl font-bold text-saffron-400">
                 1.2L+
               </div>
-              <div className="text-[10px] sm:text-xs text-slate-400">Devotees Served</div>
+              <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.devotees}</div>
             </div>
             <div className="flex flex-col">
               <div className="font-display text-base sm:text-lg lg:text-xl font-bold text-amber-400">
                 182+
               </div>
-              <div className="text-[10px] sm:text-xs text-slate-400">Verified Pandits</div>
+              <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.pandits}</div>
             </div>
             <div className="flex flex-col">
               <div className="font-display text-base sm:text-lg lg:text-xl font-bold text-saffron-400">
                 151+
               </div>
-              <div className="text-[10px] sm:text-xs text-slate-400">Partner Temples</div>
+              <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.temples}</div>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1 font-display text-base sm:text-lg lg:text-xl font-bold text-amber-300">
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                 4.8
               </div>
-              <div className="text-[10px] sm:text-xs text-slate-400">Average Rating</div>
+              <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.rating}</div>
             </div>
           </div>
 
@@ -392,7 +540,7 @@ export default function Hero() {
       {/* Bottom Golden Promotional Ticker Strip */}
       <div className="relative z-20 w-full overflow-hidden bg-gradient-to-r from-amber-500 via-saffron-500 to-amber-500 py-1.5 sm:py-2 text-slate-950 shadow-inner shrink-0">
         <div className="flex items-center gap-8 whitespace-nowrap animate-marquee">
-          {[...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS].map((item, idx) => (
+          {[...tickerItems, ...tickerItems, ...tickerItems, ...tickerItems].map((item, idx) => (
             <div
               key={`${item.label}-${idx}`}
               className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide text-slate-950 shrink-0"

@@ -6,6 +6,8 @@ import {
   Clock,
   Eye,
   EyeOff,
+  Globe,
+  Languages,
   Pencil,
   Plus,
   Sparkles,
@@ -41,9 +43,21 @@ import {
 interface FestivalDraft {
   id: string;
   name: string;
+  hindiName: string;
+  teluguName: string;
+  tamilName: string;
   badge: string;
+  hindiBadge: string;
+  teluguBadge: string;
+  tamilBadge: string;
   heroTitle: string;
+  hindiHeroTitle: string;
+  teluguHeroTitle: string;
+  tamilHeroTitle: string;
   heroSubtitle: string;
+  hindiHeroSubtitle: string;
+  teluguHeroSubtitle: string;
+  tamilHeroSubtitle: string;
   startDate: string;
   endDate: string;
   daysFromToday: string;
@@ -51,8 +65,14 @@ interface FestivalDraft {
   heroImage: string;
   relatedPoojaSlugs: string[];
   ctaText: string;
+  hindiCtaText: string;
+  teluguCtaText: string;
+  tamilCtaText: string;
   ctaLink: string;
   secondaryCtaText: string;
+  hindiSecondaryCtaText: string;
+  teluguSecondaryCtaText: string;
+  tamilSecondaryCtaText: string;
   secondaryCtaLink: string;
   priority: string;
   active: boolean;
@@ -61,9 +81,21 @@ interface FestivalDraft {
 const emptyFestivalDraft: FestivalDraft = {
   id: "",
   name: "",
+  hindiName: "",
+  teluguName: "",
+  tamilName: "",
   badge: "🪔 UPCOMING FESTIVAL",
+  hindiBadge: "🪔 आगामी पावन पर्व",
+  teluguBadge: "🪔 రాబోయే పండుగ",
+  tamilBadge: "🪔 வரவிருக்கும் திருவிழா",
   heroTitle: "",
+  hindiHeroTitle: "",
+  teluguHeroTitle: "",
+  tamilHeroTitle: "",
   heroSubtitle: "",
+  hindiHeroSubtitle: "",
+  teluguHeroSubtitle: "",
+  tamilHeroSubtitle: "",
   startDate: daysFromTodayToDate(7),
   endDate: daysFromTodayToDate(16),
   daysFromToday: "7",
@@ -71,8 +103,14 @@ const emptyFestivalDraft: FestivalDraft = {
   heroImage: "/festivals/durga-puja.jpg",
   relatedPoojaSlugs: [],
   ctaText: "Book Festival Puja",
+  hindiCtaText: "त्योहार पूजा बुक करें",
+  teluguCtaText: "పండుగ పూజ బుక్ చేయండి",
+  tamilCtaText: "திருவிழா பூஜை பதிவு செய்க",
   ctaLink: "#poojas",
   secondaryCtaText: "Explore All Pujas",
+  hindiSecondaryCtaText: "सभी पूजाएं देखें",
+  teluguSecondaryCtaText: "అన్ని పూజలు చూడండి",
+  tamilSecondaryCtaText: "அனைத்து பூஜைகளையும் காண்க",
   secondaryCtaLink: "#poojas",
   priority: "1",
   active: true,
@@ -186,9 +224,21 @@ export default function EventsManager({
   const toFestivalSpec = (): FestivalEvent => ({
     id: festivalDraft.id.trim(),
     name: festivalDraft.name.trim(),
+    hindiName: festivalDraft.hindiName.trim() || undefined,
+    teluguName: festivalDraft.teluguName.trim() || undefined,
+    tamilName: festivalDraft.tamilName.trim() || undefined,
     badge: festivalDraft.badge.trim() || "🪔 UPCOMING FESTIVAL",
+    hindiBadge: festivalDraft.hindiBadge.trim() || undefined,
+    teluguBadge: festivalDraft.teluguBadge.trim() || undefined,
+    tamilBadge: festivalDraft.tamilBadge.trim() || undefined,
     heroTitle: festivalDraft.heroTitle.trim(),
+    hindiHeroTitle: festivalDraft.hindiHeroTitle.trim() || undefined,
+    teluguHeroTitle: festivalDraft.teluguHeroTitle.trim() || undefined,
+    tamilHeroTitle: festivalDraft.tamilHeroTitle.trim() || undefined,
     heroSubtitle: festivalDraft.heroSubtitle.trim(),
+    hindiHeroSubtitle: festivalDraft.hindiHeroSubtitle.trim() || undefined,
+    teluguHeroSubtitle: festivalDraft.teluguHeroSubtitle.trim() || undefined,
+    tamilHeroSubtitle: festivalDraft.tamilHeroSubtitle.trim() || undefined,
     startDate: festivalDraft.startDate.trim() || undefined,
     endDate: festivalDraft.endDate.trim() || undefined,
     daysFromToday: festivalDraft.daysFromToday.trim()
@@ -200,12 +250,81 @@ export default function EventsManager({
     heroImage: festivalDraft.heroImage.trim() || undefined,
     relatedPoojaSlugs: festivalDraft.relatedPoojaSlugs,
     ctaText: festivalDraft.ctaText.trim() || "Book Festival Puja",
+    hindiCtaText: festivalDraft.hindiCtaText.trim() || undefined,
+    teluguCtaText: festivalDraft.teluguCtaText.trim() || undefined,
+    tamilCtaText: festivalDraft.tamilCtaText.trim() || undefined,
     ctaLink: festivalDraft.ctaLink.trim() || "#poojas",
     secondaryCtaText: festivalDraft.secondaryCtaText.trim() || "Explore All Pujas",
+    hindiSecondaryCtaText: festivalDraft.hindiSecondaryCtaText.trim() || undefined,
+    teluguSecondaryCtaText: festivalDraft.teluguSecondaryCtaText.trim() || undefined,
+    tamilSecondaryCtaText: festivalDraft.tamilSecondaryCtaText.trim() || undefined,
     secondaryCtaLink: festivalDraft.secondaryCtaLink.trim() || "#poojas",
     priority: festivalDraft.priority.trim() ? Number(festivalDraft.priority.trim()) : 1,
     active: festivalDraft.active,
   });
+
+  const [isTranslatingFest, setIsTranslatingFest] = useState(false);
+  const [activeFestLangTab, setActiveFestLangTab] = useState<"hi" | "te" | "ta">("hi");
+
+  const handleAutoTranslateFestival = async () => {
+    if (!festivalDraft.heroTitle.trim() && !festivalDraft.name.trim()) {
+      setError("Please fill in the English Festival Name or Hero Title first.");
+      return;
+    }
+    setIsTranslatingFest(true);
+    setError("");
+    try {
+      const textsToTranslate = [
+        festivalDraft.name.trim(),
+        festivalDraft.badge.trim() || "UPCOMING FESTIVAL",
+        festivalDraft.heroTitle.trim(),
+        festivalDraft.heroSubtitle.trim(),
+        festivalDraft.ctaText.trim() || "Book Festival Puja",
+        festivalDraft.secondaryCtaText.trim() || "Explore All Pujas",
+      ];
+
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texts: textsToTranslate, targets: ["hi", "te", "ta"] }),
+      });
+      const data = await res.json();
+      if (data.ok && data.translations) {
+        const hi = data.translations.hi || [];
+        const te = data.translations.te || [];
+        const ta = data.translations.ta || [];
+
+        setFestivalDraft((prev) => ({
+          ...prev,
+          hindiName: hi[0] || prev.hindiName,
+          teluguName: te[0] || prev.teluguName,
+          tamilName: ta[0] || prev.tamilName,
+          hindiBadge: hi[1] ? `🪔 ${hi[1].replace(/^[^\w\u0900-\u097F]+/, "").trim()}` : prev.hindiBadge,
+          teluguBadge: te[1] ? `🪔 ${te[1].replace(/^[^\w\u0C00-\u0C7F]+/, "").trim()}` : prev.teluguBadge,
+          tamilBadge: ta[1] ? `🪔 ${ta[1].replace(/^[^\w\u0B80-\u0BFF]+/, "").trim()}` : prev.tamilBadge,
+          hindiHeroTitle: hi[2] || prev.hindiHeroTitle,
+          teluguHeroTitle: te[2] || prev.teluguHeroTitle,
+          tamilHeroTitle: ta[2] || prev.tamilHeroTitle,
+          hindiHeroSubtitle: hi[3] || prev.hindiHeroSubtitle,
+          teluguHeroSubtitle: te[3] || prev.teluguHeroSubtitle,
+          tamilHeroSubtitle: ta[3] || prev.tamilHeroSubtitle,
+          hindiCtaText: hi[4] || prev.hindiCtaText,
+          teluguCtaText: te[4] || prev.teluguCtaText,
+          tamilCtaText: ta[4] || prev.tamilCtaText,
+          hindiSecondaryCtaText: hi[5] || prev.hindiSecondaryCtaText,
+          teluguSecondaryCtaText: te[5] || prev.teluguSecondaryCtaText,
+          tamilSecondaryCtaText: ta[5] || prev.tamilSecondaryCtaText,
+        }));
+      } else {
+        setError(data.error || "Translation API was unable to translate festival.");
+      }
+    } catch (e) {
+      console.error("[EventsManager] Festival translate error:", e);
+      setError("Failed to communicate with translation API.");
+    } finally {
+      setIsTranslatingFest(false);
+    }
+  };
 
   const saveFestival = async () => {
     const problem = validateFestival();
@@ -715,6 +834,228 @@ export default function EventsManager({
                 </Field>
               </div>
 
+              {/* AI Auto-Translation Banner Button */}
+              <div className="rounded-2xl border border-saffron-200/90 bg-gradient-to-r from-saffron-50 via-amber-50 to-cream p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h5 className="text-xs font-bold text-saffron-900 flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-saffron-600 shrink-0" />
+                      <span>1-Click AI Auto-Translation for Hero Festival</span>
+                    </h5>
+                    <p className="mt-0.5 text-[11px] text-ink-soft">
+                      Translates festival name, hero title, subtitle & buttons to Hindi, Telugu, and Tamil instantly.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAutoTranslateFestival}
+                    disabled={isTranslatingFest || (!festivalDraft.name.trim() && !festivalDraft.heroTitle.trim())}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saffron-600 to-saffron-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-all hover:from-saffron-500 hover:to-saffron-600 disabled:opacity-50"
+                  >
+                    <Languages className="h-4 w-4" />
+                    <span>{isTranslatingFest ? "Translating with AI…" : "Auto-Translate to 3 Languages"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Regional Language Tabs */}
+              <div className="border border-saffron-200 rounded-2xl p-4 bg-white space-y-3">
+                <div className="flex items-center justify-between border-b border-saffron-100 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5 text-saffron-600" />
+                    <span className="text-xs font-bold text-ink">Regional Language Translations (Hero Content)</span>
+                  </div>
+                  <div className="flex rounded-lg bg-saffron-100/70 p-0.5 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setActiveFestLangTab("hi")}
+                      className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                        activeFestLangTab === "hi"
+                          ? "bg-white text-saffron-900 shadow-2xs font-bold"
+                          : "text-ink-soft hover:text-ink"
+                      }`}
+                    >
+                      हिन्दी (HI)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveFestLangTab("te")}
+                      className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                        activeFestLangTab === "te"
+                          ? "bg-white text-saffron-900 shadow-2xs font-bold"
+                          : "text-ink-soft hover:text-ink"
+                      }`}
+                    >
+                      తెలుగు (TE)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveFestLangTab("ta")}
+                      className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                        activeFestLangTab === "ta"
+                          ? "bg-white text-saffron-900 shadow-2xs font-bold"
+                          : "text-ink-soft hover:text-ink"
+                      }`}
+                    >
+                      தமிழ் (TA)
+                    </button>
+                  </div>
+                </div>
+
+                {activeFestLangTab === "hi" && (
+                  <div className="space-y-3 animate-fadeIn">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Festival Name (हिन्दी)">
+                        <TextInput
+                          value={festivalDraft.hindiName}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, hindiName: e.target.value })}
+                          placeholder="उदा. महा शिवरात्रि महापर्व"
+                        />
+                      </Field>
+                      <Field label="Hero Badge (हिन्दी)">
+                        <TextInput
+                          value={festivalDraft.hindiBadge}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, hindiBadge: e.target.value })}
+                          placeholder="उदा. 🪔 आगामी पावन पर्व"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Hero Title (हिन्दी)">
+                      <TextInput
+                        value={festivalDraft.hindiHeroTitle}
+                        onChange={(e) => setFestivalDraft({ ...festivalDraft, hindiHeroTitle: e.target.value })}
+                        placeholder="उदा. महा शिवरात्रि 2026: 12 ज्योतिर्लिंगों से दिव्य आशीर्वाद"
+                      />
+                    </Field>
+                    <Field label="Hero Subtitle (हिन्दी)">
+                      <TextInput
+                        value={festivalDraft.hindiHeroSubtitle}
+                        onChange={(e) => setFestivalDraft({ ...festivalDraft, hindiHeroSubtitle: e.target.value })}
+                        placeholder="उदा. भगवान शिव के पावन पर्व पर अपने व परिवार के नाम से विशेष रुद्राभिषेक कराएं..."
+                      />
+                    </Field>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Primary Button Text (हिन्दी)">
+                        <TextInput
+                          value={festivalDraft.hindiCtaText}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, hindiCtaText: e.target.value })}
+                          placeholder="उदा. पर्व पूजा बुक करें"
+                        />
+                      </Field>
+                      <Field label="Secondary Button Text (हिन्दी)">
+                        <TextInput
+                          value={festivalDraft.hindiSecondaryCtaText}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, hindiSecondaryCtaText: e.target.value })}
+                          placeholder="उदा. सभी पूजाएं देखें"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+
+                {activeFestLangTab === "te" && (
+                  <div className="space-y-3 animate-fadeIn">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Festival Name (తెలుగు)">
+                        <TextInput
+                          value={festivalDraft.teluguName}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, teluguName: e.target.value })}
+                          placeholder="ఉదా. మహా శివరాత్రి మహోత్సవం"
+                        />
+                      </Field>
+                      <Field label="Hero Badge (తెలుగు)">
+                        <TextInput
+                          value={festivalDraft.teluguBadge}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, teluguBadge: e.target.value })}
+                          placeholder="ఉదా. 🪔 రాబోయే పవిత్ర పండుగ"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Hero Title (తెలుగు)">
+                      <TextInput
+                        value={festivalDraft.teluguHeroTitle}
+                        onChange={(e) => setFestivalDraft({ ...festivalDraft, teluguHeroTitle: e.target.value })}
+                        placeholder="ఉదా. మహా శివరాత్రి 2026: 12 జ్యోతిర్లింగాల నుండి దివ్య ఆశీస్సులు"
+                      />
+                    </Field>
+                    <Field label="Hero Subtitle (తెలుగు)">
+                      <TextInput
+                        value={festivalDraft.teluguHeroSubtitle}
+                        onChange={(e) => setFestivalDraft({ ...festivalDraft, teluguHeroSubtitle: e.target.value })}
+                        placeholder="ఉదా. పరమశివుని పవిత్ర పర్వదినాన మీ మరియు మీ కుటుంబం పేరిట ప్రత్యేక రుద్రాభిషేకం..."
+                      />
+                    </Field>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Primary Button Text (తెలుగు)">
+                        <TextInput
+                          value={festivalDraft.teluguCtaText}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, teluguCtaText: e.target.value })}
+                          placeholder="ఉదా. పండుగ పూజ బుక్ చేయండి"
+                        />
+                      </Field>
+                      <Field label="Secondary Button Text (తెలుగు)">
+                        <TextInput
+                          value={festivalDraft.teluguSecondaryCtaText}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, teluguSecondaryCtaText: e.target.value })}
+                          placeholder="ఉదా. అన్ని పూజలను చూడండి"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+
+                {activeFestLangTab === "ta" && (
+                  <div className="space-y-3 animate-fadeIn">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Festival Name (தமிழ்)">
+                        <TextInput
+                          value={festivalDraft.tamilName}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, tamilName: e.target.value })}
+                          placeholder="उदा. மகா சிவராத்திரி பெருவிழா"
+                        />
+                      </Field>
+                      <Field label="Hero Badge (தமிழ்)">
+                        <TextInput
+                          value={festivalDraft.tamilBadge}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, tamilBadge: e.target.value })}
+                          placeholder="उदा. 🪔 வரவிருக்கும் திருவிழா"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Hero Title (தமிழ்)">
+                      <TextInput
+                        value={festivalDraft.tamilHeroTitle}
+                        onChange={(e) => setFestivalDraft({ ...festivalDraft, tamilHeroTitle: e.target.value })}
+                        placeholder="उदा. மகா சிவராத்திரி 2026: 12 ஜோதிர்லிங்கங்களிலிருந்து தெய்வீக ஆசிகள்"
+                      />
+                    </Field>
+                    <Field label="Hero Subtitle (தமிழ்)">
+                      <TextInput
+                        value={festivalDraft.tamilHeroSubtitle}
+                        onChange={(e) => setFestivalDraft({ ...festivalDraft, tamilHeroSubtitle: e.target.value })}
+                        placeholder="उदा. சிவபெருமானின் புனித நாளில் உங்களுக்கும் உங்கள் குடும்பத்தினருக்கும் ருத்ராபிஷேகம்..."
+                      />
+                    </Field>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Primary Button Text (தமிழ்)">
+                        <TextInput
+                          value={festivalDraft.tamilCtaText}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, tamilCtaText: e.target.value })}
+                          placeholder="उदा. திருவிழா பூஜை பதிவு செய்க"
+                        />
+                      </Field>
+                      <Field label="Secondary Button Text (தமிழ்)">
+                        <TextInput
+                          value={festivalDraft.tamilSecondaryCtaText}
+                          onChange={(e) => setFestivalDraft({ ...festivalDraft, tamilSecondaryCtaText: e.target.value })}
+                          placeholder="उदा. அனைத்து பூஜைகளையும் காண்க"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-between border-t border-saffron-100 pt-3">
                 <Toggle
                   label="Active in Hero Carousel"
@@ -859,9 +1200,21 @@ export default function EventsManager({
                           setFestivalDraft({
                             id: fest.id,
                             name: fest.name,
+                            hindiName: fest.hindiName || "",
+                            teluguName: fest.teluguName || "",
+                            tamilName: fest.tamilName || "",
                             badge: fest.badge || "🪔 UPCOMING FESTIVAL",
+                            hindiBadge: fest.hindiBadge || "",
+                            teluguBadge: fest.teluguBadge || "",
+                            tamilBadge: fest.tamilBadge || "",
                             heroTitle: fest.heroTitle,
+                            hindiHeroTitle: fest.hindiHeroTitle || "",
+                            teluguHeroTitle: fest.teluguHeroTitle || "",
+                            tamilHeroTitle: fest.tamilHeroTitle || "",
                             heroSubtitle: fest.heroSubtitle,
+                            hindiHeroSubtitle: fest.hindiHeroSubtitle || "",
+                            teluguHeroSubtitle: fest.teluguHeroSubtitle || "",
+                            tamilHeroSubtitle: fest.tamilHeroSubtitle || "",
                             startDate: fest.startDate ? toISODateString(fest.startDate) : daysFromTodayToDate(fest.daysFromToday ?? 7),
                             endDate: fest.endDate ? toISODateString(fest.endDate) : daysFromTodayToDate((fest.daysFromToday ?? 7) + (fest.durationDays ?? 9)),
                             daysFromToday: String(fest.daysFromToday ?? 7),
@@ -869,8 +1222,14 @@ export default function EventsManager({
                             heroImage: fest.heroImage || "",
                             relatedPoojaSlugs: fest.relatedPoojaSlugs || [],
                             ctaText: fest.ctaText || "Book Festival Puja",
+                            hindiCtaText: fest.hindiCtaText || "",
+                            teluguCtaText: fest.teluguCtaText || "",
+                            tamilCtaText: fest.tamilCtaText || "",
                             ctaLink: fest.ctaLink || "#poojas",
                             secondaryCtaText: fest.secondaryCtaText || "Explore All Pujas",
+                            hindiSecondaryCtaText: fest.hindiSecondaryCtaText || "",
+                            teluguSecondaryCtaText: fest.teluguSecondaryCtaText || "",
+                            tamilSecondaryCtaText: fest.tamilSecondaryCtaText || "",
                             secondaryCtaLink: fest.secondaryCtaLink || "#poojas",
                             priority: String(fest.priority ?? 1),
                             active: fest.active !== false,

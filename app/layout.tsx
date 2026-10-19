@@ -59,7 +59,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="en"
+      lang="hi"
       suppressHydrationWarning
       className={`${display.variable} ${sans.variable} ${devanagari.variable}`}
     >

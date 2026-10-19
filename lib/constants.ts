@@ -21,6 +21,8 @@ export const STORAGE_KEYS = {
   CATALOG_TEMPLES: "ttp_catalog_temples_v1",
   /** Catalog override — blogs. */
   CATALOG_BLOGS: "ttp_catalog_blogs_v1",
+  /** Catalog override — testimonials. */
+  CATALOG_TESTIMONIALS: "ttp_catalog_testimonials_v1",
   /** Incomplete booking drafts for resume checkout. */
   INCOMPLETE_BOOKINGS: "ttp_incomplete_bookings_v1",
   /** Active in-progress booking session for refresh persistence. */

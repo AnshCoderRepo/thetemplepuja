@@ -11,6 +11,7 @@ import {
   defaultPoojaDates,
   defaultTemples as staticTemples,
   poojas as staticPoojas,
+  testimonials as staticTestimonials,
   upcomingEventSpecs as staticEventSpecs,
   DEMO_POOJA,
   isDemoSlug,
@@ -20,6 +21,7 @@ import {
   type Pooja,
   type PoojaDate,
   type Temple,
+  type Testimonial,
   type UpcomingEventSpec,
 } from "./data";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
@@ -32,6 +34,7 @@ const COUPONS_KEY = STORAGE_KEYS.CATALOG_COUPONS;
 const POOJA_DATES_KEY = STORAGE_KEYS.CATALOG_POOJA_DATES;
 const TEMPLES_KEY = STORAGE_KEYS.CATALOG_TEMPLES;
 const BLOGS_KEY = STORAGE_KEYS.CATALOG_BLOGS;
+const TESTIMONIALS_KEY = STORAGE_KEYS.CATALOG_TESTIMONIALS;
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -186,4 +189,19 @@ export function saveCatalogBlogs(blogs: BlogPost[]): void {
 export function resetCatalogBlogs(): void {
   clear(BLOGS_KEY);
 }
+
+// ===================== TESTIMONIALS =====================
+
+export function getCatalogTestimonials(): Testimonial[] {
+  return read<Testimonial[]>(TESTIMONIALS_KEY) ?? staticTestimonials;
+}
+
+export function saveCatalogTestimonials(testimonials: Testimonial[]): void {
+  write(TESTIMONIALS_KEY, testimonials);
+}
+
+export function resetCatalogTestimonials(): void {
+  clear(TESTIMONIALS_KEY);
+}
+
 

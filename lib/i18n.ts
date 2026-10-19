@@ -9,6 +9,8 @@ export interface LanguageOption {
   nativeName: string;
 }
 
+export const DEFAULT_LOCALE: Locale = "hi";
+
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: "en", label: "English", nativeName: "English" },
   { code: "hi", label: "Hindi", nativeName: "हिन्दी" },

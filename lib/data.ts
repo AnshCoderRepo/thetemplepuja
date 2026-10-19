@@ -237,6 +237,9 @@ export function getUpcomingEvents(
 export interface FestivalEvent {
   id: string;
   name: string;
+  hindiName?: string;
+  teluguName?: string;
+  tamilName?: string;
   badge?: string;
   hindiBadge?: string;
   teluguBadge?: string;
@@ -263,6 +266,9 @@ export interface FestivalEvent {
   tamilCtaText?: string;
   ctaLink?: string;
   secondaryCtaText?: string;
+  hindiSecondaryCtaText?: string;
+  teluguSecondaryCtaText?: string;
+  tamilSecondaryCtaText?: string;
   secondaryCtaLink?: string;
   active?: boolean;
   priority?: number; // 1 = highest
@@ -283,6 +289,9 @@ export const defaultFestivals: FestivalEvent[] = [
   {
     id: "navratri-2026",
     name: "Navratri 2026",
+    hindiName: "नवरात्रि महापर्व 2026",
+    teluguName: "నవరాత్రి మహోత్సవం 2026",
+    tamilName: "நவராத்திரி திருவிழா 2026",
     badge: "🪔 UPCOMING FESTIVAL",
     hindiBadge: "🪔 आगामी पावन पर्व",
     teluguBadge: "🪔 రాబోయే పండుగ",
@@ -313,6 +322,9 @@ export const defaultFestivals: FestivalEvent[] = [
     tamilCtaText: "நவராத்திரி பூஜை பதிவு செய்க",
     ctaLink: "/book/durga-saptashati-path",
     secondaryCtaText: "Explore All Pujas",
+    hindiSecondaryCtaText: "सभी पूजाएं देखें",
+    teluguSecondaryCtaText: "అన్ని పూజలు చూడండి",
+    tamilSecondaryCtaText: "அனைத்து பூஜைகளையும் காண்க",
     secondaryCtaLink: "#poojas",
     priority: 1,
     active: true,
@@ -320,6 +332,9 @@ export const defaultFestivals: FestivalEvent[] = [
   {
     id: "diwali-2026",
     name: "Diwali Mahotsav",
+    hindiName: "दीपावली महोत्सव",
+    teluguName: "దీపావళి మహోత్సవం",
+    tamilName: "தீபாவளி திருநாள்",
     badge: "✨ Deepawali Special",
     hindiBadge: "✨ दीपावली महापर्व",
     teluguBadge: "✨ దీపావళి మహోత్సవం",
@@ -350,6 +365,9 @@ export const defaultFestivals: FestivalEvent[] = [
     tamilCtaText: "தீபாவளி பூஜை பதிவு செய்க",
     ctaLink: "/book/lakshmi-pooja",
     secondaryCtaText: "Explore All Pujas",
+    hindiSecondaryCtaText: "सभी पूजाएं देखें",
+    teluguSecondaryCtaText: "అన్ని పూజలు చూడండి",
+    tamilSecondaryCtaText: "அனைத்து பூஜைகளையும் காண்க",
     secondaryCtaLink: "#poojas",
     priority: 2,
     active: true,
@@ -357,6 +375,9 @@ export const defaultFestivals: FestivalEvent[] = [
   {
     id: "shivratri-special",
     name: "Maha Shivratri Seva",
+    hindiName: "महाशिवरात्रि सेवा",
+    teluguName: "మహా శివరాత్రి సేవ",
+    tamilName: "மகா சிவராத்திரி சேவை",
     badge: "🕉️ Sacred Shiva Aradhana",
     hindiBadge: "🕉️ पावन शिव आराधना",
     teluguBadge: "🕉️ పవిత్ర శివార్చన",
@@ -387,6 +408,9 @@ export const defaultFestivals: FestivalEvent[] = [
     tamilCtaText: "ருத்ராபிஷேகம் பதிவு செய்க",
     ctaLink: "/book/rudrabhishek",
     secondaryCtaText: "Explore All Pujas",
+    hindiSecondaryCtaText: "सभी पूजाएं देखें",
+    teluguSecondaryCtaText: "అన్ని పూజలు చూడండి",
+    tamilSecondaryCtaText: "அனைத்து பூஜைகளையும் காண்க",
     secondaryCtaLink: "#poojas",
     priority: 3,
     active: true,
@@ -529,6 +553,62 @@ export function getLocalizedFestivalCta(
   if (locale === "te" && fest.teluguCtaText) return fest.teluguCtaText;
   if (locale === "ta" && fest.tamilCtaText) return fest.tamilCtaText;
   return fest.ctaText || "Book Festival Puja";
+}
+
+export function getLocalizedFestivalSecondaryCta(
+  fest: FestivalEvent,
+  locale?: string
+): string {
+  if (locale === "hi" && fest.hindiSecondaryCtaText) return fest.hindiSecondaryCtaText;
+  if (locale === "te" && fest.teluguSecondaryCtaText) return fest.teluguSecondaryCtaText;
+  if (locale === "ta" && fest.tamilSecondaryCtaText) return fest.tamilSecondaryCtaText;
+  return fest.secondaryCtaText || "Explore All Pujas";
+}
+
+export function getLocalizedFestivalName(
+  fest: FestivalEvent,
+  locale?: string
+): string {
+  if (locale === "hi" && fest.hindiName) return fest.hindiName;
+  if (locale === "te" && fest.teluguName) return fest.teluguName;
+  if (locale === "ta" && fest.tamilName) return fest.tamilName;
+  return fest.name;
+}
+
+export function getLocalizedFestivalCountdown(
+  fest: FestivalEvent,
+  locale?: string
+): string {
+  const status =
+    (fest as FestivalEvent & { status?: ReturnType<typeof getFestivalStatus> }).status ||
+    getFestivalStatus(fest);
+  const festName = getLocalizedFestivalName(fest, locale);
+
+  if (status.isLive) {
+    if (locale === "hi") return "🔴 पावन पर्व प्रारंभ • आज विशेष पूजाएं";
+    if (locale === "te") return "🔴 పవిత్ర పండుగ ప్రత్యక్షం • నేడు ప్రత్యేక పూజలు";
+    if (locale === "ta") return "🔴 நேரலை திருவிழா • இன்று சிறப்பு பூஜைகள்";
+    return status.countdownText || "🔴 Live Festival • Special Pujas Today";
+  }
+
+  if (status.isUpcoming) {
+    const d = status.daysUntilStart;
+    if (locale === "hi") {
+      return d <= 1 ? `${festName} कल से प्रारंभ` : `${festName} ${d} दिनों में प्रारंभ`;
+    }
+    if (locale === "te") {
+      return `${festName} ${d} రోజుల్లో ప్రారంభం`;
+    }
+    if (locale === "ta") {
+      return `${festName} ${d} நாட்களில் தொடங்குகிறது`;
+    }
+    return `${festName} begins in ${d} day${d > 1 ? "s" : ""}`;
+  }
+
+  if (locale === "hi") return "पर्व संपन्न";
+  if (locale === "te") return "పండుగ ముగిసింది";
+  if (locale === "ta") return "திருவிழா நிறைவடைந்தது";
+  return "Festival Concluded";
 }
 
 // ===================== EVENT SEAT INVENTORY =====================
@@ -681,67 +761,213 @@ export const deals = [
   },
 ];
 
-export const testimonials = [
+export interface Testimonial {
+  id?: string;
+  name: string;
+  hindiName?: string;
+  teluguName?: string;
+  tamilName?: string;
+  location: string;
+  hindiLocation?: string;
+  teluguLocation?: string;
+  tamilLocation?: string;
+  rating: number;
+  text: string;
+  hindiText?: string;
+  teluguText?: string;
+  tamilText?: string;
+  avatar: string;
+  color: string;
+  active?: boolean;
+}
+
+export const testimonials: Testimonial[] = [
   {
+    id: "testi-1",
     name: "Priya Sharma",
+    hindiName: "प्रिया शर्मा",
+    teluguName: "ప్రియా శర్మ",
+    tamilName: "பிரியா சர்மா",
     location: "Mumbai, Maharashtra",
+    hindiLocation: "मुंबई, महाराष्ट्र",
+    teluguLocation: "ముంబై, మహారాష్ట్ర",
+    tamilLocation: "மும்பை, மகாராஷ்டிரா",
     rating: 5,
     text: "Booked Griha Pravesh pooja for our new home. The pandit ji was extremely knowledgeable and the rituals were performed exactly as per scriptures. The video recording was a blessing for our family abroad!",
+    hindiText: "हमारे नए घर के लिए गृह प्रवेश पूजा बुक की थी। पंडित जी अत्यंत विद्वान थे और सभी अनुष्ठान शास्त्रों के अनुसार संपन्न कराए गए। विदेश में रह रहे हमारे परिवार के लिए वीडियो रिकॉर्डिंग एक बड़ा आशीर्वाद रही!",
+    teluguText: "మా కొత్త ఇంటి కోసం గృహప్రవేశ పూజను బుక్ చేశాము. పండిట్ జీ వేద విధానాల ప్రకారం ఎంతో పవిత్రంగా పూజ జరిపించారు. విదేశాల్లో ఉన్న మా బంధువులకు వీడియో రికార్డింగ్ గొప్ప అనుభూతినిచ్చింది!",
+    tamilText: "எங்கள் புதிய இல்லத்திற்கான கிரகப்பிரவேச பூஜையை பதிவு செய்தோம். பண்டிதர் சாஸ்திர முறைப்படி மிகச் சிறப்பாக நடத்தினார். வெளிநாட்டில் உள்ள எங்கள் குடும்பத்திற்கு வீடியோ பதிவு பெரும் வரப்பிரசாதமாக அமைந்தது!",
     avatar: "PS",
     color: "from-rose-400 to-pink-600",
+    active: true,
   },
   {
+    id: "testi-2",
     name: "Rajesh Kumar",
+    hindiName: "राजेश कुमार",
+    teluguName: "రాజేష్ కుమార్",
+    tamilName: "ராஜேஷ் குமார்",
     location: "New Delhi",
+    hindiLocation: "नई दिल्ली",
+    teluguLocation: "న్యూఢిల్లీ",
+    tamilLocation: "புது தில்லி",
     rating: 5,
     text: "The HD video recording of our pooja was an unforgettable experience. The clarity was excellent and the booking process took less than 2 minutes. Truly blessed!",
+    hindiText: "हमारी पूजा की HD वीडियो रिकॉर्डिंग एक अविस्मरणीय अनुभव था। स्पष्टता बहुत बेहतरीन थी और बुकिंग प्रक्रिया में 2 मिनट से भी कम समय लगा। सचमुच प्रभु की कृपा मिली!",
+    teluguText: "మా పూజ యొక్క HD వీడియో రికార్డింగ్ అద్భుతమైన అనుభవం. స్పష్టత ఎంతో బాగుంది మరియు బుకింగ్ ప్రక్రియ 2 నిమిషాల్లో పూర్తయింది. నిజంగా దైవానుగ్రహం!",
+    tamilText: "எங்கள் பூஜையின் HD வீடியோ பதிவு மறக்க முடியாத அனுபவமாக இருந்தது. தரம் மிகச் சிறப்பாக இருந்தது, 2 நிமிடங்களில் பதிவு முடிந்தது. மெய்யாகவே பாக்கியம் பெற்றோம்!",
     avatar: "RK",
     color: "from-saffron-400 to-orange-600",
+    active: true,
   },
   {
+    id: "testi-3",
     name: "Anita Deshmukh",
+    hindiName: "अनीता देशमुख",
+    teluguName: "అనితా దేశ్‌ముఖ్",
+    tamilName: "அனிதா தேஷ்முக்",
     location: "Pune, Maharashtra",
+    hindiLocation: "पुणे, महाराष्ट्र",
+    teluguLocation: "పూణే, మహారాష్ట్ర",
+    tamilLocation: "புனே, மகாராஷ்டிரா",
     rating: 5,
     text: "Ordered the Satyanarayan pooja kit — it arrived within 3 days, beautifully packed and blessed. The WhatsApp confirmation and reminders are a very thoughtful touch.",
+    hindiText: "सत्यनारायण पूजा किट मंगवाई थी — 3 दिनों के भीतर सुंदर पैकिंग और आशीर्वाद के साथ पहुँच गई। व्हाट्सएप पर पुष्टि और अनुष्ठान के रिमाइंडर बहुत ही सुविधाजनक हैं।",
+    teluguText: "సత్యనారాయణ పూజా కిట్ ఆర్డర్ చేశాను — 3 రోజుల్లో పవిత్రంగా ప్యాక్ చేసి అందింది. వాట్సాప్ నిర్ధారణ మరియు రిమైండర్లు ఎంతో ఉపయోగపడ్డాయి.",
+    tamilText: "சத்யநாராயண பூஜை கிட் ஆர்டர் செய்தேன் — 3 நாட்களில் அழகாக பேக் செய்யப்பட்டு ஆசீர்வதிக்கப்பட்டு வந்தது. வாட்ஸ்அப் உறுதிப்படுத்தல் மிகவும் பயனுள்ளதாக இருந்தது.",
     avatar: "AD",
     color: "from-emerald-400 to-teal-600",
+    active: true,
   },
   {
+    id: "testi-4",
     name: "Vikram Singh",
+    hindiName: "विक्रम सिंह",
+    teluguName: "విక్రమ్ సింగ్",
+    tamilName: "விக்ரம் சிங்",
     location: "Jaipur, Rajasthan",
+    hindiLocation: "जयपुर, राजस्थान",
+    teluguLocation: "జైపూర్, రాజస్థాన్",
+    tamilLocation: "ஜெய்ப்பூர், ராஜஸ்தான்",
     rating: 5,
     text: "Booked Navgraha Shanti for our family — the pandit ji explained every step and the havan was performed flawlessly. The video recording let our relatives abroad join in the blessings.",
+    hindiText: "हमारे परिवार के लिए नवग्रह शांति पूजा बुक की थी — पंडित जी ने हर चरण को समझाया और हवन विधिपूर्वक संपन्न हुआ। वीडियो रिकॉर्डिंग से विदेश में रह रहे रिश्तेदार भी शामिल हो सके।",
+    teluguText: "మా కుటుంబం కోసం నవగ్రహ శాంతి పూజ బుక్ చేశాము — పండిట్ జీ ప్రతి విధిని వివరించారు మరియు హవనం నిష్కళంకముగా జరిగింది. వీడియో రికార్డింగ్ విదేశీ బంధువులకు ఎంతగానో నచ్చింది.",
+    tamilText: "எங்கள் குடும்பத்திற்காக நவகிரக சாந்தி பூஜை பதிவு செய்தோம் — பண்டிதர் ஒவ்வொரு படியையும் விளக்கி யாகத்தை சிறப்பாக நடத்தினார். வெளிநாட்டு உறவினர்களும் இதில் பங்கேற்க முடிந்தது.",
     avatar: "VS",
     color: "from-indigo-400 to-purple-600",
+    active: true,
   },
 ];
 
-export const faqs = [
+export function getLocalizedTestimonialText(t: Testimonial, locale?: string): string {
+  if (locale === "hi" && t.hindiText) return t.hindiText;
+  if (locale === "te" && t.teluguText) return t.teluguText;
+  if (locale === "ta" && t.tamilText) return t.tamilText;
+  return t.text;
+}
+
+export function getLocalizedTestimonialLocation(t: Testimonial, locale?: string): string {
+  if (locale === "hi" && t.hindiLocation) return t.hindiLocation;
+  if (locale === "te" && t.teluguLocation) return t.teluguLocation;
+  if (locale === "ta" && t.tamilLocation) return t.tamilLocation;
+  return t.location;
+}
+
+export function getLocalizedTestimonialName(t: Testimonial, locale?: string): string {
+  if (locale === "hi" && t.hindiName) return t.hindiName;
+  if (locale === "te" && t.teluguName) return t.teluguName;
+  if (locale === "ta" && t.tamilName) return t.tamilName;
+  return t.name;
+}
+
+export interface FaqItem {
+  q: string;
+  a: string;
+  hindiQ?: string;
+  hindiA?: string;
+  teluguQ?: string;
+  teluguA?: string;
+  tamilQ?: string;
+  tamilA?: string;
+}
+
+export const faqs: FaqItem[] = [
   {
     q: "How do I book a pooja on templepujasewa?",
     a: "Simply select your pooja, choose a date, fill in your details (name, gotra, city, mobile number), and complete secure payment via UPI, card or net banking. Your booking is confirmed instantly and admin is notified on WhatsApp.",
+    hindiQ: "templepujasewa पर पूजा कैसे बुक करें?",
+    hindiA: "अपनी मनपसंद पूजा चुनें, शुभ तिथि चुनें, अपने विवरण (नाम, गोत्र, शहर, मोबाइल नंबर) दर्ज करें और UPI, कार्ड या नेट बैंकिंग से सुरक्षित भुगतान करें। आपकी बुकिंग तुरंत कन्फर्म हो जाएगी।",
+    teluguQ: "templepujasewa లో పూజ ఎలా బుక్ చేయాలి?",
+    teluguA: "మీ పూజను ఎంచుకోండి, తేదీని నిర్ణయించుకోండి, మీ వివరాలు (పేరు, గోత్రం, ఊరు, మొబైల్ నంబర్) నమోదు చేసి UPI లేదా కార్డ్ ద్వారా సురక్షిత చెల్లింపు చేయండి.",
+    tamilQ: "templepujasewa-வில் பூஜை எவ்வாறு பதிவு செய்வது?",
+    tamilA: "உங்களுக்கு விருப்பமான பூஜையைத் தேர்ந்தெடுத்து, தேதி மற்றும் உங்கள் விவரங்களை (பெயர், கோத்திரம், தொலைபேசி எண்) நிரப்பி UPI அல்லது கார்டு மூலம் பணம் செலுத்துங்கள்.",
   },
   {
     q: "Are the pandits certified and experienced?",
     a: "Yes. All our pandits are certified Vedic scholars with 10+ years of experience. Each one is verified through a rigorous background check and regularly reviewed by our devotees.",
+    hindiQ: "क्या पंडित जी प्रमाणित और अनुभवी हैं?",
+    hindiA: "हाँ। हमारे सभी पंडित 10+ वर्षों के अनुभव वाले प्रमाणित वैदिक विद्वान हैं। प्रत्येक पंडित का कठोर सत्यापन किया जाता है और वे पारंपरिक गुरुकुल परंपरा से दीक्षित हैं।",
+    teluguQ: "పండితులు అనుభవజ్ఞులు మరియు ధృవీకరించబడినవారేనా?",
+    teluguA: "అవును. మా పండితులందరూ 10+ సంవత్సరాల అనుభవం ఉన్న ధృవీకరించబడిన వేద పండితులు.",
+    tamilQ: "பண்டிதர்கள் அனுபவம் வாய்ந்தவர்களா மற்றும் சான்றளிக்கப்பட்டவர்களா?",
+    tamilA: "ஆம். எங்கள் பண்டிதர்கள் அனைவரும் 10+ வருட அனுபவமுள்ள வேத அறிஞர்கள் மற்றும் முழுமையாக சரிபார்க்கப்பட்டவர்கள்.",
   },
   {
     q: "Will I receive a video recording of my pooja?",
     a: "Yes! Every pooja is recorded in HD, and we share the recording link with you right after the ritual — so you and your family can relive the blessings from anywhere, anytime.",
+    hindiQ: "क्या मुझे अपनी पूजा की वीडियो रिकॉर्डिंग मिलेगी?",
+    hindiA: "हाँ! प्रत्येक पूजा की एचडी (HD) वीडियो रिकॉर्डिंग और लाइव संकल्प दर्शन लिंक अनुष्ठान के तुरंत बाद आपके साथ साझा किया जाता है।",
+    teluguQ: "నా పూజ వీడియో రికార్డింగ్ నాకు అందుతుందా?",
+    teluguA: "ఖచ్చితంగా! ప్రతి పూజ HD వీడియో రికార్డింగ్ మరియు ప్రత్యక్ష లింక్ పూజ ముగిసిన వెంటనే మీకు పంపబడుతుంది.",
+    tamilQ: "எனது பூஜையின் வீடியோ பதிவு எனக்குக் கிடைக்குமா?",
+    tamilA: "ஆம்! ஒவ்வொரு பூஜையும் HD தரத்தில் பதிவு செய்யப்பட்டு, வழிபாடு முடிந்தவுடன் அதன் இணைப்பு உங்களுக்கு அனுப்பப்படும்.",
   },
   {
     q: "How long does home delivery of pooja kits take?",
     a: "Pooja kits and sacred items are delivered anywhere in India within 2–5 business days. Every kit is blessed by our pandits before shipping.",
+    hindiQ: "पूजा किट और प्रसाद होम डिलीवरी में कितना समय लगता है?",
+    hindiA: "पूजा किट और पावन प्रसाद भारत भर में 2 से 5 कार्य दिवसों में आपके घर तक पहुंचा दिया जाता है। प्रत्येक किट को भेजने से पहले पंडित जी द्वारा अभिमंत्रित किया जाता है।",
+    teluguQ: "పూజా ప్రసాదం మరియు కిట్ హోమ్ డెలివరీకి ఎంత సమయం పడుతుంది?",
+    teluguA: "భారతదేశంలో ఎక్కడికైనా 2-5 పనిదినాల్లో పవిత్ర ప్రసాదం మరియు పూజా సామగ్రి డెలివరీ చేయబడుతుంది.",
+    tamilQ: "பூஜை பிரசாதம் மற்றும் பொருட்கள் விநியோகிக்க எவ்வளவு காலம் ஆகும்?",
+    tamilA: "புனித பிரசாதம் மற்றும் பூஜை பொருட்கள் 2 முதல் 5 நாட்களுக்குள் உங்கள் இல்லத்திற்கு அனுப்பி வைக்கப்படும்.",
   },
   {
     q: "What payment methods are accepted?",
     a: "We accept UPI (GPay, PhonePe, Paytm), all debit/credit cards, and net banking — all securely processed through Razorpay with 100% SSL encryption.",
+    hindiQ: "भुगतान के कौन से माध्यम स्वीकार्य हैं?",
+    hindiA: "हम UPI (GPay, PhonePe, Paytm), सभी डेबिट/क्रेडिट कार्ड, और नेट बैंकिंग स्वीकार करते हैं — सभी 100% सुरक्षित और एन्क्रिप्टेड हैं।",
+    teluguQ: "ఏ చెల్లింపు పద్ధతులు అందుబాటులో ఉన్నాయి?",
+    teluguA: "మేము UPI (Google Pay, PhonePe, Paytm), డెబిట్/క్రెడిట్ కార్డులు మరియు నెట్ బ్యాంకింగ్‌ను 100% భద్రతతో అంగీకరిస్తాము.",
+    tamilQ: "என்னென்ன கட்டண முறைகள் ஏற்றுக்கொள்ளப்படுகின்றன?",
+    tamilA: "UPI (GPay, PhonePe, Paytm), டெபிட்/கிரெடிட் கார்டுகள் மற்றும் நெட் பேங்கிங் மூலம் 100% பாதுகாப்பாக செலுத்தலாம்.",
   },
   {
     q: "Is there a refund policy?",
     a: "Yes. If a pooja cannot be performed due to unforeseen circumstances, we offer a full refund or rescheduling at no extra cost. Donations made towards temple seva are non-refundable.",
+    hindiQ: "क्या रिफंड और रिशेड्यूल की सुविधा उपलब्ध है?",
+    hindiA: "हाँ। यदि किसी अपरिहार्य कारण से पूजा संपन्न नहीं हो पाती है, तो हम बिना किसी अतिरिक्त शुल्क के पूरा रिफंड या नई तिथि प्रदान करते हैं।",
+    teluguQ: "రీఫండ్ విధానం ఉందా?",
+    teluguA: "అవును. అనుకోని కారణాల వల్ల పూజ జరగకపోతే, పూర్తి రీఫండ్ లేదా ఉచితంగా వేరొక రోజుకు మార్చుకునే సదుపాయం కలదు.",
+    tamilQ: "பணம் திரும்பப் பெறும் வசதி உள்ளதா?",
+    tamilA: "ஆம். எதிர்பாராத காரணங்களால் பூஜை நடைபெறாவிட்டால், முழு தொகையும் திரும்ப வழங்கப்படும் அல்லது மாற்று தேதியில் பூஜை நடத்தப்படும்.",
   },
 ];
+
+export function getLocalizedFaqQ(faq: FaqItem, locale?: string): string {
+  if (locale === "hi" && faq.hindiQ) return faq.hindiQ;
+  if (locale === "te" && faq.teluguQ) return faq.teluguQ;
+  if (locale === "ta" && faq.tamilQ) return faq.tamilQ;
+  return faq.q;
+}
+
+export function getLocalizedFaqA(faq: FaqItem, locale?: string): string {
+  if (locale === "hi" && faq.hindiA) return faq.hindiA;
+  if (locale === "te" && faq.teluguA) return faq.teluguA;
+  if (locale === "ta" && faq.tamilA) return faq.tamilA;
+  return faq.a;
+}
 
 export const contactInfo = [
   {

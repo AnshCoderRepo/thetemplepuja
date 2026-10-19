@@ -17,7 +17,7 @@ const ORG = {
     telephone: `+${SITE_CONFIG.contact.countryCode}-${SITE_CONFIG.contact.phoneRaw}`,
     email: SITE_CONFIG.contact.email,
     contactType: "customer service",
-    availableLanguage: ["English", "Hindi"],
+    availableLanguage: ["Hindi", "English", "Telugu", "Tamil"],
   },
   sameAs: [
     SITE_CONFIG.social.instagram,
@@ -38,7 +38,7 @@ export function websiteLd() {
     name: "templepujasewa",
     url: SITE_URL,
     description: ORG.description,
-    inLanguage: "en",
+    inLanguage: "hi",
   };
 }
 
