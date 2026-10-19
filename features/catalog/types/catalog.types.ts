@@ -5,6 +5,7 @@ import type {
   PoojaDate,
   Temple,
   UpcomingEventSpec,
+  Testimonial,
 } from "@/lib/data";
 import type { PlatformSettings } from "@/lib/chatbot-types";
 
@@ -16,6 +17,7 @@ export interface ResolvedCatalog {
   poojaDates: PoojaDate[];
   temples: Temple[];
   platformSettings?: PlatformSettings;
+  testimonials?: Testimonial[];
 }
 
 export type CatalogSection =
@@ -24,4 +26,5 @@ export type CatalogSection =
   | "festivals"
   | "coupons"
   | "poojaDates"
-  | "temples";
+  | "temples"
+  | "testimonials";

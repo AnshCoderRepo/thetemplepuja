@@ -10,6 +10,7 @@ import {
   getCatalogPoojas,
   getCatalogTemples,
   getCatalogBlogs,
+  getCatalogTestimonials,
 } from "./catalog";
 import type { BlogPost } from "./blog-data";
 import {
@@ -19,6 +20,7 @@ import {
   type Pooja,
   type PoojaDate,
   type Temple,
+  type Testimonial,
   type UpcomingEventSpec,
   type Addon,
 } from "./data";
@@ -53,6 +55,7 @@ export interface ResolvedCatalog {
   poojaDates: PoojaDate[];
   temples: Temple[];
   blogs?: BlogPost[];
+  testimonials?: Testimonial[];
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
@@ -135,6 +138,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
             poojaDates: body.poojaDates ?? [],
             temples: body.temples ?? getCatalogTemples(),
             blogs: body.blogs ?? getCatalogBlogs(),
+            testimonials: body.testimonials ?? getCatalogTestimonials(),
           };
         }
         throw new Error("unexpected catalog payload");
@@ -153,6 +157,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
           poojaDates: getCatalogPoojaDates(),
           temples: getCatalogTemples(),
           blogs: getCatalogBlogs(),
+          testimonials: getCatalogTestimonials(),
         };
       }
     })();
@@ -187,7 +192,8 @@ export type CatalogSection =
   | "coupons"
   | "poojaDates"
   | "temples"
-  | "blogs";
+  | "blogs"
+  | "testimonials";
 
 export async function saveCatalogSection(
   section: CatalogSection,

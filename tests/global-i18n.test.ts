@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { translations, SUPPORTED_LANGUAGES, type Locale, type TranslationKey } from "@/lib/i18n";
+import { translations, SUPPORTED_LANGUAGES, DEFAULT_LOCALE, type Locale, type TranslationKey } from "@/lib/i18n";
 import {
   getLocalizedTempleName,
   isPoojaLiveStreamAvailable,
@@ -8,9 +8,17 @@ import {
 } from "@/lib/data";
 
 describe("Global i18n & Translation System", () => {
-  it("supports exactly English, Hindi, Telugu, and Tamil", () => {
+  it("defaults site locale to Hindi ('hi')", () => {
+    expect(DEFAULT_LOCALE).toBe("hi");
+  });
+
+  it("supports exactly English, Hindi, Telugu, and Tamil with Hindi as default and 3 others switchable", () => {
     const codes = SUPPORTED_LANGUAGES.map((l) => l.code);
     expect(codes).toEqual(["en", "hi", "ta", "te"]);
+    expect(codes).toContain(DEFAULT_LOCALE);
+    const otherLanguages = codes.filter((c) => c !== DEFAULT_LOCALE);
+    expect(otherLanguages).toHaveLength(3);
+    expect(otherLanguages).toEqual(expect.arrayContaining(["en", "te", "ta"]));
     for (const lang of SUPPORTED_LANGUAGES) {
       expect(lang.label).toBeTruthy();
       expect(lang.nativeName).toBeTruthy();

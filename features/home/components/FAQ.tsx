@@ -5,7 +5,7 @@ import InteractiveImageAccordion, {
   type ImageAccordionItem,
 } from "@/components/ui/interactive-image-accordion";
 import { Reveal, SectionHeading } from "@/components/common";
-import { faqs } from "@/lib/data";
+import { faqs, getLocalizedFaqQ, getLocalizedFaqA } from "@/lib/data";
 import { useI18n } from "@/components/providers";
 
 // Atmospheric imagery for the FAQ tiles (verified Unsplash photos).
@@ -19,14 +19,41 @@ const faqImages = [
 ];
 
 export default function FAQ() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const accordionItems: ImageAccordionItem[] = faqs.map((faq, i) => ({
     id: i + 1,
-    title: faq.q,
-    answer: faq.a,
+    title: getLocalizedFaqQ(faq, locale),
+    answer: getLocalizedFaqA(faq, locale),
     imageUrl: faqImages[i % faqImages.length],
   }));
+
+  const supportContent = {
+    hi: {
+      title: "कोई अन्य प्रश्न है?",
+      subtitle: "WhatsApp पर सीधे हमारे मंदिर समन्वयकों से बात करें। हम आपकी सेवा में सदैव तत्पर हैं।",
+      btn: "व्हाट्सएप पर बात करें",
+    },
+    te: {
+      title: "ఇంకా సందేహాలు ఉన్నాయా?",
+      subtitle: "WhatsApp ద్వారా మా ప్రతినిధులతో నేరుగా మాట్లాడండి. మేము మీకు సహాయం చేయడానికి సిద్ధంగా ఉన్నాము.",
+      btn: "మాతో చాట్ చేయండి",
+    },
+    ta: {
+      title: "மேலும் கேள்விகள் உள்ளதா?",
+      subtitle: "WhatsApp மூலம் எங்கள் கோயில் ஒருங்கிணைப்பாளர்களுடன் நேரடியாகப் பேசுங்கள். உதவ நாங்கள் தயாராக உள்ளோம்.",
+      btn: "எங்களுடன் பேசுங்கள்",
+    },
+    en: {
+      title: "Still have questions?",
+      subtitle: "Talk directly with our temple coordinators on WhatsApp. We are here to assist you.",
+      btn: "Chat with Us",
+    },
+  }[locale] || {
+    title: "Still have questions?",
+    subtitle: "Talk directly with our temple coordinators on WhatsApp. We are here to assist you.",
+    btn: "Chat with Us",
+  };
 
   return (
     <section id="faq" className="section-pad bg-cream relative overflow-hidden">
@@ -48,10 +75,10 @@ export default function FAQ() {
             <div className="rounded-3xl border border-saffron-100 bg-white p-6 shadow-soft sm:p-8">
               <span className="text-3xl">💬</span>
               <h3 className="mt-3 font-display text-lg font-bold text-ink">
-                Still have questions?
+                {supportContent.title}
               </h3>
               <p className="mt-1 text-sm text-ink-soft">
-                Talk directly with our temple coordinators on WhatsApp. We are here to assist you.
+                {supportContent.subtitle}
               </p>
               <button
                 type="button"
@@ -59,7 +86,7 @@ export default function FAQ() {
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-[#20bd5a] transition-all cursor-pointer"
               >
                 <MessageCircle className="h-4 w-4" />
-                Chat with Us
+                {supportContent.btn}
               </button>
             </div>
           </div>

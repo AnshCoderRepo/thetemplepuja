@@ -11,6 +11,7 @@ import {
   defaultTemples as staticTemples,
   poojas as staticPoojas,
   upcomingEventSpecs as staticEvents,
+  testimonials as staticTestimonials,
   resolvePoojaTemple,
   type Coupon,
   type FestivalEvent,
@@ -19,6 +20,7 @@ import {
   type Temple,
   type UpcomingEventSpec,
   type Addon,
+  type Testimonial,
 } from "./data";
 import type { GalleryItem } from "./gallery-types";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
@@ -149,7 +151,8 @@ export type CatalogOverrideSection =
   | "blogs"
   | "chatbotKnowledge"
   | "chatbotSettings"
-  | "platformSettings";
+  | "platformSettings"
+  | "testimonials";
 
 /** Overrides merged over the static defaults — what consumers should render. */
 export async function getResolvedCatalog(): Promise<{
@@ -163,6 +166,7 @@ export async function getResolvedCatalog(): Promise<{
   chatbotKnowledge: ChatbotKnowledgeEntry[];
   chatbotSettings: ChatbotSettings;
   platformSettings: PlatformSettings;
+  testimonials: Testimonial[];
 }> {
   const o = await withFallback((s) => s.getCatalogOverrides());
   const resolvedTemples = o.temples ?? staticTemples;
@@ -192,6 +196,7 @@ export async function getResolvedCatalog(): Promise<{
         process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL_URL ||
         "https://whatsapp.com/channel/0029Vaexample",
     },
+    testimonials: o.testimonials ?? staticTestimonials,
   };
 }
 
@@ -206,6 +211,7 @@ export async function saveCatalogOverrides(overrides: {
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
+  testimonials?: Testimonial[];
 }): Promise<void> {
   await withFallback((s) => s.saveCatalogOverrides(overrides));
 }

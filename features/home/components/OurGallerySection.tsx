@@ -9,8 +9,40 @@ import { useBookingModal, useI18n } from "@/components/providers";
 import GalleryCard, { type GalleryCardOpenOptions } from "@/components/gallery/GalleryCard";
 import GalleryModal from "@/components/gallery/GalleryModal";
 
+const GALLERY_CONTENT = {
+  hi: {
+    eyebrow: "पावन दृश्य दर्शन",
+    title: "हमारी पावन गैलरी",
+    subtitle: "हमारी पूजा विधियों, पवित्र अनुष्ठानों और भक्तिमय पलों के अलौकिक दर्शन।",
+    viewAll: "सभी फ़ोटो और वीडियो देखें",
+    bookPuja: "अपनी पूजा बुक करें",
+  },
+  te: {
+    eyebrow: "పవిత్ర దర్శనం",
+    title: "మా గ్యాలరీ",
+    subtitle: "పూజా కార్యక్రమాలు, సంప్రదాయాలు మరియు భక్తి క్షణాల అందమైన చిత్రాలు.",
+    viewAll: "అన్ని ఫోటోలు & వీడియోలను చూడండి",
+    bookPuja: "మీ పూజను బుక్ చేయండి",
+  },
+  ta: {
+    eyebrow: "புனித தரிசனம்",
+    title: "எங்கள் படத்தொகுப்பு",
+    subtitle: "எங்கள் பூஜை சடங்குகள் மற்றும் பக்தி தருணங்களின் அழகான காட்சிகள்.",
+    viewAll: "அனைத்து புகைப்படங்கள் & வீடியோக்களைக் காண்க",
+    bookPuja: "உங்கள் பூஜையை பதிவு செய்க",
+  },
+  en: {
+    eyebrow: "Sacred Visual Darshan",
+    title: "Our Gallery",
+    subtitle: "Explore the beautiful moments of our puja ceremonies, traditions, and devotion.",
+    viewAll: "View All Photos & Videos",
+    bookPuja: "Book Your Puja",
+  },
+};
+
 export default function OurGallerySection() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const c = GALLERY_CONTENT[locale] || GALLERY_CONTENT.en;
   const { openBooking } = useBookingModal();
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,15 +90,15 @@ export default function OurGallerySection() {
         <div className="mx-auto max-w-3xl text-center mb-10 sm:mb-14">
           <span className="eyebrow inline-flex items-center gap-1.5 mb-2.5">
             <Sparkles className="h-3.5 w-3.5 text-saffron-600" />
-            <span>Sacred Visual Darshan</span>
+            <span>{c.eyebrow}</span>
           </span>
 
           <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl md:text-5xl">
-            Our Gallery
+            {c.title}
           </h2>
 
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-base">
-            Explore the beautiful moments of our puja ceremonies, traditions, and devotion.
+            {c.subtitle}
           </p>
         </div>
 
@@ -108,7 +140,7 @@ export default function OurGallerySection() {
             href="/our-gallery"
             className="btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 text-sm font-bold shadow-md shadow-saffron-600/20"
           >
-            <span>View All Photos & Videos</span>
+            <span>{c.viewAll}</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
 
@@ -118,7 +150,7 @@ export default function OurGallerySection() {
             className="btn-outline inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 text-sm font-bold bg-white"
           >
             <Calendar className="h-4 w-4 text-saffron-600" />
-            <span>Book Your Puja</span>
+            <span>{c.bookPuja}</span>
           </button>
         </div>
       </div>

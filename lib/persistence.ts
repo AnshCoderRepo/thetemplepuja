@@ -1,4 +1,4 @@
-import { defaultAddons, type Addon, type Coupon, type FestivalEvent, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec } from "./data";
+import { defaultAddons, type Addon, type Coupon, type FestivalEvent, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec, type Testimonial } from "./data";
 import type { BlogPost } from "./blog-data";
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
@@ -20,6 +20,7 @@ export interface CatalogOverrides {
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
+  testimonials?: Testimonial[];
 }
 
 export interface AdminCreds {
@@ -42,6 +43,7 @@ export interface PersistenceStore {
       | "chatbotKnowledge"
       | "chatbotSettings"
       | "platformSettings"
+      | "testimonials"
     )[]
   ): Promise<void>;
   getAdminCreds(): Promise<AdminCreds>;

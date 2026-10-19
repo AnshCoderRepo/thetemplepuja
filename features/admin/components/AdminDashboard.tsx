@@ -22,6 +22,7 @@ import ChatbotManager from "@/components/admin/ChatbotManager";
 import GalleryManager from "@/components/admin/GalleryManager";
 import CustomerProfileModal, { type ProfileTab } from "@/components/admin/CustomerProfileModal";
 import RefundRequestsManager from "@/components/admin/RefundRequestsManager";
+import TestimonialsManager from "@/components/admin/TestimonialsManager";
 
 interface AdminDashboardProps {
   tab: AdminTab;
@@ -207,6 +208,14 @@ export default function AdminDashboard({
 
           {tab === "chatbot" && (
             <ChatbotManager token={token || ""} onAuthError={onAuthError} />
+          )}
+
+          {tab === "testimonials" && (
+            <TestimonialsManager
+              token={token || ""}
+              onAuthError={onAuthError}
+              onRefresh={onRefresh}
+            />
           )}
 
           {tab === "account" && (

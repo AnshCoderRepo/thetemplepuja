@@ -7,12 +7,14 @@ import {
   defaultPoojaDates,
   defaultTemples as staticTemples,
   poojas as staticPoojas,
+  testimonials as staticTestimonials,
   type Coupon,
   type FestivalEvent,
   type Pooja,
   type PoojaDate,
   type Temple,
   type UpcomingEventSpec,
+  type Testimonial,
 } from "@/lib/data";
 import {
   clearCatalogMemoryCache,
@@ -32,6 +34,7 @@ export interface CatalogState {
   poojaDates: PoojaDate[];
   temples: Temple[];
   platformSettings?: PlatformSettings;
+  testimonials: Testimonial[];
   loaded: boolean;
 }
 
@@ -89,6 +92,7 @@ export function useCatalog(): CatalogState {
     poojaDates: catalog?.poojaDates ?? defaultPoojaDates,
     temples: catalog?.temples ?? staticTemples,
     platformSettings: catalog?.platformSettings,
+    testimonials: catalog?.testimonials ?? staticTestimonials,
     loaded: catalog !== null,
   };
 }

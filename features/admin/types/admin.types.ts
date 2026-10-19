@@ -15,6 +15,7 @@ export type AdminTab =
   | "chatbot"
   | "addons"
   | "gallery"
+  | "testimonials"
   | "account";
 
 export interface NavItem {
