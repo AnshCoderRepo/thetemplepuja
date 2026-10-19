@@ -42,6 +42,9 @@ export default function ServiceCardEditModal({
   const [badge, setBadge] = useState("");
   const [showBadge, setShowBadge] = useState(true);
   const [active, setActive] = useState(true);
+  const [showInHero, setShowInHero] = useState(false);
+  const [showInHeroCard, setShowInHeroCard] = useState(false);
+  const [showInCatalog, setShowInCatalog] = useState(true);
   const [displayOrder, setDisplayOrder] = useState<number | "">("");
   const [ctaText, setCtaText] = useState("");
   const [ctaLink, setCtaLink] = useState("");
@@ -61,6 +64,17 @@ export default function ServiceCardEditModal({
       setBadge(pooja.badge || "");
       setShowBadge(pooja.showBadge !== false);
       setActive(isPoojaActive(pooja));
+      setShowInHero(
+        pooja.showInHero !== undefined
+          ? Boolean(pooja.showInHero)
+          : pooja.slug === "satyanarayan-katha" || pooja.slug === "rudrabhishek"
+      );
+      setShowInHeroCard(
+        pooja.showInHeroCard !== undefined
+          ? Boolean(pooja.showInHeroCard)
+          : pooja.slug === "satyanarayan-katha"
+      );
+      setShowInCatalog(pooja.showInCatalog !== false);
       setDisplayOrder(pooja.displayOrder !== undefined ? pooja.displayOrder : "");
       setCtaText(pooja.ctaText || "");
       setCtaLink(pooja.ctaLink || "");
@@ -180,6 +194,9 @@ export default function ServiceCardEditModal({
         badge: badge.trim() || undefined,
         showBadge,
         active,
+        showInHero,
+        showInHeroCard,
+        showInCatalog,
         displayOrder: displayOrder === "" ? undefined : Number(displayOrder),
         ctaText: ctaText.trim() || undefined,
         ctaLink: ctaLink.trim() || undefined,
@@ -300,6 +317,31 @@ export default function ServiceCardEditModal({
                 <span className="rounded-lg bg-saffron-500 text-white font-bold px-3 py-1 text-[11px] shadow-xs">
                   {ctaText || "Book Now"} →
                 </span>
+              </div>
+
+              {/* Placement Badges Preview */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-saffron-100/40 text-[10px]">
+                <span className="font-semibold text-ink-soft">Placements:</span>
+                {showInHero && (
+                  <span className="rounded-md bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 font-semibold">
+                    ✨ Hero Section
+                  </span>
+                )}
+                {showInHeroCard && (
+                  <span className="rounded-md bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.5 font-semibold">
+                    🎴 Hero Card
+                  </span>
+                )}
+                {showInCatalog && (
+                  <span className="rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 font-semibold">
+                    📖 Catalog
+                  </span>
+                )}
+                {!showInHero && !showInHeroCard && !showInCatalog && (
+                  <span className="rounded-md bg-slate-100 text-slate-500 px-1.5 py-0.5 font-medium">
+                    Hidden from all public placements
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -499,6 +541,111 @@ export default function ServiceCardEditModal({
               <span className="block text-[10px] text-ink-soft/80">
                 Determines card ranking order in the public catalog (lower number = shown first)
               </span>
+            </div>
+          </div>
+
+          {/* Display Settings — Where should this puja appear? */}
+          <div className="space-y-3 rounded-2xl border-2 border-saffron-300 bg-gradient-to-br from-amber-50/70 via-cream to-white p-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-saffron-200/80 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-saffron-500 text-white text-xs">
+                  ✨
+                </span>
+                <div>
+                  <h4 className="text-xs font-bold text-ink">
+                    Display Settings — Where should this puja appear?
+                  </h4>
+                  <p className="text-[10px] text-ink-soft">
+                    Choose independent placements across website sections
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-saffron-800 bg-saffron-100 px-2 py-0.5 rounded-full">
+                Placements
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {/* Option 1: Show in Hero Section */}
+              <label
+                className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
+                  showInHero
+                    ? "border-amber-400 bg-amber-50/90 shadow-xs ring-1 ring-amber-300"
+                    : "border-saffron-100 bg-white hover:bg-saffron-50/40"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={showInHero}
+                  onChange={(e) => setShowInHero(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-400 accent-saffron-600"
+                />
+                <div className="space-y-0.5 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-ink">
+                    <span>Show in Hero Section (Featured Sacred Rituals)</span>
+                    <span className="rounded bg-amber-100 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-800">
+                      Hero Banner
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-soft leading-normal">
+                    Displays this puja as an interactive quick-access chip under Featured Sacred Rituals on the main homepage hero banner.
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 2: Show in Hero Featured Puja Card */}
+              <label
+                className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
+                  showInHeroCard
+                    ? "border-purple-400 bg-purple-50/90 shadow-xs ring-1 ring-purple-300"
+                    : "border-saffron-100 bg-white hover:bg-saffron-50/40"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={showInHeroCard}
+                  onChange={(e) => setShowInHeroCard(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-400 accent-purple-600"
+                />
+                <div className="space-y-0.5 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-ink">
+                    <span>Show in Hero Featured Puja Card (right-side booking card)</span>
+                    <span className="rounded bg-purple-100 px-1.5 py-0.2 text-[9px] font-extrabold text-purple-800">
+                      Right Card
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-soft leading-normal">
+                    Presents this puja inside the prominent right-side booking card in the hero banner with instant booking navigation.
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 3: Show in Puja Catalog */}
+              <label
+                className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
+                  showInCatalog
+                    ? "border-emerald-400 bg-emerald-50/90 shadow-xs ring-1 ring-emerald-300"
+                    : "border-saffron-100 bg-white hover:bg-saffron-50/40"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={showInCatalog}
+                  onChange={(e) => setShowInCatalog(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-400 accent-emerald-600"
+                />
+                <div className="space-y-0.5 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-ink">
+                    <span>Show in Puja Catalog</span>
+                    <span className="rounded bg-emerald-100 px-1.5 py-0.2 text-[9px] font-extrabold text-emerald-800">
+                      Catalog Grid
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-soft leading-normal">
+                    Lists this puja in the main public Puja Catalog (/poojas) with category filters, deities, and search.
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
 

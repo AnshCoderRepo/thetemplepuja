@@ -45,6 +45,9 @@ import {
   isDemoSlug,
   defaultAddons,
   isPoojaActive,
+  isPoojaInHero,
+  isPoojaInHeroCard,
+  isPoojaInCatalog,
   resolvePoojaTemple,
   getPoojaSchedule,
   getPoojaBannerImage,
@@ -149,6 +152,9 @@ interface PoojaDraft {
   assignedAddonIds: string[];
   packages: PoojaPackage[];
   active: boolean;
+  showInHero: boolean;
+  showInHeroCard: boolean;
+  showInCatalog: boolean;
   badge: string;
   showBadge: boolean;
   displayOrder: string;
@@ -198,6 +204,9 @@ const emptyDraft: PoojaDraft = {
     { name: "Family Havan Seva", price: 2101, description: "Full family gotra & name sankalp + blessed prasad" },
   ],
   active: true,
+  showInHero: false,
+  showInHeroCard: false,
+  showInCatalog: true,
   badge: "",
   showBadge: true,
   displayOrder: "",
@@ -1040,6 +1049,15 @@ export default function PoojasManager({
             { name: "Individual Sankalp", price: p.price, description: "1 Devotee name in Sankalp" },
           ],
       active: isPoojaActive(p),
+      showInHero:
+        p.showInHero !== undefined
+          ? Boolean(p.showInHero)
+          : p.slug === "satyanarayan-katha" || p.slug === "rudrabhishek",
+      showInHeroCard:
+        p.showInHeroCard !== undefined
+          ? Boolean(p.showInHeroCard)
+          : p.slug === "satyanarayan-katha",
+      showInCatalog: p.showInCatalog !== false,
       badge: p.badge ?? "",
       showBadge: p.showBadge !== false,
       displayOrder: p.displayOrder !== undefined ? String(p.displayOrder) : "",
@@ -1106,6 +1124,9 @@ export default function PoojasManager({
             { name: "Individual Sankalp", price: duplicated.price, description: "1 Devotee name in Sankalp" },
           ],
       active: false, // SAFE DEFAULT: Hidden / Draft by default
+      showInHero: Boolean(duplicated.showInHero),
+      showInHeroCard: Boolean(duplicated.showInHeroCard),
+      showInCatalog: duplicated.showInCatalog !== false,
       badge: duplicated.badge ?? "",
       showBadge: duplicated.showBadge !== false,
       displayOrder: duplicated.displayOrder !== undefined ? String(duplicated.displayOrder) : "",
@@ -1333,6 +1354,9 @@ export default function PoojasManager({
       chadhavaOptions: draft.chadhavaOptions,
       packages: draft.packages.length > 0 ? draft.packages : undefined,
       active: draft.active,
+      showInHero: draft.showInHero,
+      showInHeroCard: draft.showInHeroCard,
+      showInCatalog: draft.showInCatalog,
       badge: draft.badge.trim() || undefined,
       showBadge: draft.showBadge,
       displayOrder: draft.displayOrder.trim() && !Number.isNaN(Number(draft.displayOrder)) ? Number(draft.displayOrder) : undefined,
@@ -1955,6 +1979,85 @@ export default function PoojasManager({
                             }`}
                           />
                         </button>
+                      </div>
+
+                      {/* Display Settings — Where should this puja appear? */}
+                      <div className="rounded-2xl border border-saffron-200 bg-gradient-to-r from-orange-50/50 to-amber-50/40 p-4 space-y-3 shadow-sm">
+                        <div className="border-b border-saffron-200/60 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-ink">
+                              Display Settings — Where should this puja appear?
+                            </span>
+                            <span className="inline-block rounded-full bg-saffron-100 text-saffron-800 border border-saffron-300 px-2 py-0.5 text-[10px] font-bold">
+                              Placement Control
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-ink-soft mt-0.5">
+                            Choose the independent placements across the home hero section, hero featured card, and public puja catalog.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2.5 pt-1">
+                          {/* Checkbox 1: Hero Section */}
+                          <label className="flex items-start gap-3 rounded-xl border border-saffron-100/80 bg-white/80 p-3 hover:bg-white cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              id="showInHero"
+                              name="showInHero"
+                              checked={draft.showInHero}
+                              onChange={(e) => setDraft({ ...draft, showInHero: e.target.checked })}
+                              className="mt-0.5 h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-500 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-bold text-ink block">
+                                Show in Hero Section (Featured Sacred Rituals)
+                              </span>
+                              <span className="text-[11px] text-ink-soft block mt-0.5">
+                                Appears under Featured Sacred Rituals in the landing page hero banner.
+                              </span>
+                            </div>
+                          </label>
+
+                          {/* Checkbox 2: Hero Featured Puja Card */}
+                          <label className="flex items-start gap-3 rounded-xl border border-saffron-100/80 bg-white/80 p-3 hover:bg-white cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              id="showInHeroCard"
+                              name="showInHeroCard"
+                              checked={draft.showInHeroCard}
+                              onChange={(e) => setDraft({ ...draft, showInHeroCard: e.target.checked })}
+                              className="mt-0.5 h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-500 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-bold text-ink block">
+                                Show in Hero Featured Puja Card (right-side booking card)
+                              </span>
+                              <span className="text-[11px] text-ink-soft block mt-0.5">
+                                Featured in the right-side booking card next to Lord Ganesha.
+                              </span>
+                            </div>
+                          </label>
+
+                          {/* Checkbox 3: Puja Catalog */}
+                          <label className="flex items-start gap-3 rounded-xl border border-saffron-100/80 bg-white/80 p-3 hover:bg-white cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              id="showInCatalog"
+                              name="showInCatalog"
+                              checked={draft.showInCatalog}
+                              onChange={(e) => setDraft({ ...draft, showInCatalog: e.target.checked })}
+                              className="mt-0.5 h-4 w-4 rounded border-saffron-300 text-saffron-600 focus:ring-saffron-500 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-bold text-ink block">
+                                Show in Puja Catalog
+                              </span>
+                              <span className="text-[11px] text-ink-soft block mt-0.5">
+                                Listed in the public Puja Catalog and search listings.
+                              </span>
+                            </div>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3072,6 +3175,49 @@ export default function PoojasManager({
                           />
                         </button>
                       </div>
+
+                      {/* Display Placements Confirmation Card */}
+                      <div className="rounded-xl border border-saffron-200 bg-white p-3.5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-ink">Display Placements</span>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(1)}
+                            className="text-[11px] font-semibold text-saffron-600 hover:text-saffron-700 underline"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-0.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium border ${
+                              draft.showInHero
+                                ? "bg-amber-50 text-amber-900 border-amber-300"
+                                : "bg-slate-50 text-slate-400 border-slate-200 line-through"
+                            }`}
+                          >
+                            {draft.showInHero ? "✓" : "✕"} Hero Sacred Rituals
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium border ${
+                              draft.showInHeroCard
+                                ? "bg-amber-50 text-amber-900 border-amber-300"
+                                : "bg-slate-50 text-slate-400 border-slate-200 line-through"
+                            }`}
+                          >
+                            {draft.showInHeroCard ? "✓" : "✕"} Hero Featured Card
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium border ${
+                              draft.showInCatalog
+                                ? "bg-emerald-50 text-emerald-900 border-emerald-300"
+                                : "bg-slate-50 text-slate-400 border-slate-200 line-through"
+                            }`}
+                          >
+                            {draft.showInCatalog ? "✓" : "✕"} Puja Catalog
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3575,6 +3721,30 @@ export default function PoojasManager({
                             <p className="text-xs text-ink-soft line-clamp-2 pt-0.5">
                               {pooja.description}
                             </p>
+
+                            {/* Placement Badges */}
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              {isPoojaInHero(pooja) && (
+                                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                  <span>✨</span> Hero
+                                </span>
+                              )}
+                              {isPoojaInHeroCard(pooja) && (
+                                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+                                  <span>🎴</span> Hero Card
+                                </span>
+                              )}
+                              {isPoojaInCatalog(pooja) && (
+                                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  <span>📖</span> Catalog
+                                </span>
+                              )}
+                              {!isPoojaInHero(pooja) && !isPoojaInHeroCard(pooja) && !isPoojaInCatalog(pooja) && (
+                                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-500">
+                                  No Placements
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* CTA Info Preview */}
@@ -3723,6 +3893,29 @@ export default function PoojasManager({
                               )}
                               <div className="text-[10px] text-ink-soft/70 line-clamp-1 mt-0.5">
                                 {pooja.description}
+                              </div>
+                              {/* Placement Badges in table */}
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {isPoojaInHero(pooja) && (
+                                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-amber-50 text-amber-800 border border-amber-200" title="Visible in Hero Section (Featured Sacred Rituals)">
+                                    ✨ Hero
+                                  </span>
+                                )}
+                                {isPoojaInHeroCard(pooja) && (
+                                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-purple-50 text-purple-800 border border-purple-200" title="Visible in Hero Featured Puja Card (right-side booking card)">
+                                    🎴 Hero Card
+                                  </span>
+                                )}
+                                {isPoojaInCatalog(pooja) && (
+                                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200" title="Visible in public Puja Catalog">
+                                    📖 Catalog
+                                  </span>
+                                )}
+                                {!isPoojaInHero(pooja) && !isPoojaInHeroCard(pooja) && !isPoojaInCatalog(pooja) && (
+                                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium bg-slate-100 text-slate-500" title="Hidden from all public placements">
+                                    No Placements
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td className="px-4 py-3.5">

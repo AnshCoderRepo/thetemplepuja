@@ -31,7 +31,8 @@ export default function PoojaCatalog({
 }: PoojaCatalogProps) {
   const { poojas } = useCatalog();
   const { locale } = useI18n();
-  const list = activePoojas(poojas);
+  // Filter active poojas configured to appear in the public catalog (safe default true)
+  const list = activePoojas(poojas).filter((p) => p.showInCatalog !== false);
 
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
