@@ -22,6 +22,7 @@ import { PoojaCatalog, useCatalog } from "@/features/catalog";
 import { SITE_CONFIG } from "@/lib/config";
 import {
   DEMO_POOJA,
+  SOMESHWAR_POOJA,
   isDemoSlug,
   isPoojaActive,
   getLocalizedPoojaTitle,
@@ -45,14 +46,23 @@ function ServiceInner({ service }: { service: string }) {
   // Resolve from the backend catalog (falls back to the static list).
   const { poojas, temples, loaded } = useCatalog();
   const normalized = service.toLowerCase().replace(/_/g, "-");
+  const isSomeshwar =
+    normalized === "someshwar-mahadev-abhisek" ||
+    normalized === "someshwar-mahadev-abhishek" ||
+    normalized === "someshwar-rudrabhishek";
+
   const foundInCatalog = loaded
-    ? (poojas.find((p) => p.slug === normalized || (isDemoSlug(normalized) && isDemoSlug(p.slug))) ?? null)
+    ? (poojas.find((p) => p.slug === normalized || (isDemoSlug(normalized) && isDemoSlug(p.slug))) ?? (isSomeshwar ? SOMESHWAR_POOJA : null))
+    : isSomeshwar
+    ? SOMESHWAR_POOJA
     : undefined;
   const pooja =
     foundInCatalog !== undefined && foundInCatalog !== null
       ? foundInCatalog
       : isDemoSlug(normalized)
       ? DEMO_POOJA
+      : isSomeshwar
+      ? SOMESHWAR_POOJA
       : foundInCatalog;
 
   const [previewOpen, setPreviewOpen] = useState(false);

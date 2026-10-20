@@ -9,6 +9,7 @@ import {
   getGalleryItemImages,
   getGalleryItemVideos,
   hasYouTubeVideo,
+  getGalleryItemBookingDestination,
   type GalleryItem,
 } from "@/lib/gallery-types";
 import { middleware } from "@/middleware";
@@ -145,7 +146,7 @@ describe("Our Gallery System Test Suite", () => {
       const titles = demoItems.map((i) => i.title);
       expect(titles).toContain("Ganesh Puja");
       expect(titles).toContain("Traditional Havan Ceremony");
-      expect(titles).toContain("Kalash Sthapana");
+      expect(titles.some((t) => t === "Kalash Sthapana" || t === "Someshwar Mahadev Abhisek")).toBe(true);
       expect(titles).toContain("Pandit Ji Performing Rituals");
       expect(titles).toContain("Puja Samagri Preparation");
       expect(titles).toContain("Traditional Hindu Puja Ceremony");
@@ -703,6 +704,118 @@ describe("Our Gallery System Test Suite", () => {
       expect(csp).not.toContain("frame-src *");
       expect(csp).not.toContain("img-src *");
       expect(csp).not.toContain("default-src *");
+    });
+  });
+
+  describe("8. Gallery Modal Puja Booking Navigation", () => {
+    it("resolves explicit pujaSlug to exact booking route", () => {
+      const dest = getGalleryItemBookingDestination({
+        title: "Someshwar Mahadev Abhisek",
+        pujaSlug: "someshwar-mahadev-abhisek",
+      });
+      expect(dest.hasPuja).toBe(true);
+      expect(dest.url).toBe("/book/someshwar-mahadev-abhisek");
+    });
+
+    it("resolves another distinct pujaSlug (e.g. Durga Saptashati Path) to its exact booking route", () => {
+      const dest = getGalleryItemBookingDestination({
+        title: "Navratri Pujan",
+        pujaSlug: "durga-saptashati-path",
+      });
+      expect(dest.hasPuja).toBe(true);
+      expect(dest.url).toBe("/book/durga-saptashati-path");
+    });
+
+    it("resolves Someshwar Mahadev Abhisek via title fallback when no explicit slug is present", () => {
+      const dest = getGalleryItemBookingDestination({
+        title: "Someshwar Mahadev Abhisek",
+        category: "Puja Ceremonies",
+      });
+      expect(dest.hasPuja).toBe(true);
+      expect(dest.url).toBe("/book/someshwar-mahadev-abhisek");
+    });
+
+    it("resolves Navratri ceremony to Durga Saptashati Path via title fallback", () => {
+      const dest = getGalleryItemBookingDestination({
+        title: "Grand Navratri Pujan Ceremony",
+        category: "Puja Ceremonies",
+      });
+      expect(dest.hasPuja).toBe(true);
+      expect(dest.url).toBe("/book/durga-saptashati-path");
+    });
+
+    it("resolves Rudrabhishek to /book/rudrabhishek via title fallback", () => {
+      const dest = getGalleryItemBookingDestination({
+        title: "Mahadev Rudrabhishek Puja",
+        category: "Puja Ceremonies",
+      });
+      expect(dest.hasPuja).toBe(true);
+      expect(dest.url).toBe("/book/rudrabhishek");
+    });
+
+    it("returns hasPuja: false and url: null for unlinked showcase items", () => {
+      const dest = getGalleryItemBookingDestination({
+        title: "Puja Samagri Preparation",
+        description: "Meticulous preparation of kumkum and chandan",
+        category: "Puja Samagri",
+      });
+      expect(dest.hasPuja).toBe(false);
+      expect(dest.url).toBeNull();
+    });
+
+    it("returns hasPuja: false when pujaSlug or bookingUrl is explicitly disabled or unlinked", () => {
+      const dest1 = getGalleryItemBookingDestination({
+        title: "Ritual Ceremony",
+        pujaSlug: "unlinked",
+      });
+      expect(dest1.hasPuja).toBe(false);
+      expect(dest1.url).toBeNull();
+
+      const dest2 = getGalleryItemBookingDestination({
+        title: "Ritual Ceremony",
+        bookingUrl: "none",
+      });
+      expect(dest2.hasPuja).toBe(false);
+      expect(dest2.url).toBeNull();
+    });
+
+    it("supports custom bookingUrl overrides", () => {
+      const dest = getGalleryItemBookingDestination({
+        title: "Custom Booking Item",
+        bookingUrl: "/book/satyanarayan-katha?source=gallery",
+      });
+      expect(dest.hasPuja).toBe(true);
+      expect(dest.url).toBe("/book/satyanarayan-katha?source=gallery");
+    });
+
+    it("POST /api/admin/gallery persists and returns pujaSlug", async () => {
+      const req = new Request("http://localhost/api/admin/gallery", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${validAdminToken}`,
+        },
+        body: JSON.stringify({
+          id: "item-with-puja-slug",
+          title: "Someshwar Mahadev Abhisek Demo",
+          category: "Puja Ceremonies",
+          images: ["https://images.unsplash.com/photo-test"],
+          pujaSlug: "someshwar-mahadev-abhisek",
+        }),
+      });
+
+      const res = await postAdminGallery(req as any);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.ok).toBe(true);
+      expect(data.item.pujaSlug).toBe("someshwar-mahadev-abhisek");
+
+      // Clean up
+      const delReq = new Request("http://localhost/api/admin/gallery?id=item-with-puja-slug", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${validAdminToken}` },
+      });
+      await deleteAdminGallery(delReq as any);
     });
   });
 });
