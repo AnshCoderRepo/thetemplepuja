@@ -1246,7 +1246,8 @@ export async function fetchPublicGallery(options?: {
     if (!res.ok) {
       return { ok: false, items: [], error: data.error || "Failed to fetch gallery items" };
     }
-    return { ok: true, items: data.items || [] };
+    const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+    return { ok: true, items };
   } catch (err) {
     return { ok: false, items: [], error: "Network error fetching gallery" };
   }

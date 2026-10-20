@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Film,
+  RotateCw,
+  AlertCircle,
 } from "lucide-react";
 import {
   type GalleryItem,
@@ -19,6 +21,10 @@ import {
   getGalleryItemVideos,
   hasYouTubeVideo,
   getYouTubeThumbnailUrl,
+  isValidYouTubeVideoId,
+  extractYouTubeVideoId,
+  buildYouTubeEmbedUrl,
+  buildYouTubeWatchUrl,
 } from "@/lib/gallery-types";
 import { useBookingModal } from "@/components/providers";
 
@@ -46,6 +52,7 @@ export default function GalleryModal({
   const [activeTab, setActiveTab] = useState<"photos" | "video">("photos");
   const [photoIndex, setPhotoIndex] = useState<number>(0);
   const [videoIndex, setVideoIndex] = useState<number>(0);
+  const [embedError, setEmbedError] = useState<boolean>(false);
 
   // Sync state whenever the selected item changes
   useEffect(() => {
@@ -75,7 +82,35 @@ export default function GalleryModal({
       setPhotoIndex(0);
     }
     setVideoIndex(0);
+    setEmbedError(false);
   }, [item, initialTab, initialPhotoIndex]);
+
+  // Reset embed error whenever active tab or video selection changes
+  useEffect(() => {
+    setEmbedError(false);
+  }, [activeTab, videoIndex]);
+
+  // Listen for YouTube IFrame API error signals (e.g. error 101/150: embedding restricted)
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (typeof e.data !== "string") return;
+      try {
+        const data = JSON.parse(e.data);
+        if (
+          data.event === "onError" ||
+          data.info === 101 ||
+          data.info === 150 ||
+          data.info === 100
+        ) {
+          setEmbedError(true);
+        }
+      } catch {
+        // Non-JSON postMessage, ignore
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   const handlePrevPhoto = useCallback(() => {
     if (photos.length <= 1) return;
@@ -115,6 +150,10 @@ export default function GalleryModal({
 
   const currentPhoto = photos[photoIndex] || item.imageUrl || item.thumbnailUrl || "/logo.jpeg";
   const currentVideo = videos[videoIndex] || videos[0];
+  const youtubeId = currentVideo ? (currentVideo.youtubeId || extractYouTubeVideoId(currentVideo.url)) : null;
+  const isYouTubeValid = isValidYouTubeVideoId(youtubeId);
+  const youtubeEmbedUrl = isYouTubeValid ? buildYouTubeEmbedUrl(youtubeId, { autoplay: true, rel: 0, modestbranding: 1 }) : null;
+  const youtubeWatchUrl = isYouTubeValid ? buildYouTubeWatchUrl(youtubeId) : (currentVideo?.url || null);
 
   return (
     <div
@@ -180,7 +219,7 @@ export default function GalleryModal({
                       : "text-slate-600 hover:text-red-600"
                   }`}
                 >
-                  <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                  <svg className="h-3.5 w-3.5 fill-current" width="14" height="14" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                   </svg>
                   <span>{videos.length > 1 ? `Videos (${videos.length})` : "Video"}</span>
@@ -189,19 +228,20 @@ export default function GalleryModal({
             )}
 
             {/* YouTube Direct Link (if current video is YouTube) */}
-            {currentVideo?.isYouTube && currentVideo.url && (
+            {currentVideo?.isYouTube && (youtubeWatchUrl || currentVideo.url) && (
               <a
-                href={currentVideo.url}
+                href={youtubeWatchUrl || currentVideo.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
                 title="Open video on YouTube in a new tab"
+                aria-label="Open on YouTube"
               >
-                <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                <svg className="h-3.5 w-3.5 fill-current shrink-0" width="14" height="14" viewBox="0 0 24 24">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                 </svg>
-                <span>YouTube</span>
-                <ExternalLink className="h-3 w-3" />
+                <span className="hidden sm:inline">YouTube</span>
+                <ExternalLink className="h-3 w-3 shrink-0" />
               </a>
             )}
 
@@ -221,18 +261,97 @@ export default function GalleryModal({
         <div className="relative flex-1 min-h-[260px] sm:min-h-[380px] md:min-h-[460px] bg-black flex items-center justify-center overflow-hidden">
           {activeTab === "video" ? (
             currentVideo ? (
-              currentVideo.isYouTube && currentVideo.youtubeId ? (
-                <div className="relative w-full h-full aspect-video">
-                  <iframe
-                    key={currentVideo.youtubeId}
-                    src={`https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
-                    title={`${item.title} - Video ${videoIndex + 1}`}
-                    className="w-full h-full absolute inset-0 border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
+              currentVideo.isYouTube ? (
+                embedError ? (
+                  /* Dedicated Fallback: Video Embedding Disabled by Owner / Browser restriction */
+                  <div className="p-6 sm:p-8 text-center text-white max-w-md mx-auto space-y-4">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-600/20 text-red-500 border border-red-500/30">
+                      <svg className="h-7 w-7 fill-current" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                      </svg>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-display text-base sm:text-lg font-bold text-white">
+                        Playback Restricted by Video Owner
+                      </h4>
+                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        The video creator has disabled embedding on external websites, or playback is restricted. You can watch this sacred ceremony video directly on YouTube.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+                      {youtubeWatchUrl && (
+                        <a
+                          href={youtubeWatchUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg transition-all w-full sm:w-auto"
+                        >
+                          <span>Watch on YouTube</span>
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setEmbedError(false)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-3.5 py-2.5 text-xs font-semibold text-slate-200 transition-colors w-full sm:w-auto"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                        <span>Retry Player</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : isYouTubeValid && youtubeEmbedUrl ? (
+                  <div className="relative w-full h-full aspect-video flex flex-col justify-between">
+                    <div className="relative flex-1 w-full h-full min-h-[220px]">
+                      <iframe
+                        key={youtubeId}
+                        src={youtubeEmbedUrl}
+                        title={`${item.title} - Video ${videoIndex + 1}`}
+                        className="w-full h-full absolute inset-0 border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        onError={() => setEmbedError(true)}
+                      />
+                    </div>
+                    {/* Fallback Toolbar / Direct Escape Hatch */}
+                    {youtubeWatchUrl && (
+                      <div className="bg-slate-950/90 border-t border-white/10 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-slate-300 shrink-0">
+                        <span className="truncate">Sacred Ritual Video • Video not playing?</span>
+                        <a
+                          href={youtubeWatchUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 font-semibold shrink-0 ml-2"
+                        >
+                          <span>Open in YouTube</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Invalid / Malformed Video ID */
+                  <div className="p-8 text-center text-white max-w-md mx-auto space-y-3">
+                    <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
+                    <h4 className="text-base font-bold text-white">Video Link Unavailable</h4>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      The video identifier is unsupported for in-page playback. You may open the video directly in your browser.
+                    </p>
+                    {currentVideo.url && (
+                      <a
+                        href={currentVideo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-saffron-600 hover:bg-saffron-700 px-4 py-2 text-xs font-bold text-white transition-colors"
+                      >
+                        <span>Open Video Link</span>
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                )
               ) : (
+                /* Non-YouTube direct MP4/WebM video */
                 <video
                   key={currentVideo.url}
                   src={currentVideo.url}

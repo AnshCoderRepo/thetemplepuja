@@ -8,16 +8,10 @@ import { formatINR } from "@/lib/format";
 import BookingCancelDialog from "./BookingCancelDialog";
 import BookingRescheduleForm from "./BookingRescheduleForm";
 
+import { buildYouTubeEmbedUrl, buildYouTubeWatchUrl } from "@/lib/gallery-types";
+
 function getYouTubeEmbedUrl(url: string): string | null {
-  try {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11
-      ? `https://www.youtube.com/embed/${match[2]}?autoplay=1`
-      : null;
-  } catch {
-    return null;
-  }
+  return buildYouTubeEmbedUrl(url, { autoplay: true });
 }
 
 interface DevoteeBookingsListProps {
@@ -432,13 +426,29 @@ export default function DevoteeBookingsList({
             <div className="p-3 sm:p-6 bg-slate-950">
               <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-inner flex items-center justify-center">
                 {getYouTubeEmbedUrl(activeVideoPlayer.url) ? (
-                  <iframe
-                    src={getYouTubeEmbedUrl(activeVideoPlayer.url)!}
-                    title={activeVideoPlayer.title}
-                    className="absolute inset-0 h-full w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+                  <div className="relative w-full h-full aspect-video flex flex-col justify-between">
+                    <div className="relative flex-1 w-full h-full min-h-[220px]">
+                      <iframe
+                        src={getYouTubeEmbedUrl(activeVideoPlayer.url)!}
+                        title={activeVideoPlayer.title}
+                        className="absolute inset-0 h-full w-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                    <div className="bg-slate-900/90 border-t border-white/10 px-3 py-1.5 flex items-center justify-between text-[11px] text-slate-300 shrink-0">
+                      <span>Video not playing or restricted?</span>
+                      <a
+                        href={buildYouTubeWatchUrl(activeVideoPlayer.url) || activeVideoPlayer.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 font-semibold"
+                      >
+                        <span>Open in YouTube</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
                 ) : activeVideoPlayer.url.match(/\.(mp4|webm|ogg)$/i) ? (
                   <video
                     src={activeVideoPlayer.url}

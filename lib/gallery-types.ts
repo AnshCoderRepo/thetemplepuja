@@ -147,12 +147,25 @@ export function hasAnyVideo(item?: Partial<GalleryItem> | null): boolean {
 }
 
 /**
- * Parses any standard YouTube URL (desktop, mobile, youtu.be, shorts, embed)
+ * Validates whether a given string is a standard 11-character YouTube video ID.
+ */
+export function isValidYouTubeVideoId(id: string | null | undefined): boolean {
+  if (!id || typeof id !== "string") return false;
+  return /^[a-zA-Z0-9_-]{11}$/.test(id.trim());
+}
+
+/**
+ * Parses any standard YouTube URL (desktop, mobile, youtu.be, shorts, embed, raw ID)
  * and safely extracts the 11-character video ID.
  */
 export function extractYouTubeVideoId(url: string | null | undefined): string | null {
   if (!url || typeof url !== "string") return null;
   const trimmed = url.trim();
+
+  // Handle direct 11-character video ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
+  }
 
   // Handle youtu.be/VIDEO_ID
   const shortMatch = trimmed.match(/^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})/i);
@@ -162,11 +175,11 @@ export function extractYouTubeVideoId(url: string | null | undefined): string | 
   const shortsMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/i);
   if (shortsMatch) return shortsMatch[1];
 
-  // Handle youtube.com/embed/VIDEO_ID
-  const embedMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/i);
+  // Handle youtube.com/embed/VIDEO_ID or youtube-nocookie.com/embed/VIDEO_ID
+  const embedMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([a-zA-Z0-9_-]{11})/i);
   if (embedMatch) return embedMatch[1];
 
-  // Handle standard youtube.com/watch?v=VIDEO_ID
+  // Handle standard youtube.com/watch?v=VIDEO_ID (including m.youtube.com, music.youtube.com)
   const standardMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
   if (standardMatch) return standardMatch[1];
 
@@ -174,7 +187,36 @@ export function extractYouTubeVideoId(url: string | null | undefined): string | 
   const liveMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube\.com\/live\/([a-zA-Z0-9_-]{11})/i);
   if (liveMatch) return liveMatch[1];
 
+  // Handle legacy /v/VIDEO_ID
+  const vMatch = trimmed.match(/^https?:\/\/(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})/i);
+  if (vMatch) return vMatch[1];
+
   return null;
+}
+
+/**
+ * Builds a standardized, secure YouTube embed URL with optimal parameters.
+ */
+export function buildYouTubeEmbedUrl(
+  videoIdOrUrl: string | null | undefined,
+  options?: { autoplay?: boolean; rel?: number; modestbranding?: number; privacyEnhanced?: boolean }
+): string | null {
+  const id = extractYouTubeVideoId(videoIdOrUrl);
+  if (!id || !isValidYouTubeVideoId(id)) return null;
+  const domain = options?.privacyEnhanced ? "www.youtube-nocookie.com" : "www.youtube.com";
+  const autoplay = (options?.autoplay ?? true) ? 1 : 0;
+  const rel = options?.rel ?? 0;
+  const modestbranding = options?.modestbranding ?? 1;
+  return `https://${domain}/embed/${id}?autoplay=${autoplay}&rel=${rel}&modestbranding=${modestbranding}&enablejsapi=1`;
+}
+
+/**
+ * Builds a direct canonical YouTube watch URL (e.g. for opening when embedding is disabled).
+ */
+export function buildYouTubeWatchUrl(videoIdOrUrl: string | null | undefined): string | null {
+  const id = extractYouTubeVideoId(videoIdOrUrl);
+  if (!id || !isValidYouTubeVideoId(id)) return null;
+  return `https://www.youtube.com/watch?v=${id}`;
 }
 
 /**
@@ -182,11 +224,8 @@ export function extractYouTubeVideoId(url: string | null | undefined): string | 
  */
 export function getYouTubeThumbnailUrl(videoIdOrUrl: string | null | undefined): string | null {
   if (!videoIdOrUrl) return null;
-  const trimmed = videoIdOrUrl.trim();
-  const id = trimmed.length === 11 && !trimmed.includes("/")
-    ? trimmed
-    : extractYouTubeVideoId(trimmed);
-  if (!id) return null;
+  const id = extractYouTubeVideoId(videoIdOrUrl);
+  if (!id || !isValidYouTubeVideoId(id)) return null;
   return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
 

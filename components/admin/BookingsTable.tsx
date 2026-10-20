@@ -833,13 +833,24 @@ export default function BookingsTable({
               <div className="rounded-2xl overflow-hidden border border-slate-800 bg-black p-2 space-y-2">
                 <div className="flex items-center justify-between text-white text-xs px-2 pt-1">
                   <span>Video Preview</span>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewVideoUrl(null)}
-                    className="text-slate-400 hover:text-white cursor-pointer"
-                  >
-                    Close Preview
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={previewVideoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-saffron-400 hover:text-saffron-300 inline-flex items-center gap-1 font-semibold"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>Open in New Tab</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewVideoUrl(null)}
+                      className="text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      Close Preview
+                    </button>
+                  </div>
                 </div>
                 <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
                   {getYouTubeEmbedUrl(previewVideoUrl) ? (

@@ -3,11 +3,16 @@ import {
   DEFAULT_GALLERY_ITEMS,
   extractYouTubeVideoId,
   getYouTubeThumbnailUrl,
+  isValidYouTubeVideoId,
+  buildYouTubeEmbedUrl,
+  buildYouTubeWatchUrl,
   getGalleryItemImages,
   getGalleryItemVideos,
   hasYouTubeVideo,
   type GalleryItem,
 } from "@/lib/gallery-types";
+import { middleware } from "@/middleware";
+import { NextRequest } from "next/server";
 import { parseIsoDuration, verifyYouTubeDuration } from "@/lib/youtube";
 import {
   getActiveGalleryItems,
@@ -60,6 +65,38 @@ describe("Our Gallery System Test Suite", () => {
       expect(extractYouTubeVideoId("invalid-url-text")).toBeNull();
       expect(extractYouTubeVideoId("")).toBeNull();
       expect(extractYouTubeVideoId(undefined)).toBeNull();
+    });
+
+    it("extracts video ID from raw 11-character string", () => {
+      expect(extractYouTubeVideoId("P6asWvUY4zY")).toBe("P6asWvUY4zY");
+      expect(extractYouTubeVideoId("1_D6Un0fyPA")).toBe("1_D6Un0fyPA");
+    });
+
+    it("validates 11-character video IDs accurately with isValidYouTubeVideoId", () => {
+      expect(isValidYouTubeVideoId("P6asWvUY4zY")).toBe(true);
+      expect(isValidYouTubeVideoId("1_D6Un0fyPA")).toBe(true);
+      expect(isValidYouTubeVideoId("dQw4w9WgXcQ")).toBe(true);
+      expect(isValidYouTubeVideoId("too-short")).toBe(false);
+      expect(isValidYouTubeVideoId("way-too-long-video-id-12345")).toBe(false);
+      expect(isValidYouTubeVideoId("invalid*char")).toBe(false);
+      expect(isValidYouTubeVideoId(null)).toBe(false);
+      expect(isValidYouTubeVideoId("")).toBe(false);
+    });
+
+    it("builds compliant YouTube embed URLs with expected parameters", () => {
+      const url = buildYouTubeEmbedUrl("P6asWvUY4zY", { autoplay: true, rel: 0, modestbranding: 1 });
+      expect(url).toBe("https://www.youtube.com/embed/P6asWvUY4zY?autoplay=1&rel=0&modestbranding=1&enablejsapi=1");
+
+      const privacyUrl = buildYouTubeEmbedUrl("P6asWvUY4zY", { privacyEnhanced: true });
+      expect(privacyUrl).toBe("https://www.youtube-nocookie.com/embed/P6asWvUY4zY?autoplay=1&rel=0&modestbranding=1&enablejsapi=1");
+
+      expect(buildYouTubeEmbedUrl("invalid-id")).toBeNull();
+    });
+
+    it("builds canonical YouTube watch URLs", () => {
+      expect(buildYouTubeWatchUrl("P6asWvUY4zY")).toBe("https://www.youtube.com/watch?v=P6asWvUY4zY");
+      expect(buildYouTubeWatchUrl("https://youtu.be/P6asWvUY4zY")).toBe("https://www.youtube.com/watch?v=P6asWvUY4zY");
+      expect(buildYouTubeWatchUrl("invalid")).toBeNull();
     });
 
     it("generates correct high-quality thumbnail URL from both videoId and URL", () => {
@@ -619,6 +656,53 @@ describe("Our Gallery System Test Suite", () => {
         },
       });
       await deleteAdminGallery(delReq as any);
+    });
+  });
+
+  describe("7. Security Headers & Content Security Policy (CSP) Directives", () => {
+    it("allows trusted YouTube iframe embed origins in frame-src directive", () => {
+      const req = new NextRequest("http://localhost:3000/our-gallery");
+      const res = middleware(req);
+      const csp = res.headers.get("Content-Security-Policy") || "";
+
+      expect(csp).toBeTruthy();
+      expect(csp).toContain("frame-src");
+      expect(csp).toContain("https://www.youtube.com");
+      expect(csp).toContain("https://www.youtube-nocookie.com");
+      expect(csp).toContain("https://checkout.razorpay.com");
+    });
+
+    it("allows trusted YouTube thumbnail hosts in img-src directive", () => {
+      const req = new NextRequest("http://localhost:3000/our-gallery");
+      const res = middleware(req);
+      const csp = res.headers.get("Content-Security-Policy") || "";
+
+      expect(csp).toContain("img-src");
+      expect(csp).toContain("https://img.youtube.com");
+      expect(csp).toContain("https://i.ytimg.com");
+      expect(csp).toContain("https://images.unsplash.com");
+    });
+
+    it("retains strict X-Frame-Options DENY to prevent clickjacking", () => {
+      const req = new NextRequest("http://localhost:3000/our-gallery");
+      const res = middleware(req);
+
+      expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+    });
+
+    it("does not weaken or disable CSP globally", () => {
+      const req = new NextRequest("http://localhost:3000/our-gallery");
+      const res = middleware(req);
+      const csp = res.headers.get("Content-Security-Policy") || "";
+
+      expect(csp).toContain("default-src 'self'");
+      expect(csp).toContain("object-src 'none'");
+      expect(csp).toContain("base-uri 'self'");
+      expect(csp).toContain("form-action 'self'");
+      // Ensure wildcards were not used as a lazy bypass
+      expect(csp).not.toContain("frame-src *");
+      expect(csp).not.toContain("img-src *");
+      expect(csp).not.toContain("default-src *");
     });
   });
 });
