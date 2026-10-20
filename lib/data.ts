@@ -2286,7 +2286,70 @@ export const poojas: Pooja[] = [
   },
 ];
 
+export const SOMESHWAR_POOJA: Pooja = {
+  id: "someshwar-mahadev-abhisek",
+  slug: "someshwar-mahadev-abhisek",
+  title: "Someshwar Mahadev Abhisek",
+  hindiTitle: "सोमेश्वर महादेव अभिषेक",
+  teluguTitle: "శ్రీ సోమేశ్వర మహాదేవ అభిషేకం",
+  tamilTitle: "ஸ்ரீ சோமேஸ்வரர் மகாதேவ் அபிஷேகம்",
+  emoji: "🕉️",
+  gradient: "from-indigo-600 via-purple-600 to-amber-600",
+  price: 1101,
+  duration: "1.5–2 hours",
+  daysFromToday: 7,
+  eventTime: "7:00 AM IST",
+  bestMuhurat: "Monday & Pradosh Kaal",
+  category: "Abhishek",
+  type: "temple",
+  online: true,
+  deities: ["Lord Shiva", "Someshwar Mahadev"],
+  assignedAddonIds: ["panchamrit-abhishek", "bilva-patra", "special-prasad"],
+  showInHero: false,
+  showInHeroCard: false,
+  showInCatalog: true,
+  description:
+    "Auspicious Maha Abhishek of Bhagwan Someshwar Mahadev with sacred Ganga jal, Panchamrit, fragrant chandan, and bilva leaves, accompanied by Vedic Rudra Sukta chants for peace, health, and divine protection.",
+  hindiDescription:
+    "भगवान सोमेश्वर महादेव का पवित्र गंगाजल, पंचामृत, सुगंधित चंदन और बिल्वपत्रों से महाभिषेक, वेदोक्त रुद्र सूक्त मंत्रों के साथ — समस्त बाधाओं से मुक्ति, आरोग्य और शिव कृपा हेतु।",
+  teluguDescription:
+    "భగవాన్ సోమేశ్వర మహాదేవునికి పవిత్ర గంగాజలం, పంచామృతం, సుగంధ చందనం మరియు బిల్వపత్రాలతో వేదోక్త రుద్ర సూక్త మంత్రాలతో మహాభిషేకం.",
+  tamilDescription:
+    "பகவான் சோமேஸ்வரர் மகாதேவருக்கு புனித கங்கா தீர்த்தம், பஞ்சாமிர்தம், சந்தனம் மற்றும் வில்வ இலைகளுடன் வேத முறைப்படி செய்யப்படும் மகா அபிஷேகம்.",
+  benefits: [
+    "Removal of planetary afflictions and doshas",
+    "Spiritual purification and peace of mind",
+    "Health, vitality, and longevity",
+    "Divine grace and blessing of Lord Shiva",
+  ],
+  hindiBenefits: [
+    "समस्त ग्रह दोषों एवं व्याधियों से मुक्ति",
+    "आत्मिक शांति एवं आध्यात्मिक उन्नति",
+    "आरोग्य, दीर्घायु एवं रक्षा कवच",
+    "भगवान शिव की असीम कृपा और आशीर्वाद",
+  ],
+  teluguBenefits: [
+    "గ్రహ దోషాలు మరియు వ్యాధుల నివారణ",
+    "ఆధ్యాత్మిక శాంతి మరియు మానసిక ప్రశాంతత",
+    "ఆరోగ్యం మరియు దీర్ఘాయువు",
+    "శివానుగ్రహం మరియు రక్ష",
+  ],
+  tamilBenefits: [
+    "கிரக தோஷங்கள் நீங்குதல்",
+    "மன அமைதி மற்றும் ஆன்மீக வளர்ச்சி",
+    "ஆரோக்கியம் மற்றும் நீண்ட ஆயுள்",
+    "சிவபெருமானின் திவ்ய அருள்",
+  ],
+};
+
 export function getPooja(slug: string): Pooja | undefined {
+  if (
+    slug === "someshwar-mahadev-abhisek" ||
+    slug === "someshwar-mahadev-abhishek" ||
+    slug === "someshwar-rudrabhishek"
+  ) {
+    return SOMESHWAR_POOJA;
+  }
   return poojas.find((p) => p.slug === slug);
 }
 

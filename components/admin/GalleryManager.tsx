@@ -37,6 +37,7 @@ import {
   saveAdminGalleryItem,
   deleteAdminGalleryItem,
 } from "@/lib/api";
+import { useCatalog } from "@/features/catalog";
 import GalleryModal from "@/components/gallery/GalleryModal";
 
 interface GalleryManagerProps {
@@ -53,6 +54,7 @@ interface ItemDraft {
   photos: string[];
   videos: string[];
   thumbnailUrl: string;
+  pujaSlug?: string;
   category: string;
   isActive: boolean;
   showOnHomepage: boolean;
@@ -67,6 +69,7 @@ const emptyDraft: ItemDraft = {
   photos: [""],
   videos: [""],
   thumbnailUrl: "",
+  pujaSlug: "",
   category: "Puja Ceremonies",
   isActive: true,
   showOnHomepage: true,
@@ -76,6 +79,7 @@ const emptyDraft: ItemDraft = {
 };
 
 export default function GalleryManager({ token, onAuthError, onRefresh }: GalleryManagerProps) {
+  const { poojas } = useCatalog();
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -272,6 +276,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       photos: existingPhotos.length > 0 ? existingPhotos : [""],
       videos: existingVideos.length > 0 ? existingVideos : [""],
       thumbnailUrl: item.thumbnailUrl || "",
+      pujaSlug: item.pujaSlug || item.poojaSlug || "",
       category: item.category || "Puja Ceremonies",
       isActive: item.isActive !== false,
       showOnHomepage: item.showOnHomepage !== false,
@@ -342,6 +347,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
       thumbnailUrl:
         draft.thumbnailUrl.trim() ||
         (firstYt?.id ? getYouTubeThumbnailUrl(firstYt.id) || undefined : photos[0] || undefined),
+      pujaSlug: draft.pujaSlug?.trim() || undefined,
       category: draft.category,
       isActive: draft.isActive,
       showOnHomepage: draft.showOnHomepage,
@@ -898,8 +904,8 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                 </div>
               )}
 
-              {/* Title & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Title, Category & Associated Puja */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-ink mb-1">
                     Card Title <span className="text-rose-500">*</span>
@@ -925,6 +931,25 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                   >
                     {GALLERY_CATEGORIES.map((c) => (
                       <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-ink mb-1">
+                    Associated Puja (Booking)
+                  </label>
+                  <select
+                    value={draft.pujaSlug || ""}
+                    onChange={(e) => setDraft((p) => ({ ...p, pujaSlug: e.target.value }))}
+                    className="w-full rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-sm text-ink focus:border-saffron-500 focus:outline-none focus:ring-2 focus:ring-saffron-200 cursor-pointer"
+                  >
+                    <option value="">-- No Puja (Showcase only) --</option>
+                    <option value="someshwar-mahadev-abhisek">Someshwar Mahadev Abhisek</option>
+                    {poojas.map((p) => (
+                      <option key={p.slug} value={p.slug}>
+                        {p.title}
+                      </option>
                     ))}
                   </select>
                 </div>

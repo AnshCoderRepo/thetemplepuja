@@ -1,3 +1,5 @@
+import type { Pooja } from "./data";
+
 export type GalleryMediaType = "photo" | "video" | "mixed";
 
 export interface GalleryItem {
@@ -21,6 +23,13 @@ export interface GalleryItem {
   videoUrls?: string[]; // Alias for videos
   videoDurationSeconds?: number;
   durationVerified?: boolean;
+
+  /** Associated Puja for direct booking navigation */
+  pujaSlug?: string;
+  pujaId?: string;
+  poojaSlug?: string;
+  poojaId?: string;
+  bookingUrl?: string;
 
   category: string;
   isActive: boolean;
@@ -229,6 +238,233 @@ export function getYouTubeThumbnailUrl(videoIdOrUrl: string | null | undefined):
   return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
 
+export interface GalleryBookingDestination {
+  hasPuja: boolean;
+  url: string | null;
+  pujaTitle?: string;
+  pujaSlug?: string;
+}
+
+/**
+ * Dynamically resolves the booking destination for a gallery item based on its explicit
+ * puja association (`pujaSlug`, `pujaId`, `poojaSlug`, `poojaId`, `bookingUrl`),
+ * or dynamic match against the puja catalog.
+ *
+ * If no associated puja exists or if explicitly unlinked, returns hasPuja: false and url: null.
+ */
+export function getGalleryItemBookingDestination(
+  item?: Partial<GalleryItem> | null,
+  allPoojas?: Pooja[]
+): GalleryBookingDestination {
+  if (!item) {
+    return { hasPuja: false, url: null };
+  }
+
+  // 1. Explicit custom booking URL override
+  if (item.bookingUrl && typeof item.bookingUrl === "string" && item.bookingUrl.trim()) {
+    const raw = item.bookingUrl.trim();
+    if (raw.toLowerCase() === "none" || raw.toLowerCase() === "disabled" || raw.toLowerCase() === "unlinked") {
+      return { hasPuja: false, url: null };
+    }
+    return { hasPuja: true, url: raw };
+  }
+
+  // 2. Explicit puja slug (preferred field)
+  const rawSlug = (item.pujaSlug || item.poojaSlug)?.trim();
+  if (rawSlug) {
+    const lower = rawSlug.toLowerCase();
+    if (lower === "none" || lower === "disabled" || lower === "unlinked") {
+      return { hasPuja: false, url: null };
+    }
+
+    // Try finding matching pooja in catalog
+    const matched = allPoojas?.find(
+      (p) =>
+        p.slug.toLowerCase() === lower ||
+        (lower === "someshwar-mahadev-abhisek" && p.slug === "someshwar-mahadev-abhishek") ||
+        (lower === "someshwar-mahadev-abhishek" && p.slug === "someshwar-mahadev-abhisek") ||
+        (lower === "someshwar-rudrabhishek" && p.slug === "someshwar-mahadev-abhisek")
+    );
+
+    if (matched) {
+      const targetUrl = matched.ctaLink?.trim() || `/book/${matched.slug}`;
+      return {
+        hasPuja: true,
+        url: targetUrl,
+        pujaTitle: matched.title,
+        pujaSlug: matched.slug,
+      };
+    }
+
+    // Explicit valid slug provided
+    return {
+      hasPuja: true,
+      url: `/book/${rawSlug}`,
+      pujaSlug: rawSlug,
+      pujaTitle: rawSlug
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" "),
+    };
+  }
+
+  // 3. Explicit puja ID
+  const rawId = (item.pujaId || item.poojaId)?.trim();
+  if (rawId) {
+    const lowerId = rawId.toLowerCase();
+    if (lowerId === "none" || lowerId === "disabled" || lowerId === "unlinked") {
+      return { hasPuja: false, url: null };
+    }
+    const matchedById = allPoojas?.find(
+      (p) => (p.id && String(p.id).toLowerCase() === lowerId) || p.slug.toLowerCase() === lowerId
+    );
+    if (matchedById) {
+      const targetUrl = matchedById.ctaLink?.trim() || `/book/${matchedById.slug}`;
+      return {
+        hasPuja: true,
+        url: targetUrl,
+        pujaTitle: matchedById.title,
+        pujaSlug: matchedById.slug,
+      };
+    }
+  }
+
+  // 4. Dynamic Title / Context Fallback Matching
+  const title = (item.title || "").toLowerCase();
+  const desc = (item.description || "").toLowerCase();
+
+  // Someshwar Mahadev Abhisek
+  if (title.includes("someshwar") || desc.includes("someshwar")) {
+    return {
+      hasPuja: true,
+      url: "/book/someshwar-mahadev-abhisek",
+      pujaTitle: "Someshwar Mahadev Abhisek",
+      pujaSlug: "someshwar-mahadev-abhisek",
+    };
+  }
+
+  // Navratri Pujan
+  if (title.includes("navratri") || title.includes("durga")) {
+    const durga = allPoojas?.find((p) => p.slug === "durga-saptashati-path");
+    return {
+      hasPuja: true,
+      url: durga?.ctaLink || "/book/durga-saptashati-path",
+      pujaTitle: durga?.title || "Durga Saptashati Path",
+      pujaSlug: "durga-saptashati-path",
+    };
+  }
+
+  // Mahadev Pujan / Rudrabhishek
+  if (title.includes("mahadev pujan") || title.includes("rudrabhishek") || title.includes("rudra")) {
+    const rudra = allPoojas?.find((p) => p.slug === "rudrabhishek");
+    return {
+      hasPuja: true,
+      url: rudra?.ctaLink || "/book/rudrabhishek",
+      pujaTitle: rudra?.title || "Rudrabhishek",
+      pujaSlug: "rudrabhishek",
+    };
+  }
+
+  // Satyanarayan
+  if (title.includes("satyanarayan")) {
+    const satya = allPoojas?.find((p) => p.slug === "satyanarayan-katha");
+    return {
+      hasPuja: true,
+      url: satya?.ctaLink || "/book/satyanarayan-katha",
+      pujaTitle: satya?.title || "Satyanarayan Katha",
+      pujaSlug: "satyanarayan-katha",
+    };
+  }
+
+  // Shani
+  if (title.includes("shani")) {
+    const shani = allPoojas?.find((p) => p.slug === "shani-dev-pooja");
+    return {
+      hasPuja: true,
+      url: shani?.ctaLink || "/book/shani-dev-pooja",
+      pujaTitle: shani?.title || "Shani Dev Pooja",
+      pujaSlug: "shani-dev-pooja",
+    };
+  }
+
+  // Lakshmi
+  if (title.includes("lakshmi")) {
+    const lakshmi = allPoojas?.find((p) => p.slug === "lakshmi-pooja");
+    return {
+      hasPuja: true,
+      url: lakshmi?.ctaLink || "/book/lakshmi-pooja",
+      pujaTitle: lakshmi?.title || "Lakshmi Pooja",
+      pujaSlug: "lakshmi-pooja",
+    };
+  }
+
+  // Kuber
+  if (title.includes("kuber")) {
+    const kuber = allPoojas?.find((p) => p.slug === "kuber-pooja");
+    return {
+      hasPuja: true,
+      url: kuber?.ctaLink || "/book/kuber-pooja",
+      pujaTitle: kuber?.title || "Kuber Pooja",
+      pujaSlug: "kuber-pooja",
+    };
+  }
+
+  // Griha Pravesh
+  if (title.includes("griha pravesh") || title.includes("vastu")) {
+    const griha = allPoojas?.find((p) => p.slug === "griha-pravesh");
+    return {
+      hasPuja: true,
+      url: griha?.ctaLink || "/book/griha-pravesh",
+      pujaTitle: griha?.title || "Griha Pravesh",
+      pujaSlug: "griha-pravesh",
+    };
+  }
+
+  // Maha Mrityunjaya
+  if (title.includes("mrityunjaya")) {
+    const mrityu = allPoojas?.find((p) => p.slug === "maha-mrityunjaya-jap");
+    return {
+      hasPuja: true,
+      url: mrityu?.ctaLink || "/book/maha-mrityunjaya-jap",
+      pujaTitle: mrityu?.title || "Maha Mrityunjaya Jap",
+      pujaSlug: "maha-mrityunjaya-jap",
+    };
+  }
+
+  // Navgraha Shanti
+  if (title.includes("navgraha") || title.includes("navagraha")) {
+    const nav = allPoojas?.find((p) => p.slug === "navgraha-shanti");
+    return {
+      hasPuja: true,
+      url: nav?.ctaLink || "/book/navgraha-shanti",
+      pujaTitle: nav?.title || "Navgraha Shanti",
+      pujaSlug: "navgraha-shanti",
+    };
+  }
+
+  // Direct title match in catalog
+  if (allPoojas && allPoojas.length > 0) {
+    const directMatch = allPoojas.find((p) => {
+      const pTitle = p.title.toLowerCase();
+      return title === pTitle || (pTitle.length > 4 && title.includes(pTitle));
+    });
+    if (directMatch) {
+      return {
+        hasPuja: true,
+        url: directMatch.ctaLink?.trim() || `/book/${directMatch.slug}`,
+        pujaTitle: directMatch.title,
+        pujaSlug: directMatch.slug,
+      };
+    }
+  }
+
+  // 5. No associated puja (showcase only)
+  return {
+    hasPuja: false,
+    url: null,
+  };
+}
+
 /**
  * Standard 6 demo gallery items showcasing authentic Hindu puja rituals.
  * Each card includes up to 3 photos and 1 optional video.
@@ -241,6 +477,7 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     title: "Ganesh Puja",
     description: "Auspicious invocation of Bhagwan Ganesha with sacred modak offerings, durva grass, and Vedic mantras for obstacle removal and prosperity.",
     mediaType: "photo",
+    pujaSlug: "rudrabhishek",
     images: [
       "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
@@ -264,6 +501,7 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     title: "Traditional Havan Ceremony",
     description: "Sacred fire ritual (Yagya) with shuddh desi ghee and herbal samagri invoked by Vedic Acharyas for spiritual purification and divine grace.",
     mediaType: "mixed",
+    pujaSlug: "durga-saptashati-path",
     images: [
       "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
@@ -288,9 +526,10 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
   {
     id: "gal-kalash-sthapana",
     _id: "gal-kalash-sthapana",
-    title: "Kalash Sthapana",
-    description: "Consecration of the holy Mangal Kalash with coconut, mango leaves, sacred red thread, and Ganga jal, invoking Trideva and universal energies.",
-    mediaType: "photo",
+    title: "Someshwar Mahadev Abhisek",
+    description: "Consecration and Holy Abhishek of Someshwar Mahadev with sacred Ganga jal, Panchamrit, and Bilva patra for divine blessings and peace.",
+    mediaType: "mixed",
+    pujaSlug: "someshwar-mahadev-abhisek",
     images: [
       "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
@@ -299,8 +538,10 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80",
     imageUrl2: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
     imageUrl3: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
+    youtubeUrl: "https://www.youtube.com/watch?v=P6asWvUY4zY",
+    youtubeVideoId: "P6asWvUY4zY",
     thumbnailUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=600&q=80",
-    category: "Kalash Sthapana",
+    category: "Puja Ceremonies",
     isActive: true,
     showOnHomepage: true,
     displayOrder: 3,

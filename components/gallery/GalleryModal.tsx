@@ -15,6 +15,7 @@ import {
   RotateCw,
   AlertCircle,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   type GalleryItem,
   getGalleryItemImages,
@@ -25,7 +26,9 @@ import {
   extractYouTubeVideoId,
   buildYouTubeEmbedUrl,
   buildYouTubeWatchUrl,
+  getGalleryItemBookingDestination,
 } from "@/lib/gallery-types";
+import { useCatalog } from "@/features/catalog";
 import { useBookingModal } from "@/components/providers";
 
 interface GalleryModalProps {
@@ -41,8 +44,23 @@ export default function GalleryModal({
   initialTab = "photos",
   initialPhotoIndex = 0,
 }: GalleryModalProps) {
+  const router = useRouter();
+  const { poojas } = useCatalog();
   const { openBooking } = useBookingModal();
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const bookingDest = getGalleryItemBookingDestination(item, poojas);
+
+  const handleBookPuja = useCallback(() => {
+    onClose();
+    if (bookingDest.url) {
+      if (bookingDest.url.startsWith("http://") || bookingDest.url.startsWith("https://")) {
+        window.location.href = bookingDest.url;
+      } else {
+        router.push(bookingDest.url);
+      }
+    }
+  }, [onClose, bookingDest.url, router]);
 
   const photos = item ? getGalleryItemImages(item) : [];
   const videos = item ? getGalleryItemVideos(item) : [];
@@ -488,17 +506,28 @@ export default function GalleryModal({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                openBooking();
-              }}
-              className="btn-primary !py-2 !px-4 !text-xs w-full sm:w-auto inline-flex items-center justify-center gap-1.5"
-            >
-              <Calendar className="h-3.5 w-3.5" />
-              <span>Book Puja Now</span>
-            </button>
+            {bookingDest.hasPuja && bookingDest.url ? (
+              <button
+                type="button"
+                id="gallery-book-puja-btn"
+                onClick={handleBookPuja}
+                className="btn-primary !py-2 !px-4 !text-xs w-full sm:w-auto inline-flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md transition-all cursor-pointer font-bold"
+                aria-label={bookingDest.pujaTitle ? `Book ${bookingDest.pujaTitle} Now` : "Book Puja Now"}
+                title={bookingDest.pujaTitle ? `Book ${bookingDest.pujaTitle} Now` : "Book Puja Now"}
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Book Puja Now</span>
+              </button>
+            ) : (
+              <div
+                id="gallery-unlinked-puja-badge"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-semibold"
+                title="This ritual is presented as a spiritual showcase and does not require direct puja booking."
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                <span>Sacred Showcase • No Puja Booking</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/common";
 import { getResolvedCatalog } from "@/lib/server-store";
-import { DEMO_POOJA, isDemoSlug, isPoojaActive, type Pooja } from "@/lib/data";
+import { DEMO_POOJA, SOMESHWAR_POOJA, isDemoSlug, isPoojaActive, type Pooja } from "@/lib/data";
 import { serviceLd } from "@/lib/seo";
 import ServiceClient from "./ServiceClient";
 
@@ -15,8 +15,15 @@ export const dynamic = "force-dynamic";
  * or null when it doesn't exist / is deactivated. */
 async function resolvePooja(service: string): Promise<Pooja | null> {
   if (isDemoSlug(service)) return DEMO_POOJA;
-  const catalog = await getResolvedCatalog();
   const normalized = service.toLowerCase().replace(/_/g, "-");
+  if (
+    normalized === "someshwar-mahadev-abhisek" ||
+    normalized === "someshwar-mahadev-abhishek" ||
+    normalized === "someshwar-rudrabhishek"
+  ) {
+    return SOMESHWAR_POOJA;
+  }
+  const catalog = await getResolvedCatalog();
   const pooja = catalog.poojas.find((p) => p.slug === normalized);
   return pooja && isPoojaActive(pooja) ? pooja : null;
 }
