@@ -1492,6 +1492,14 @@ export interface Pooja {
   ctaText?: string;
   /** Custom CTA button URL/link (defaults to /book/[slug]) */
   ctaLink?: string;
+
+  // ── Puja Display Placement System (Admin Controlled) ──
+  /** Show in Hero Section (Featured Sacred Rituals) */
+  showInHero?: boolean;
+  /** Show in Hero Featured Puja Card (right-side booking card) */
+  showInHeroCard?: boolean;
+  /** Show in Puja Catalog (defaults to true for legacy records) */
+  showInCatalog?: boolean;
 }
 
 /** Get localized title for a pooja based on active locale */
@@ -1783,6 +1791,32 @@ export function isPoojaActive(p: Pooja): boolean {
   return p.active !== false;
 }
 
+/** True if pooja is active and configured to show in Hero Sacred Rituals */
+export function isPoojaInHero(p: Pooja): boolean {
+  if (!isPoojaActive(p)) return false;
+  if (p.showInHero !== undefined) return Boolean(p.showInHero);
+  // Safe default for legacy records: preserve existing featured sacred rituals
+  return p.slug === "satyanarayan-katha" || p.slug === "rudrabhishek";
+}
+
+/** True if pooja is active and configured to show in Hero Featured Puja Card */
+export function isPoojaInHeroCard(p: Pooja): boolean {
+  if (!isPoojaActive(p)) return false;
+  if (p.showInHeroCard !== undefined) return Boolean(p.showInHeroCard);
+  // Safe default for legacy records: preserve existing hero right-side card
+  return p.slug === "satyanarayan-katha";
+}
+
+/** True if pooja is active and configured to show in Puja Catalog (safe default true) */
+export function isPoojaInCatalog(p: Pooja): boolean {
+  return isPoojaActive(p) && p.showInCatalog !== false;
+}
+
+/** The active poojas for the public Puja Catalog */
+export function catalogPoojas(list: Pooja[]): Pooja[] {
+  return sortPoojasByRecent(list.filter(isPoojaInCatalog));
+}
+
 /** The poojas visitors should see — inactive ones are filtered out, with the most recent poojas first. */
 export function activePoojas(list: Pooja[]): Pooja[] {
   return sortPoojasByRecent(list.filter(isPoojaActive));
@@ -1858,6 +1892,9 @@ export const DEMO_POOJA: Pooja = {
   ctaText: "Book for ₹1 →",
   ctaLink: "/book/demo-pooja",
   active: true,
+  showInHero: false,
+  showInHeroCard: false,
+  showInCatalog: true,
 };
 
 export const DEMO_POOJA_SLUGS = [
@@ -1896,6 +1933,9 @@ export const poojas: Pooja[] = [
     online: true,
     deities: ["Lord Vishnu", "Lord Satyanarayan"],
     assignedAddonIds: ["kumkum", "special-prasad", "panchamrit-abhishek"],
+    showInHero: true,
+    showInHeroCard: true,
+    showInCatalog: true,
     description:
       "The beloved vow-fulfillment ritual of Lord Vishnu's Satyanarayan form, bringing peace, prosperity and harmony to the whole family.",
     hindiDescription:
@@ -1927,6 +1967,9 @@ export const poojas: Pooja[] = [
     online: true,
     deities: ["Lord Shiva"],
     assignedAddonIds: ["panchamrit-abhishek", "bilva-patra", "special-prasad"],
+    showInHero: true,
+    showInHeroCard: false,
+    showInCatalog: true,
     description:
       "Sacred abhishek of the Shiva Linga with panchamrit, bilva leaves and Vedic chants — a powerful ritual for protection and inner strength.",
     hindiDescription:

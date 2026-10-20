@@ -18,6 +18,9 @@ import {
   getLocalizedFestivalTitle,
   getLocalizedPoojaTitle,
   getPoojaSchedule,
+  isPoojaActive,
+  isPoojaInHero,
+  isPoojaInHeroCard,
   type FestivalEvent,
   type Pooja,
 } from "@/lib/data";
@@ -130,38 +133,51 @@ export default function Hero() {
     });
   };
 
-  // Find associated pooja objects for the active festival
-  const relatedPoojas: Pooja[] = activeFestival
-    ? activeFestival.relatedPoojaSlugs
-        .map((slug) => poojas.find((p) => p.slug === slug))
-        .filter((p): p is Pooja => Boolean(p))
-    : [];
+  // Active pujas dynamically filtered by admin display placement settings
+  const heroRitualPoojas: Pooja[] = poojas.filter(isPoojaInHero);
+  const heroCardPoojas: Pooja[] = poojas.filter(isPoojaInHeroCard);
 
-  const heroPoojas: Pooja[] =
-    relatedPoojas.length > 0 ? relatedPoojas : poojas.slice(0, 3);
-  const featuredPooja = relatedPoojas[0] || poojas[0];
-  const featuredSchedule = featuredPooja ? getPoojaSchedule(featuredPooja) : null;
+  const [heroCardIndex, setHeroCardIndex] = useState(0);
+
+  // Reset card index if heroCardPoojas change
+  useEffect(() => {
+    if (heroCardIndex >= heroCardPoojas.length && heroCardPoojas.length > 0) {
+      setHeroCardIndex(0);
+    }
+  }, [heroCardPoojas.length, heroCardIndex]);
+
+  // Autoplay hero card cycling every 6 seconds if multiple pujas are enabled
+  useEffect(() => {
+    if (heroCardPoojas.length <= 1 || isPaused) return;
+    const interval = setInterval(() => {
+      setHeroCardIndex((prev) => (prev + 1) % heroCardPoojas.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [heroCardPoojas.length, isPaused]);
+
+  const currentHeroCardPooja =
+    heroCardPoojas.length > 0
+      ? heroCardPoojas[heroCardIndex] || heroCardPoojas[0]
+      : null;
+  const currentHeroCardSchedule = currentHeroCardPooja
+    ? getPoojaSchedule(currentHeroCardPooja)
+    : null;
 
   const handlePrimaryCta = () => {
-    if (activeFestival) {
-      // If the festival specifies a related pooja or direct slug, navigate to that pooja detail page
-      const firstRelated = relatedPoojas[0];
-      if (firstRelated) {
-        router.push(`/book/${firstRelated.slug}`);
-        return;
-      }
-      if (activeFestival.ctaLink && activeFestival.ctaLink.startsWith("/book/")) {
-        router.push(activeFestival.ctaLink);
-        return;
-      }
+    if (currentHeroCardPooja) {
+      router.push(`/book/${currentHeroCardPooja.slug}`);
+      return;
     }
-    // Fallback: navigate to default pooja detail page
-    const defaultPooja = poojas[0];
+    if (heroRitualPoojas[0]) {
+      router.push(`/book/${heroRitualPoojas[0].slug}`);
+      return;
+    }
+    const defaultPooja = poojas.find(isPoojaActive);
     if (defaultPooja) {
       router.push(`/book/${defaultPooja.slug}`);
-    } else {
-      router.push("/book/satyanarayan-katha");
+      return;
     }
+    router.push("/book");
   };
 
   // Background visual image: White Marble Lord Ganesha sanctum as the hero backdrop
@@ -346,22 +362,13 @@ export default function Hero() {
                 {displaySecondaryCta}
               </a>
             </div>
-
-            {/* Associated Pujas Quick Preview Chips */}
-            {heroPoojas.length > 0 && (
+            {/* Featured Sacred Rituals Dynamic Chips */}
+            {heroRitualPoojas.length > 0 && (
               <div className="mt-2.5 w-full max-w-2xl">
                 <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-saffron-300/90 mb-1.5 flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3 text-saffron-400" />
                   <span>
-                    {activeFestival
-                      ? locale === "hi"
-                        ? `${getLocalizedFestivalName(activeFestival, locale)} विशेष पूजाएं:`
-                        : locale === "te"
-                        ? `${getLocalizedFestivalName(activeFestival, locale)} ప్రత్యేక పూజలు:`
-                        : locale === "ta"
-                        ? `${getLocalizedFestivalName(activeFestival, locale)} சிறப்பு பூஜைகள்:`
-                        : `Sacred Pujas For ${activeFestival.name}:`
-                      : locale === "hi"
+                    {locale === "hi"
                       ? "विशेष वैदिक अनुष्ठान:"
                       : locale === "te"
                       ? "ప్రత్యేక వేద పూజలు:"
@@ -370,25 +377,23 @@ export default function Hero() {
                       : "Featured Sacred Rituals:"}
                   </span>
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {heroPoojas.slice(0, 2).map((pooja) => {
-                    return (
-                      <button
-                        key={pooja.slug}
-                        type="button"
-                        onClick={() => router.push(`/book/${pooja.slug}`)}
-                        className="group flex items-center gap-2 rounded-xl border border-saffron-400/25 bg-slate-900/85 px-3 py-1.5 text-xs text-slate-200 backdrop-blur-md transition-all duration-300 hover:border-saffron-400/70 hover:bg-saffron-950/70 hover:shadow-glow text-left cursor-pointer"
-                      >
-                        <span className="text-sm">{pooja.emoji}</span>
-                        <span className="font-bold text-white group-hover:text-amber-200 transition-colors">
-                          {getLocalizedPoojaTitle(pooja, locale)}
-                        </span>
-                        <span className="rounded-md bg-saffron-500/20 px-1.5 py-0.5 text-[10px] font-bold text-saffron-300 group-hover:bg-saffron-500 group-hover:text-white transition-colors">
-                          ₹{pooja.price.toLocaleString("en-IN")}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div className="flex flex-wrap gap-2 max-w-full max-h-24 sm:max-h-32 overflow-y-auto no-scrollbar">
+                  {heroRitualPoojas.map((pooja) => (
+                    <button
+                      key={pooja.slug}
+                      type="button"
+                      onClick={() => router.push(`/book/${pooja.slug}`)}
+                      className="group flex items-center gap-2 rounded-xl border border-saffron-400/25 bg-slate-900/85 px-3 py-1.5 text-xs text-slate-200 backdrop-blur-md transition-all duration-300 hover:border-saffron-400/70 hover:bg-saffron-950/70 hover:shadow-glow text-left cursor-pointer shrink-0"
+                    >
+                      <span className="text-sm">{pooja.emoji || "🪔"}</span>
+                      <span className="font-bold text-white group-hover:text-amber-200 transition-colors truncate max-w-[200px] sm:max-w-none">
+                        {getLocalizedPoojaTitle(pooja, locale)}
+                      </span>
+                      <span className="rounded-md bg-saffron-500/20 px-1.5 py-0.5 text-[10px] font-bold text-saffron-300 group-hover:bg-saffron-500 group-hover:text-white transition-colors shrink-0">
+                        ₹{pooja.price.toLocaleString("en-IN")}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -397,71 +402,110 @@ export default function Hero() {
           {/* Right Column: Elevating Lord Ganesha */}
           <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 flex-col justify-end items-end relative min-h-[380px] pointer-events-none py-2">
             {/* Bottom-Right Auspicious Blessings Card */}
-            <div
-              onClick={handlePrimaryCta}
-              className="pointer-events-auto w-full max-w-xs rounded-2xl border border-amber-400/25 bg-gradient-to-b from-stone-900/85 to-stone-950/95 p-3.5 shadow-2xl backdrop-blur-md cursor-pointer group transition-all duration-300 hover:border-saffron-400/60 hover:shadow-glow"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-300">
-                    {activeFestival
-                      ? getLocalizedFestivalName(activeFestival, locale)
-                      : locale === "hi"
-                      ? "प्रथम पूज्य सेवा"
-                      : locale === "te"
-                      ? "ప్రథమ పూజ్య సేవ"
-                      : locale === "ta"
-                      ? "முதன்மை பூஜை சேவை"
-                      : "Pratham Pujya Seva"}
-                  </span>
+            {currentHeroCardPooja && (
+              <div
+                onClick={() => router.push(`/book/${currentHeroCardPooja.slug}`)}
+                className="pointer-events-auto w-full max-w-xs rounded-2xl border border-amber-400/25 bg-gradient-to-b from-stone-900/85 to-stone-950/95 p-3.5 shadow-2xl backdrop-blur-md cursor-pointer group transition-all duration-300 hover:border-saffron-400/60 hover:shadow-glow"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-300 truncate">
+                      {currentHeroCardPooja.badge ||
+                        (activeFestival
+                          ? getLocalizedFestivalName(activeFestival, locale)
+                          : locale === "hi"
+                          ? "प्रथम पूज्य सेवा"
+                          : locale === "te"
+                          ? "ప్రథమ పూజ్య సేవ"
+                          : locale === "ta"
+                          ? "முதன்மை பூஜை சேவை"
+                          : "Pratham Pujya Seva")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {heroCardPoojas.length > 1 && (
+                      <div
+                        className="flex items-center gap-1 mr-1 text-[10px] text-amber-300/80"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHeroCardIndex((prev) =>
+                              prev === 0 ? heroCardPoojas.length - 1 : prev - 1
+                            );
+                          }}
+                          className="h-4 w-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                          title="Previous featured puja"
+                        >
+                          ‹
+                        </button>
+                        <span>
+                          {heroCardIndex + 1}/{heroCardPoojas.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHeroCardIndex((prev) =>
+                              (prev + 1) % heroCardPoojas.length
+                            );
+                          }}
+                          className="h-4 w-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                          title="Next featured puja"
+                        >
+                          ›
+                        </button>
+                      </div>
+                    )}
+                    <span className="rounded-full bg-saffron-500/90 px-2 py-0.5 text-[10px] font-extrabold text-white">
+                      ₹{currentHeroCardPooja.price.toLocaleString("en-IN")}
+                    </span>
+                  </div>
                 </div>
-                {featuredPooja && (
-                  <span className="rounded-full bg-saffron-500/90 px-2 py-0.5 text-[10px] font-extrabold text-white">
-                    ₹{featuredPooja.price.toLocaleString("en-IN")}
-                  </span>
+
+                <h3 className="mt-1.5 font-display text-sm font-bold text-white line-clamp-1 group-hover:text-amber-200 transition-colors">
+                  {getLocalizedPoojaTitle(currentHeroCardPooja, locale)}
+                </h3>
+
+                {currentHeroCardSchedule ? (
+                  <div
+                    suppressHydrationWarning
+                    className="mt-2 flex items-center justify-between text-[11px] text-amber-200/90 border-t border-white/10 pt-2"
+                  >
+                    <span className="flex items-center gap-1 font-medium">
+                      <Calendar className="h-3 w-3 text-amber-400 shrink-0" />
+                      <span suppressHydrationWarning>{currentHeroCardSchedule.date}</span>
+                    </span>
+                    <span className="text-xs text-saffron-400 group-hover:translate-x-0.5 transition-transform font-bold flex items-center gap-0.5">
+                      {locale === "hi" ? "बुक करें" : locale === "te" ? "బుక్ చేయండి" : locale === "ta" ? "பதிவு செய்க" : "Book"}{" "}
+                      <ArrowRight className="h-3 w-3 inline" />
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-amber-200/90 border-t border-white/10 pt-2">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Sparkles className="h-3 w-3 text-amber-400 shrink-0" />
+                      <span>
+                        {locale === "hi"
+                          ? "लाइव वीडियो व संकल्प"
+                          : locale === "te"
+                          ? "లైవ్ వీడియో & సంకల్పం"
+                          : locale === "ta"
+                          ? "நேரலை வீடியோ & சங்கல்பம்"
+                          : "Live Video & Sankalp"}
+                      </span>
+                    </span>
+                    <span className="text-xs text-saffron-400 group-hover:translate-x-0.5 transition-transform font-bold flex items-center gap-0.5">
+                      {locale === "hi" ? "बुक करें" : locale === "te" ? "బుక్ చేయండి" : locale === "ta" ? "பதிவு செய்க" : "Book"}{" "}
+                      <ArrowRight className="h-3 w-3 inline" />
+                    </span>
+                  </div>
                 )}
               </div>
-
-              <h3 className="mt-1.5 font-display text-sm font-bold text-white line-clamp-1 group-hover:text-amber-200 transition-colors">
-                {featuredPooja ? getLocalizedPoojaTitle(featuredPooja, locale) : displayTitle}
-              </h3>
-
-              {featuredSchedule ? (
-                <div
-                  suppressHydrationWarning
-                  className="mt-2 flex items-center justify-between text-[11px] text-amber-200/90 border-t border-white/10 pt-2"
-                >
-                  <span className="flex items-center gap-1 font-medium">
-                    <Calendar className="h-3 w-3 text-amber-400 shrink-0" />
-                    <span suppressHydrationWarning>{featuredSchedule.date}</span>
-                  </span>
-                  <span className="text-xs text-saffron-400 group-hover:translate-x-0.5 transition-transform font-bold flex items-center gap-0.5">
-                    {locale === "hi" ? "बुक करें" : locale === "te" ? "బుక్ చేయండి" : locale === "ta" ? "பதிவு செய்க" : "Book"}{" "}
-                    <ArrowRight className="h-3 w-3 inline" />
-                  </span>
-                </div>
-              ) : (
-                <div className="mt-2 flex items-center justify-between text-[11px] text-amber-200/90 border-t border-white/10 pt-2">
-                  <span className="flex items-center gap-1 font-medium">
-                    <Sparkles className="h-3 w-3 text-amber-400 shrink-0" />
-                    <span>
-                      {locale === "hi"
-                        ? "लाइव वीडियो व संकल्प"
-                        : locale === "te"
-                        ? "లైవ్ వీడియో & సంకల్పం"
-                        : locale === "ta"
-                        ? "நேரலை வீடியோ & சங்கல்பம்"
-                        : "Live Video & Sankalp"}
-                    </span>
-                  </span>
-                  <span className="text-xs text-saffron-400 group-hover:translate-x-0.5 transition-transform font-bold flex items-center gap-0.5">
-                    {locale === "hi" ? "बुक करें" : locale === "te" ? "బుక్ చేయండి" : locale === "ta" ? "பதிவு செய்க" : "Book"}{" "}
-                    <ArrowRight className="h-3 w-3 inline" />
-                  </span>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
