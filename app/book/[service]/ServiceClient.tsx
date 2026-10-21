@@ -196,6 +196,43 @@ function ServiceInner({ service }: { service: string }) {
     },
   ];
 
+  const renderAssurancesSection = (className = "") => (
+    <div
+      className={`rounded-3xl border border-saffron-200/90 bg-white p-4 sm:p-5 shadow-card space-y-3 ${className}`}
+      aria-label={t("service.assurancesHeading")}
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-saffron-100 pb-2.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-900 flex items-center gap-1.5">
+          <ShieldCheck className="h-4 w-4 text-saffron-600 shrink-0" />
+          {t("service.assurancesHeading")}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 shrink-0">
+          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+          {t("service.verifiedSevaBadge")}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2 sm:gap-2.5">
+        {assurances.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.id}
+              className="flex items-start gap-2.5 rounded-2xl border border-saffron-100/90 bg-saffron-50/35 p-2.5 sm:p-3 text-xs text-ink transition-colors hover:border-saffron-300 hover:bg-saffron-50/70"
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 mt-0.5 shadow-2xs">
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <span className="font-semibold text-ink leading-snug break-words">
+                {item.text}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#FFFDF9] pt-20 pb-28 sm:pt-32 md:pt-40 lg:pt-44 sm:pb-32">
       <div className="container-px mx-auto max-w-6xl space-y-6">
@@ -335,38 +372,8 @@ function ServiceInner({ service }: { service: string }) {
               )
             )}
 
-            {/* Vedic Assurances & Inclusions Section */}
-            <div className="rounded-3xl border border-saffron-200/90 bg-white p-4 sm:p-5 shadow-card space-y-3">
-              <div className="flex items-center justify-between gap-2 border-b border-saffron-100 pb-2.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-900 flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-saffron-600 shrink-0" />
-                  {t("service.assurancesHeading")}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-700 shrink-0">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  {t("service.verifiedSevaBadge")}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
-                {assurances.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-start gap-2.5 rounded-2xl border border-saffron-100/90 bg-saffron-50/35 p-2.5 sm:p-3 text-xs text-ink transition-colors hover:border-saffron-300 hover:bg-saffron-50/70"
-                    >
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 mt-0.5 shadow-2xs">
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="font-semibold text-ink leading-snug break-words">
-                        {item.text}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Vedic Assurances & Inclusions Section (Desktop: sticky left column) */}
+            {renderAssurancesSection("hidden lg:block")}
           </div>
 
           {/* ── RIGHT COLUMN: Details of the Puja ── */}
@@ -421,6 +428,9 @@ function ServiceInner({ service }: { service: string }) {
                 </div>
               )}
             </div>
+
+            {/* Vedic Assurances & Inclusions Section (Mobile: directly below primary heading/hero info) */}
+            {renderAssurancesSection("block lg:hidden")}
 
             {/* Scheduled Date, Time & Temple Venue */}
             <div className="rounded-3xl border border-saffron-200/90 bg-gradient-to-br from-saffron-50/60 via-white to-amber-50/40 p-6 shadow-soft space-y-4">
