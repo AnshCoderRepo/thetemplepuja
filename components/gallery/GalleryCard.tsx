@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Camera, Play, Sparkles } from "lucide-react";
 import {
@@ -9,6 +10,39 @@ import {
   hasYouTubeVideo,
   getYouTubeThumbnailUrl,
 } from "@/lib/gallery-types";
+
+function SafeCardImage({
+  src,
+  alt,
+  fill,
+  priority,
+  sizes,
+  className,
+}: {
+  src: string;
+  alt: string;
+  fill?: boolean;
+  priority?: boolean;
+  sizes?: string;
+  className?: string;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const isDataUrl = src.startsWith("data:");
+  const effectiveSrc = hasError ? "/festivals/shivratri.jpg" : src;
+
+  return (
+    <Image
+      src={effectiveSrc}
+      alt={alt}
+      fill={fill}
+      priority={priority}
+      sizes={sizes}
+      unoptimized={isDataUrl}
+      className={className}
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 export interface GalleryCardOpenOptions {
   initialTab?: "photos" | "video";
@@ -71,7 +105,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
               onClick={(e) => handlePhotoClick(e, 0)}
               title="Click to view photo 1"
             >
-              <Image
+              <SafeCardImage
                 src={photos[0]}
                 alt={`${item.title} - photo 1`}
                 fill
@@ -88,7 +122,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
                 onClick={(e) => handlePhotoClick(e, 1)}
                 title="Click to view photo 2"
               >
-                <Image
+                <SafeCardImage
                   src={photos[1]}
                   alt={`${item.title} - photo 2`}
                   fill
@@ -101,7 +135,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
                 onClick={(e) => handlePhotoClick(e, 2)}
                 title={photos.length > 3 ? `View all ${photos.length} photos` : "Click to view photo 3"}
               >
-                <Image
+                <SafeCardImage
                   src={photos[2]}
                   alt={`${item.title} - photo 3`}
                   fill
@@ -131,7 +165,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
               onClick={(e) => handlePhotoClick(e, 0)}
               title="Click to view photo 1"
             >
-              <Image
+              <SafeCardImage
                 src={photos[0]}
                 alt={`${item.title} - photo 1`}
                 fill
@@ -145,7 +179,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
               onClick={(e) => handlePhotoClick(e, 1)}
               title="Click to view photo 2"
             >
-              <Image
+              <SafeCardImage
                 src={photos[1]}
                 alt={`${item.title} - photo 2`}
                 fill
@@ -163,7 +197,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
             onClick={(e) => handlePhotoClick(e, 0)}
             title="Click to view photo"
           >
-            <Image
+            <SafeCardImage
               src={photos[0]}
               alt={item.title}
               fill
@@ -177,7 +211,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
         {/* ── 0 PHOTOS (Fallback to Video Thumbnail) ── */}
         {photos.length === 0 && (
           <div className="relative h-full w-full overflow-hidden">
-            <Image
+            <SafeCardImage
               src={
                 item.thumbnailUrl ||
                 (item.youtubeVideoId ? getYouTubeThumbnailUrl(item.youtubeVideoId) || "/logo.jpeg" : "/logo.jpeg")

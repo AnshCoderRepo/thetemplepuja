@@ -10,7 +10,7 @@ import type {
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
 import { defaultAddons, type Addon } from "./data";
-import { DEFAULT_GALLERY_ITEMS, type GalleryItem } from "./gallery-types";
+import { DEFAULT_GALLERY_ITEMS, sanitizeGalleryItem, type GalleryItem } from "./gallery-types";
 
 function dataDir(): string {
   return process.env.TTP_DATA_DIR || path.join(process.cwd(), ".data");
@@ -185,7 +185,7 @@ export function createJsonStore(): PersistenceStore {
         writeJson("gallery.json", DEFAULT_GALLERY_ITEMS);
         return [...DEFAULT_GALLERY_ITEMS];
       }
-      return list.sort((a, b) => a.displayOrder - b.displayOrder);
+      return list.map(sanitizeGalleryItem).sort((a, b) => a.displayOrder - b.displayOrder);
     },
     async findGalleryItemById(id: string): Promise<GalleryItem | undefined> {
       const list = await this.getGalleryItems();
@@ -193,9 +193,10 @@ export function createJsonStore(): PersistenceStore {
     },
     async saveGalleryItem(item: GalleryItem): Promise<void> {
       const list = await this.getGalleryItems();
-      const id = item._id || item.id;
+      const sanitized = sanitizeGalleryItem(item);
+      const id = sanitized._id || sanitized.id;
       const clean: GalleryItem = {
-        ...item,
+        ...sanitized,
         _id: id,
         id,
         updatedAt: new Date().toISOString(),

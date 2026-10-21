@@ -11,7 +11,7 @@ import type { BlogPost } from "./blog-data";
 import type { BookingRecord, DevoteeEntitlement, UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
 import { getPhoneLookupVariants } from "./phone";
-import { DEFAULT_GALLERY_ITEMS, type GalleryItem } from "./gallery-types";
+import { DEFAULT_GALLERY_ITEMS, sanitizeGalleryItem, type GalleryItem } from "./gallery-types";
 
 import type {
   ChatbotKnowledgeEntry,
@@ -428,7 +428,36 @@ export const mongoStore: PersistenceStore = {
       } catch {}
     }
     const docs = await col.find({}).sort({ displayOrder: 1 }).toArray();
-    return docs.map(toGalleryDoc);
+    const items = docs.map(toGalleryDoc);
+
+    // Auto-heal docs in MongoDB if any had dead URLs or missing images (e.g. Someshwar Mahadev)
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      const healed = items[i];
+      const hasDeadThumb = typeof doc.thumbnailUrl === "string" && doc.thumbnailUrl.includes("photo-1617694820985-7975d27572d8");
+      const isSomeshwarMissingImages =
+        (doc._id === "gal-kalash-sthapana" || doc.id === "gal-kalash-sthapana") &&
+        (!Array.isArray(doc.images) || doc.images.length === 0);
+
+      if (hasDeadThumb || isSomeshwarMissingImages) {
+        try {
+          const updatePayload: Record<string, any> = {
+            updatedAt: new Date().toISOString(),
+          };
+          if (healed.thumbnailUrl) updatePayload.thumbnailUrl = healed.thumbnailUrl;
+          if (healed.images && healed.images.length > 0) {
+            updatePayload.images = healed.images;
+            updatePayload.imageUrl = healed.imageUrl;
+            updatePayload.imageUrl2 = healed.imageUrl2;
+            updatePayload.imageUrl3 = healed.imageUrl3;
+          }
+          if (healed.mediaType) updatePayload.mediaType = healed.mediaType;
+          void col.updateOne({ _id: doc._id }, { $set: updatePayload });
+        } catch {}
+      }
+    }
+
+    return items;
   },
 
   async findGalleryItemById(id: string): Promise<GalleryItem | undefined> {
@@ -439,9 +468,10 @@ export const mongoStore: PersistenceStore = {
 
   async saveGalleryItem(item: GalleryItem): Promise<void> {
     const col = await galleryCol();
-    const id = String(item._id || item.id);
+    const sanitized = sanitizeGalleryItem(item);
+    const id = String(sanitized._id || sanitized.id);
     const doc = {
-      ...item,
+      ...sanitized,
       _id: id,
       id: id,
       updatedAt: new Date().toISOString(),
@@ -471,7 +501,7 @@ export async function galleryCol(): Promise<Collection<any>> {
 
 function toGalleryDoc(doc: any): GalleryItem {
   const idStr = String(doc._id || doc.id);
-  return {
+  const rawItem: GalleryItem = {
     _id: idStr,
     id: idStr,
     title: doc.title || "",
@@ -502,6 +532,8 @@ function toGalleryDoc(doc: any): GalleryItem {
     createdAt: doc.createdAt || new Date().toISOString(),
     updatedAt: doc.updatedAt || new Date().toISOString(),
   };
+
+  return sanitizeGalleryItem(rawItem);
 }
 
 export async function addonsCol(): Promise<Collection<any>> {

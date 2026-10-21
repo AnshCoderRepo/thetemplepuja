@@ -10,6 +10,8 @@ import {
   getGalleryItemVideos,
   hasYouTubeVideo,
   getGalleryItemBookingDestination,
+  sanitizeGalleryMediaUrl,
+  sanitizeGalleryItem,
   type GalleryItem,
 } from "@/lib/gallery-types";
 import { middleware } from "@/middleware";
@@ -816,6 +818,58 @@ describe("Our Gallery System Test Suite", () => {
         headers: { Authorization: `Bearer ${validAdminToken}` },
       });
       await deleteAdminGallery(delReq as any);
+    });
+  });
+
+  describe("8. Broken Gallery Image Auto-Healing and Fallback Protection", () => {
+    it("sanitizes dead Unsplash URLs to verified local assets", () => {
+      const deadShivaUrl = "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80";
+      const sanitized = sanitizeGalleryMediaUrl(deadShivaUrl);
+      expect(sanitized).toBe("/festivals/shivratri.jpg");
+
+      const deadGaneshUrl = "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=1200&q=80";
+      expect(sanitizeGalleryMediaUrl(deadGaneshUrl)).toBe("/festivals/ganesha-altar.jpg");
+
+      const workingUrl = "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80";
+      expect(sanitizeGalleryMediaUrl(workingUrl)).toBe(workingUrl);
+    });
+
+    it("auto-heals Someshwar Mahadev Abhisek gallery item with verified authentic photos", () => {
+      const someshwar = DEFAULT_GALLERY_ITEMS.find((i) => i.id === "gal-kalash-sthapana");
+      expect(someshwar).toBeDefined();
+
+      const photos = getGalleryItemImages(someshwar!);
+      expect(photos.length).toBeGreaterThan(0);
+      expect(photos[0]).toBe("/festivals/shivratri.jpg");
+
+      // Verify no dead Unsplash URLs exist in photos
+      const hasDeadUnsplash = photos.some((p) => p.includes("photo-1617694820985-7975d27572d8"));
+      expect(hasDeadUnsplash).toBe(false);
+    });
+
+    it("ensures public /api/gallery returns valid photos for all items", async () => {
+      const res = await getPublicGallery(new Request("http://localhost/api/gallery"));
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.ok).toBe(true);
+      expect(Array.isArray(data.items)).toBe(true);
+
+      const someshwarItem = data.items.find((i: any) => i.id === "gal-kalash-sthapana" || i.title.includes("Someshwar"));
+      expect(someshwarItem).toBeDefined();
+      const photos = getGalleryItemImages(someshwarItem);
+      expect(photos.length).toBeGreaterThan(0);
+      expect(photos[0]).not.toContain("photo-1617694820985-7975d27572d8");
+    });
+
+    it("middleware Content-Security-Policy allows essential image CDNs", () => {
+      const req = new NextRequest("http://localhost/gallery");
+      const res = middleware(req);
+      const csp = res.headers.get("content-security-policy");
+      expect(csp).toBeTruthy();
+      expect(csp).toContain("res.cloudinary.com");
+      expect(csp).toContain("images.pexels.com");
+      expect(csp).toContain("cdn.pixabay.com");
+      expect(csp).toContain("upload.wikimedia.org");
     });
   });
 });

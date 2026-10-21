@@ -71,6 +71,9 @@ export default function GalleryModal({
   const [photoIndex, setPhotoIndex] = useState<number>(0);
   const [videoIndex, setVideoIndex] = useState<number>(0);
   const [embedError, setEmbedError] = useState<boolean>(false);
+  const [imageLoading, setImageLoading] = useState<boolean>(true);
+  const [imageError, setImageError] = useState<boolean>(false);
+  const [imageRetryCount, setImageRetryCount] = useState<number>(0);
 
   // Sync state whenever the selected item changes
   useEffect(() => {
@@ -101,12 +104,25 @@ export default function GalleryModal({
     }
     setVideoIndex(0);
     setEmbedError(false);
+    setImageLoading(true);
+    setImageError(false);
   }, [item, initialTab, initialPhotoIndex]);
 
-  // Reset embed error whenever active tab or video selection changes
+  // Reset embed error and image states whenever active tab, photoIndex or video selection changes
   useEffect(() => {
     setEmbedError(false);
   }, [activeTab, videoIndex]);
+
+  useEffect(() => {
+    setImageLoading(true);
+    setImageError(false);
+  }, [photoIndex, activeTab, item?.id]);
+
+  const handleRetryImage = useCallback(() => {
+    setImageError(false);
+    setImageLoading(true);
+    setImageRetryCount((prev) => prev + 1);
+  }, []);
 
   // Listen for YouTube IFrame API error signals (e.g. error 101/150: embedding restricted)
   useEffect(() => {
@@ -389,12 +405,72 @@ export default function GalleryModal({
           ) : (
             /* Photos Tab */
             <div className="relative w-full h-full min-h-[300px] sm:min-h-[440px] flex items-center justify-center">
+              {/* Image Loading State */}
+              {imageLoading && !imageError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 text-white/80 pointer-events-none z-10">
+                  <RotateCw className="h-7 w-7 sm:h-8 sm:w-8 text-saffron-400 animate-spin" />
+                  <span className="text-xs font-medium text-slate-300 tracking-wide">
+                    Loading sacred photo...
+                  </span>
+                </div>
+              )}
+
+              {/* Image Error Fallback Card with Retry & Video Jump */}
+              {imageError && (
+                <div className="relative z-10 max-w-md mx-auto p-6 sm:p-8 text-center text-white space-y-4">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <AlertCircle className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="font-display text-base sm:text-lg font-bold text-white">
+                      Photo Temporarily Unavailable
+                    </h4>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      We encountered an issue displaying this photo. You can retry loading or watch the recorded ceremony video.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleRetryImage}
+                      className="inline-flex items-center gap-2 rounded-xl bg-saffron-600 hover:bg-saffron-500 text-white font-bold text-xs sm:text-sm px-4 py-2 transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95"
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                      <span>Retry Loading</span>
+                    </button>
+                    {hasVideo && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("video")}
+                        className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm px-4 py-2 transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95"
+                      >
+                        <Play className="h-3.5 w-3.5 fill-current" />
+                        <span>Watch Ceremony Video</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Main Photo Image */}
               <Image
+                key={`${currentPhoto}-${imageRetryCount}`}
                 src={currentPhoto}
                 alt={`${item.title} - photo ${photoIndex + 1}`}
                 fill
                 priority
-                className="object-contain"
+                unoptimized={currentPhoto.startsWith("data:")}
+                onLoad={() => {
+                  setImageLoading(false);
+                  setImageError(false);
+                }}
+                onError={() => {
+                  setImageLoading(false);
+                  setImageError(true);
+                }}
+                className={`object-contain transition-opacity duration-300 ${
+                  imageLoading || imageError ? "opacity-0 pointer-events-none" : "opacity-100"
+                }`}
                 sizes="(max-width: 1024px) 100vw, 900px"
               />
 
@@ -408,7 +484,7 @@ export default function GalleryModal({
                       e.stopPropagation();
                       handlePrevPhoto();
                     }}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/85 hover:scale-105 active:scale-95 cursor-pointer"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/85 hover:scale-105 active:scale-95 cursor-pointer z-20"
                     aria-label="Previous photo"
                   >
                     <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -421,14 +497,14 @@ export default function GalleryModal({
                       e.stopPropagation();
                       handleNextPhoto();
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/85 hover:scale-105 active:scale-95 cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/85 hover:scale-105 active:scale-95 cursor-pointer z-20"
                     aria-label="Next photo"
                   >
                     <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
 
                   {/* Photo Counter Pill */}
-                  <div className="absolute top-3 right-3 rounded-full bg-black/70 backdrop-blur-md px-3 py-1 text-xs font-bold text-white border border-white/20">
+                  <div className="absolute top-3 right-3 rounded-full bg-black/70 backdrop-blur-md px-3 py-1 text-xs font-bold text-white border border-white/20 z-20">
                     Photo {photoIndex + 1} of {photos.length}
                   </div>
                 </>
@@ -447,7 +523,7 @@ export default function GalleryModal({
                   key={`${photoUrl}-${idx}`}
                   type="button"
                   onClick={() => setPhotoIndex(idx)}
-                  className={`relative h-11 w-14 sm:h-14 sm:w-20 rounded-lg overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
+                  className={`relative h-11 w-14 sm:h-14 sm:w-20 rounded-lg overflow-hidden border-2 transition-all cursor-pointer shrink-0 bg-slate-900 ${
                     isSelected
                       ? "border-saffron-500 ring-2 ring-saffron-400 scale-105"
                       : "border-white/30 opacity-60 hover:opacity-100 hover:border-white/70"
@@ -460,6 +536,7 @@ export default function GalleryModal({
                     fill
                     className="object-cover"
                     sizes="80px"
+                    unoptimized={photoUrl.startsWith("data:")}
                   />
                   <span className="absolute bottom-0 right-0 bg-black/80 px-1 text-[9px] font-bold text-white">
                     {idx + 1}
