@@ -27,60 +27,71 @@ import {
 
 const TICKER_ITEMS_MAP: Record<string, { icon: string; label: string }[]> = {
   hi: [
-    { icon: "✨", label: "सिद्ध वैदिक यंत्र" },
-    { icon: "🛕", label: "सुरक्षित बुकिंग" },
-    { icon: "📹", label: "लाइव पूजा दर्शन" },
+    { icon: "🙏", label: "प्रामाणिक वैदिक पूजा सेवाएं" },
+    { icon: "🪔", label: "प्रमाणित पंडित जी बुक करें" },
+    { icon: "📅", label: "सुगम ऑनलाइन पूजा बुकिंग" },
+    { icon: "🔔", label: "लाइव पूजा दर्शन" },
+    { icon: "🛕", label: "पवित्र मंदिर दर्शन" },
     { icon: "📦", label: "प्रसाद होम डिलीवरी" },
-    { icon: "👥", label: "लाखों श्रद्धालुओं का विश्वास" },
-    { icon: "🪔", label: "प्रामाणिक वैदिक अनुष्ठान" },
+    { icon: "📞", label: "बुकिंग सहायता" },
   ],
   te: [
-    { icon: "✨", label: "పవిత్ర యంత్రం" },
-    { icon: "🛕", label: "సురక్షిత బుకింగ్" },
-    { icon: "📹", label: "ప్రత్యక్ష పూజ దర్శనం" },
-    { icon: "📦", label: "ప్రసాదం హోమ్ డెలివరీ" },
-    { icon: "👥", label: "భక్తుల విశ్వాసం" },
-    { icon: "🪔", label: "ప్రామాణిక పూజలు" },
+    { icon: "🙏", label: "ప్రామాణిక వేద పూజా సేవలు" },
+    { icon: "🪔", label: "ధృవీకరించబడిన పండితుల బుకింగ్" },
+    { icon: "📅", label: "సులభమైన ఆన్‌లైన్ పూజా బుకింగ్" },
+    { icon: "🔔", label: "లైవ్ పూజా దర్శనం" },
+    { icon: "🛕", label: "పవిత్ర దేవాలయాలు" },
+    { icon: "📦", label: "ప్రసాదం డెలివరీ" },
+    { icon: "📞", label: "బుకింగ్ సహాయం" },
   ],
   ta: [
-    { icon: "✨", label: "புனித யந்திரம்" },
-    { icon: "🛕", label: "பாதுகாப்பான முன்பதிவு" },
-    { icon: "📹", label: "நேரலை பூஜை தரிசனம்" },
+    { icon: "🙏", label: "வேத முறை பூசை சேவைகள்" },
+    { icon: "🪔", label: "அங்கீகரிக்கப்பட்ட பண்டிதர் முன்பதிவு" },
+    { icon: "📅", label: "எளிய ஆன்லைன் பூசை முன்பதிவு" },
+    { icon: "🔔", label: "நேரலை பூசை தரிசனம்" },
+    { icon: "🛕", label: "புனித திருத்தலங்கள்" },
     { icon: "📦", label: "பிரசாதம் விநியோகம்" },
-    { icon: "👥", label: "பக்தர்களின் நம்பிக்கை" },
-    { icon: "🪔", label: "வேத முறை பூசைகள்" },
+    { icon: "📞", label: "முன்பதிவு உதவி" },
   ],
   en: [
-    { icon: "✨", label: "Sacred Yantra" },
-    { icon: "🛕", label: "Secure Booking" },
-    { icon: "📹", label: "Live Pooja Access" },
+    { icon: "🙏", label: "Authentic Vedic Puja Services" },
+    { icon: "🪔", label: "Book Verified Panditji" },
+    { icon: "📅", label: "Convenient Online Puja Booking" },
+    { icon: "🔔", label: "Live Puja Access" },
+    { icon: "🛕", label: "Explore Sacred Temples" },
     { icon: "📦", label: "Prasad Delivery" },
-    { icon: "👥", label: "Trusted by Devotees" },
-    { icon: "🪔", label: "Authentic Pooja" },
+    { icon: "📞", label: "Booking Assistance" },
   ],
+};
+
+const PANDIT_STATUS: Record<string, string> = {
+  hi: "प्रमाणित",
+  te: "సర్టిఫైడ్",
+  ta: "சான்றளிக்கப்பட்ட",
+  en: "Certified",
 };
 
 const STATS_LABELS: Record<string, { devotees: string; pandits: string; temples: string; rating: string }> = {
   hi: {
-    devotees: "श्रद्धालु जुड़े",
+    devotees: "व्यक्तिगत संकल्प",
     pandits: "प्रमाणित पंडित",
     temples: "सहयोगी मंदिर",
     rating: "औसत रेटिंग",
   },
   te: {
-    devotees: "సేవలు పొందిన భక్తులు",
+    devotees: "వ్యక్తిగత సంకల్పం",
     pandits: "ధృవీకరించబడిన పండితులు",
     temples: "భాగస్వామ్య దేవాలయాలు",
     rating: "సగటు రేటింగ్",
   },
   ta: {
-    devotees: "பயனடைந்த பக்தர்கள்",
+    devotees: "தனிப்பயன் சங்கல்பம்",
     pandits: "சரிபார்க்கப்பட்ட பண்டிதர்கள்",
     temples: "இணைப்பு கோயில்கள்",
     rating: "சராசரி மதிப்பீடு",
   },
   en: {
-    devotees: "Devotees Served",
+    devotees: "Personalized Sankalp",
     pandits: "Verified Pandits",
     temples: "Partner Temples",
     rating: "Average Rating",
@@ -90,7 +101,7 @@ const STATS_LABELS: Record<string, { devotees: string; pandits: string; temples:
 export default function Hero() {
   const router = useRouter();
   const { festivals, hasFestivals, loaded } = useUpcomingFestivals();
-  const { poojas } = useCatalog();
+  const { poojas, temples, testimonials } = useCatalog();
   const { locale, t } = useI18n();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -186,15 +197,27 @@ export default function Hero() {
   const tickerItems = TICKER_ITEMS_MAP[locale] || TICKER_ITEMS_MAP.en;
   const statsLabels = STATS_LABELS[locale] || STATS_LABELS.en;
 
+  const activeTemples = temples.filter((t) => t.active !== false);
+  const templeCount = activeTemples.length > 0 ? `${activeTemples.length}+` : "6+";
+
+  const activeTestimonials = testimonials.filter((t) => t.active !== false);
+  const avgRating =
+    activeTestimonials.length > 0
+      ? (
+          activeTestimonials.reduce((sum, item) => sum + (item.rating || 5), 0) /
+          activeTestimonials.length
+        ).toFixed(1)
+      : "5.0";
+
   // Localized texts with high-quality regional fallbacks
   const fallbackBadge =
     locale === "hi"
-      ? "🪔 60+ प्रमाणित वैदिक सेवाएं"
+      ? "🪔 प्रामाणिक वैदिक पूजा सेवाएं"
       : locale === "te"
-      ? "🪔 60+ ధృవీకరించబడిన సేవలు"
+      ? "🪔 ప్రామాణిక వేద పూజా సేవలు"
       : locale === "ta"
-      ? "🪔 60+ சரிபார்க்கப்பட்ட சேவைகள்"
-      : "🪔 60+ Verified Services";
+      ? "🪔 வேத முறை பூசை சேவைகள்"
+      : "🪔 Authentic Vedic Puja Services";
 
   const fallbackTitle =
     locale === "hi"
@@ -207,12 +230,12 @@ export default function Hero() {
 
   const fallbackSubtitle =
     locale === "hi"
-      ? "प्रमाणित पंडित। वैदिक अनुष्ठान। भारत और दुनिया भर के लाखों श्रद्धालुओं का अटूट विश्वास।"
+      ? "प्रमाणित पंडित। प्रामाणिक वैदिक अनुष्ठान। व्यक्तिगत संकल्प और पावन प्रसाद सेवा।"
       : locale === "te"
-      ? "ధృవీకరించబడిన పండితులు. ప్రామాణిక పూజలు. భారతదేశం మరియు ప్రపంచవ్యాప్తంగా లక్షలాది భక్తుల నమ్మకం."
+      ? "ధృవీకరించబడిన పండితులు. ప్రామాణిక వేద పూజలు. వ్యక్తిగత సంకల్పం మరియు పవిత్ర ప్రసాదం."
       : locale === "ta"
-      ? "சரிபார்க்கப்பட்ட பண்டிதர்கள். வேத முறை பூஜைகள். இந்தியா மற்றும் உலகெங்கிலும் உள்ள லட்சக்கணக்கான பக்தர்களின் நம்பிக்கை."
-      : "Verified pandits. Authentic rituals. Trusted by lakhs of devotees across India & worldwide.";
+      ? "சரிபார்க்கப்பட்ட பண்டிதர்கள். பிரமாணிக வேத சடங்குகள். தனிப்பயன் சங்கல்பம் மற்றும் புனித பிரசாதம்."
+      : "Verified pandits. Authentic Vedic rituals. Dedicated sankalp and sacred prasad delivery.";
 
   const fallbackCta =
     locale === "hi"
@@ -515,26 +538,26 @@ export default function Hero() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 md:gap-8 w-full md:w-auto">
             <div className="flex flex-col">
               <div className="font-display text-base sm:text-lg lg:text-xl font-bold text-saffron-400">
-                1.2L+
+                100%
               </div>
               <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.devotees}</div>
             </div>
             <div className="flex flex-col">
               <div className="font-display text-base sm:text-lg lg:text-xl font-bold text-amber-400">
-                182+
+                {PANDIT_STATUS[locale] || PANDIT_STATUS.en}
               </div>
               <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.pandits}</div>
             </div>
             <div className="flex flex-col">
               <div className="font-display text-base sm:text-lg lg:text-xl font-bold text-saffron-400">
-                151+
+                {templeCount}
               </div>
               <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.temples}</div>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1 font-display text-base sm:text-lg lg:text-xl font-bold text-amber-300">
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                4.8
+                {avgRating}
               </div>
               <div className="text-[10px] sm:text-xs text-slate-400">{statsLabels.rating}</div>
             </div>
@@ -582,16 +605,16 @@ export default function Hero() {
       </div>
 
       {/* Bottom Golden Promotional Ticker Strip */}
-      <div className="relative z-20 w-full overflow-hidden bg-gradient-to-r from-amber-500 via-saffron-500 to-amber-500 py-1.5 sm:py-2 text-slate-950 shadow-inner shrink-0">
-        <div className="flex items-center gap-8 whitespace-nowrap animate-marquee">
-          {[...tickerItems, ...tickerItems, ...tickerItems, ...tickerItems].map((item, idx) => (
+      <div className="relative z-20 w-full overflow-hidden bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 py-1.5 sm:py-2 text-stone-950 shadow-inner shrink-0 border-y border-amber-600/25">
+        <div className="flex w-max items-center animate-marquee hover:[animation-play-state:paused]">
+          {[...tickerItems, ...tickerItems].map((item, idx) => (
             <div
               key={`${item.label}-${idx}`}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide text-slate-950 shrink-0"
+              className="inline-flex items-center gap-2 px-3 sm:px-5 md:px-6 text-xs sm:text-sm font-bold tracking-wide text-stone-950 shrink-0"
             >
-              <span>{item.icon}</span>
+              <span className="text-sm sm:text-base">{item.icon}</span>
               <span>{item.label}</span>
-              <span className="opacity-40 ml-4">•</span>
+              <span className="opacity-35 ml-3 sm:ml-5 text-stone-800">•</span>
             </div>
           ))}
         </div>

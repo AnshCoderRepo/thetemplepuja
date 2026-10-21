@@ -1411,6 +1411,8 @@ export function getLocalizedAddonCategory(addon: Addon, locale?: string): string
 }
 
 export interface Pooja {
+  id?: string;
+  _id?: string;
   slug: string;
   title: string;
   hindiTitle: string;
