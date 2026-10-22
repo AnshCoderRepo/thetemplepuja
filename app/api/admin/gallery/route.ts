@@ -9,6 +9,7 @@ import {
 import {
   extractYouTubeVideoId,
   getYouTubeThumbnailUrl,
+  sanitizeGalleryItem,
   type GalleryItem,
   type GalleryMediaType,
 } from "@/lib/gallery-types";
@@ -278,12 +279,13 @@ export async function POST(req: Request) {
       updatedAt: new Date().toISOString(),
     };
 
-    await saveGalleryItem(item);
-    broadcastRealtime({ type: "catalog_updated", section: "gallery", target: item.id });
+    const sanitizedItem = sanitizeGalleryItem(item);
+    await saveGalleryItem(sanitizedItem);
+    broadcastRealtime({ type: "catalog_updated", section: "gallery", target: sanitizedItem.id });
 
     return NextResponse.json({
       ok: true,
-      item,
+      item: sanitizedItem,
     });
   } catch (err: any) {
     console.error("[admin-gallery] Failed to save gallery item:", err);

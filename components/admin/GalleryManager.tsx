@@ -40,6 +40,36 @@ import {
 import { useCatalog } from "@/features/catalog";
 import GalleryModal from "@/components/gallery/GalleryModal";
 
+function SafeAdminImage({
+  src,
+  alt,
+  fill,
+  sizes,
+  className,
+}: {
+  src: string;
+  alt: string;
+  fill?: boolean;
+  sizes?: string;
+  className?: string;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const isDataUrl = src.startsWith("data:");
+  const effectiveSrc = hasError ? "/festivals/shivratri.jpg" : src;
+
+  return (
+    <Image
+      src={effectiveSrc}
+      alt={alt}
+      fill={fill}
+      sizes={sizes}
+      unoptimized={isDataUrl}
+      className={className}
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 interface GalleryManagerProps {
   token: string;
   onAuthError: () => void;
@@ -670,7 +700,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                   {photos.length >= 3 ? (
                     <div className="grid grid-cols-3 gap-0.5 h-full w-full">
                       <div className="col-span-2 relative h-full">
-                        <Image
+                        <SafeAdminImage
                           src={photos[0]}
                           alt={`${item.title} - 1`}
                           fill
@@ -680,7 +710,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       </div>
                       <div className="col-span-1 grid grid-rows-2 gap-0.5 h-full">
                         <div className="relative h-full">
-                          <Image
+                          <SafeAdminImage
                             src={photos[1]}
                             alt={`${item.title} - 2`}
                             fill
@@ -689,7 +719,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                           />
                         </div>
                         <div className="relative h-full">
-                          <Image
+                          <SafeAdminImage
                             src={photos[2]}
                             alt={`${item.title} - 3`}
                             fill
@@ -707,7 +737,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                   ) : photos.length === 2 ? (
                     <div className="grid grid-cols-2 gap-0.5 h-full w-full">
                       <div className="relative h-full">
-                        <Image
+                        <SafeAdminImage
                           src={photos[0]}
                           alt={`${item.title} - 1`}
                           fill
@@ -716,7 +746,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                         />
                       </div>
                       <div className="relative h-full">
-                        <Image
+                        <SafeAdminImage
                           src={photos[1]}
                           alt={`${item.title} - 2`}
                           fill
@@ -727,7 +757,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                     </div>
                   ) : photos.length === 1 ? (
                     <div className="relative h-full w-full">
-                      <Image
+                      <SafeAdminImage
                         src={photos[0]}
                         alt={item.title}
                         fill
@@ -737,7 +767,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                     </div>
                   ) : (
                     <div className="relative h-full w-full">
-                      <Image
+                      <SafeAdminImage
                         src={item.thumbnailUrl || (item.youtubeVideoId ? getYouTubeThumbnailUrl(item.youtubeVideoId) || "/logo.jpeg" : "/logo.jpeg")}
                         alt={item.title}
                         fill
@@ -1032,7 +1062,7 @@ export default function GalleryManager({ token, onAuthError, onRefresh }: Galler
                       {/* Preview / Upload Box */}
                       {photo ? (
                         <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-saffron-100 bg-slate-100 group">
-                          <Image
+                          <SafeAdminImage
                             src={photo}
                             alt={`Photo ${idx + 1}`}
                             fill

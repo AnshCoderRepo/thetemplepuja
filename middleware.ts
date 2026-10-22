@@ -48,7 +48,7 @@ export function middleware(request: NextRequest) {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://images.unsplash.com https://*.razorpay.com https://www.facebook.com https://facebook.com https://connect.facebook.net https://img.youtube.com https://i.ytimg.com",
+      "img-src 'self' data: blob: https://images.unsplash.com https://*.razorpay.com https://www.facebook.com https://facebook.com https://connect.facebook.net https://img.youtube.com https://i.ytimg.com https://res.cloudinary.com https://images.pexels.com https://cdn.pixabay.com https://upload.wikimedia.org https://*.googleusercontent.com",
       "media-src 'self' https://videos.pexels.com blob: data:",
       "font-src 'self' data:",
       "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://connect.facebook.net https://www.facebook.com https://facebook.com",

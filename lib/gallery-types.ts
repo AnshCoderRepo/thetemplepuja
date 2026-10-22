@@ -52,6 +52,110 @@ export const GALLERY_CATEGORIES = [
 export type GalleryCategory = (typeof GALLERY_CATEGORIES)[number];
 
 /**
+ * Validates and sanitizes a gallery media URL.
+ * Automatically heals known deleted/broken image IDs to authentic verified temple photos.
+ */
+export function sanitizeGalleryMediaUrl(
+  url?: string | null,
+  context?: { title?: string; slug?: string; youtubeId?: string }
+): string | undefined {
+  if (!url || typeof url !== "string") return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+
+  const titleLower = (context?.title || "").toLowerCase();
+  const slugLower = (context?.slug || "").toLowerCase();
+  const isShiva =
+    titleLower.includes("someshwar") ||
+    titleLower.includes("shiva") ||
+    titleLower.includes("mahadev") ||
+    slugLower.includes("someshwar") ||
+    slugLower.includes("shiva");
+  const isGanesh = titleLower.includes("ganesh") || slugLower.includes("ganesh");
+
+  // Check known dead Unsplash photo IDs (removed by Unsplash)
+  if (trimmed.includes("photo-1617694820985-7975d27572d8")) {
+    if (context?.youtubeId) return getYouTubeThumbnailUrl(context.youtubeId) || "/festivals/shivratri.jpg";
+    return "/festivals/shivratri.jpg";
+  }
+
+  if (trimmed.includes("photo-1567591414240-e1c459f0c29f")) {
+    return "/festivals/ganesha-altar.jpg";
+  }
+
+  if (trimmed.includes("photo-1629814249584-b427b00366eb")) {
+    return "/festivals/diwali.jpg";
+  }
+
+  return trimmed;
+}
+
+/**
+ * Sanitizes and normalizes all photos, video thumbnails, and media types for a gallery item.
+ * Preserves user-uploaded data URLs and valid remote storage URLs intact.
+ */
+export function sanitizeGalleryItem(item: GalleryItem): GalleryItem {
+  const context = {
+    title: item.title,
+    slug: item.pujaSlug || item.poojaSlug,
+    youtubeId: item.youtubeVideoId || extractYouTubeVideoId(item.youtubeUrl) || undefined,
+  };
+
+  const isSomeshwar =
+    (item.id === "gal-kalash-sthapana" || (item._id && String(item._id) === "gal-kalash-sthapana")) ||
+    (item.title && item.title.toLowerCase().includes("someshwar")) ||
+    (item.pujaSlug && item.pujaSlug.toLowerCase().includes("someshwar"));
+
+  let images: string[] = [];
+  if (Array.isArray(item.images)) {
+    for (const img of item.images) {
+      const sanitized = sanitizeGalleryMediaUrl(img, context);
+      if (sanitized && !images.includes(sanitized)) images.push(sanitized);
+    }
+  }
+
+  const legacy1 = sanitizeGalleryMediaUrl(item.imageUrl, context);
+  if (legacy1 && !images.includes(legacy1)) images.push(legacy1);
+  const legacy2 = sanitizeGalleryMediaUrl(item.imageUrl2, context);
+  if (legacy2 && !images.includes(legacy2)) images.push(legacy2);
+  const legacy3 = sanitizeGalleryMediaUrl(item.imageUrl3, context);
+  if (legacy3 && !images.includes(legacy3)) images.push(legacy3);
+
+  // If Someshwar Mahadev Abhisek has no images or had dead images, supply authentic Someshwar photos
+  if (isSomeshwar && images.length === 0) {
+    images = [
+      "/festivals/shivratri.jpg",
+      "https://img.youtube.com/vi/P6asWvUY4zY/hqdefault.jpg",
+      "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
+    ];
+  }
+
+  let thumbnailUrl = sanitizeGalleryMediaUrl(item.thumbnailUrl, context);
+  if (!thumbnailUrl || thumbnailUrl.includes("photo-1617694820985-7975d27572d8")) {
+    if (context.youtubeId) {
+      thumbnailUrl = getYouTubeThumbnailUrl(context.youtubeId) || undefined;
+    } else if (images.length > 0) {
+      thumbnailUrl = images[0];
+    }
+  }
+
+  const hasVideos =
+    (Array.isArray(item.videos) && item.videos.length > 0) ||
+    Boolean(item.youtubeUrl || item.youtubeVideoId || item.videoUrl);
+  const mediaType: GalleryMediaType = hasVideos ? (images.length > 0 ? "mixed" : "video") : "photo";
+
+  return {
+    ...item,
+    images: images.length > 0 ? images : undefined,
+    imageUrl: images[0] || item.imageUrl || undefined,
+    imageUrl2: images[1] || item.imageUrl2 || undefined,
+    imageUrl3: images[2] || item.imageUrl3 || undefined,
+    thumbnailUrl: thumbnailUrl || images[0] || undefined,
+    mediaType,
+  };
+}
+
+/**
  * Normalizes and extracts all valid image URLs from a gallery item.
  * Preserves backward compatibility with legacy `imageUrl`, `thumbnailUrl`,
  * and new `images` array / `imageUrl2`, `imageUrl3`.
@@ -61,11 +165,17 @@ export function getGalleryItemImages(item?: Partial<GalleryItem> | null): string
   if (!item) return [];
   const list: string[] = [];
 
+  const context = {
+    title: item.title,
+    slug: item.pujaSlug || item.poojaSlug,
+    youtubeId: item.youtubeVideoId || extractYouTubeVideoId(item.youtubeUrl) || undefined,
+  };
+
   const add = (val?: string | null) => {
     if (!val || typeof val !== "string") return;
-    const clean = val.trim();
-    if (clean && !list.includes(clean)) {
-      list.push(clean);
+    const sanitized = sanitizeGalleryMediaUrl(val, context);
+    if (sanitized && !list.includes(sanitized)) {
+      list.push(sanitized);
     }
   };
 
@@ -84,6 +194,20 @@ export function getGalleryItemImages(item?: Partial<GalleryItem> | null): string
   // 3. Fallback to thumbnailUrl if no photos are present
   if (list.length === 0 && item.thumbnailUrl) {
     add(item.thumbnailUrl);
+  }
+
+  // 4. Special fallback for Someshwar Mahadev Abhisek if photos are still empty
+  const isSomeshwar =
+    (item.id === "gal-kalash-sthapana" || (item._id && String(item._id) === "gal-kalash-sthapana")) ||
+    (item.title && item.title.toLowerCase().includes("someshwar")) ||
+    (item.pujaSlug && item.pujaSlug.toLowerCase().includes("someshwar"));
+  if (isSomeshwar && list.length === 0) {
+    list.push("/festivals/shivratri.jpg");
+    if (context.youtubeId) {
+      const ytThumb = getYouTubeThumbnailUrl(context.youtubeId);
+      if (ytThumb) list.push(ytThumb);
+    }
+    list.push("https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80");
   }
 
   return list;
@@ -479,14 +603,14 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     mediaType: "photo",
     pujaSlug: "rudrabhishek",
     images: [
-      "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=1200&q=80",
+      "/festivals/ganesha-altar.jpg",
       "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1561361058-c24cecae35ca?auto=format&fit=crop&w=800&q=80",
     ],
-    imageUrl: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/festivals/ganesha-altar.jpg",
     imageUrl2: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
-    imageUrl3: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
-    thumbnailUrl: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=600&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1561361058-c24cecae35ca?auto=format&fit=crop&w=800&q=80",
+    thumbnailUrl: "/festivals/ganesha-altar.jpg",
     category: "Puja Ceremonies",
     isActive: true,
     showOnHomepage: true,
@@ -531,16 +655,16 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     mediaType: "mixed",
     pujaSlug: "someshwar-mahadev-abhisek",
     images: [
-      "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
+      "/festivals/shivratri.jpg",
+      "https://img.youtube.com/vi/P6asWvUY4zY/hqdefault.jpg",
       "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
     ],
-    imageUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=1200&q=80",
-    imageUrl2: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
+    imageUrl: "/festivals/shivratri.jpg",
+    imageUrl2: "https://img.youtube.com/vi/P6asWvUY4zY/hqdefault.jpg",
     imageUrl3: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=800&q=80",
     youtubeUrl: "https://www.youtube.com/watch?v=P6asWvUY4zY",
     youtubeVideoId: "P6asWvUY4zY",
-    thumbnailUrl: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=600&q=80",
+    thumbnailUrl: "https://img.youtube.com/vi/P6asWvUY4zY/hqdefault.jpg",
     category: "Puja Ceremonies",
     isActive: true,
     showOnHomepage: true,
@@ -557,11 +681,11 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     mediaType: "mixed",
     images: [
       "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
+      "/sample-puja.jpg",
       "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
     ],
     imageUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1200&q=80",
-    imageUrl2: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=800&q=80",
+    imageUrl2: "/sample-puja.jpg",
     imageUrl3: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
     youtubeUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk",
     youtubeVideoId: "kJQP7kiw5Fk",
@@ -584,12 +708,12 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     mediaType: "photo",
     images: [
       "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
     ],
     imageUrl: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=1200&q=80",
-    imageUrl2: "https://images.unsplash.com/photo-1617694820985-7975d27572d8?auto=format&fit=crop&w=800&q=80",
-    imageUrl3: "https://images.unsplash.com/photo-1567591414240-e1c459f0c29f?auto=format&fit=crop&w=800&q=80",
+    imageUrl2: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+    imageUrl3: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
     thumbnailUrl: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?auto=format&fit=crop&w=600&q=80",
     category: "Puja Samagri",
     isActive: true,
@@ -606,14 +730,14 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     description: "Heartfelt Maha Aarti with brass deepams, surrounded by chanting devotees offering heartfelt prayers for peace, health, and family prosperity.",
     mediaType: "photo",
     images: [
-      "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=1200&q=80",
+      "/festivals/diwali.jpg",
       "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
       "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
     ],
-    imageUrl: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/festivals/diwali.jpg",
     imageUrl2: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
     imageUrl3: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
-    thumbnailUrl: "https://images.unsplash.com/photo-1629814249584-b427b00366eb?auto=format&fit=crop&w=600&q=80",
+    thumbnailUrl: "/festivals/diwali.jpg",
     category: "Puja Ceremonies",
     isActive: true,
     showOnHomepage: true,
