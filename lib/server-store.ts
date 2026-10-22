@@ -540,6 +540,22 @@ export async function getAllUsers(): Promise<UserProfile[]> {
       }
     }
   }
+  // Cleanse duplicate bookings per user record if any exist
+  for (const u of users) {
+    if (Array.isArray(u.bookings)) {
+      const seenBookingIds = new Set<string>();
+      const cleanBookings: BookingRecord[] = [];
+      for (const b of u.bookings) {
+        if (b && b.bookingId) {
+          if (seenBookingIds.has(b.bookingId)) continue;
+          seenBookingIds.add(b.bookingId);
+        }
+        cleanBookings.push(b);
+      }
+      u.bookings = cleanBookings;
+    }
+  }
+
   return users;
 }
 

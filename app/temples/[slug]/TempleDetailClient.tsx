@@ -68,7 +68,7 @@ export default function TempleDetailClient({
         content_type: "temple",
       });
     }
-  }, [temple?.slug, temple?.name]);
+  }, [temple]);
 
   const allPoojas = useMemo(() => {
     if (catalogPoojas && catalogPoojas.length > 0) return catalogPoojas;

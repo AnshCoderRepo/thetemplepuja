@@ -763,8 +763,8 @@ export default function CustomerProfileModal({
                     <p className="text-ink-soft py-3 text-center">No bookings recorded yet for this devotee.</p>
                   ) : (
                     <div className="divide-y divide-saffron-50">
-                      {bookings.slice(-3).reverse().map((b) => (
-                        <div key={b.bookingId} className="py-2.5 flex items-center justify-between">
+                      {bookings.slice(-3).reverse().map((b, idx) => (
+                        <div key={`${b.bookingId || "booking"}-${idx}`} className="py-2.5 flex items-center justify-between">
                           <div>
                             <p className="font-bold text-ink">🪔 {b.poojaTitle}</p>
                             <p className="text-[11px] text-ink-soft">Scheduled: {b.date} · {b.time}</p>
@@ -797,9 +797,9 @@ export default function CustomerProfileModal({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {bookings.map((b) => (
+                  {bookings.map((b, idx) => (
                     <div
-                      key={b.bookingId}
+                      key={`${b.bookingId || "booking"}-${idx}`}
                       className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-2xs space-y-3 text-xs"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2 border-b border-saffron-50 pb-2.5">
@@ -862,9 +862,9 @@ export default function CustomerProfileModal({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {bookings.map((b) => (
+                  {bookings.map((b, idx) => (
                     <div
-                      key={b.bookingId}
+                      key={`${b.bookingId || "order"}-${idx}`}
                       className="rounded-2xl border border-saffron-100 bg-white p-4 shadow-2xs space-y-2 text-xs"
                     >
                       <div className="flex justify-between items-center">
@@ -1027,8 +1027,8 @@ export default function CustomerProfileModal({
             <div className="space-y-4 text-xs">
               <h4 className="font-bold text-ink text-sm">Official Receipts ({bookings.length})</h4>
               <div className="space-y-2.5">
-                {bookings.map((b) => (
-                  <div key={b.bookingId} className="rounded-xl border border-saffron-100 bg-white p-3.5 flex justify-between items-center shadow-2xs">
+                {bookings.map((b, idx) => (
+                  <div key={`${b.bookingId || "receipt"}-${idx}`} className="rounded-xl border border-saffron-100 bg-white p-3.5 flex justify-between items-center shadow-2xs">
                     <div>
                       <p className="font-bold text-ink">🧾 {b.receiptNumber || `RCPT-${b.bookingId}`}</p>
                       <p className="text-ink-soft">{b.poojaTitle} · {formatINR(b.amount)}</p>

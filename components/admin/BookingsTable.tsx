@@ -175,11 +175,16 @@ export default function BookingsTable({
     }
   };
 
-  // Flatten all bookings
+  // Flatten all bookings (deduplicating identical booking records)
   const allBookings = useMemo(() => {
     const list: FlatBooking[] = [];
+    const seenBookingIds = new Set<string>();
     for (const u of users) {
       for (const b of u.bookings) {
+        if (b.bookingId) {
+          if (seenBookingIds.has(b.bookingId)) continue;
+          seenBookingIds.add(b.bookingId);
+        }
         list.push({ booking: b, user: u });
       }
     }
@@ -406,12 +411,12 @@ export default function BookingsTable({
                   </td>
                 </tr>
               ) : (
-                paginated.map(({ booking, user }) => {
+                paginated.map(({ booking, user }, index) => {
                   const devoteeInfo = getBookingDevoteeDisplay(booking, user);
 
                   return (
                     <tr
-                      key={booking.bookingId}
+                      key={`${user.id || user.phone || "user"}-${booking.bookingId || "bk"}-${index}`}
                       className="hover:bg-orange-50/30 transition-colors"
                     >
                       {/* 1. Booking ID */}
@@ -781,9 +786,9 @@ export default function BookingsTable({
                     Attached Videos in Devotee Account ({attachedVideos.length})
                   </span>
                   <div className="space-y-2">
-                    {attachedVideos.map((v) => (
+                    {attachedVideos.map((v, vIdx) => (
                       <div
-                        key={v.id}
+                        key={v.id || `video-${vIdx}`}
                         className="rounded-xl border border-saffron-100 bg-white p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
                       >
                         <div className="min-w-0">

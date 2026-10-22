@@ -31,7 +31,20 @@ export async function fetchAllUsers(
     if (res.status === 401) return null;
     if (!res.ok) throw new Error("users request failed");
     const body = (await res.json()) as { users?: UserProfile[] };
-    if (Array.isArray(body.users)) return body.users;
+    if (Array.isArray(body.users)) {
+      for (const u of body.users) {
+        if (Array.isArray(u.bookings)) {
+          const seen = new Set<string>();
+          u.bookings = u.bookings.filter((b) => {
+            if (!b || !b.bookingId) return true;
+            if (seen.has(b.bookingId)) return false;
+            seen.add(b.bookingId);
+            return true;
+          });
+        }
+      }
+      return body.users;
+    }
     throw new Error("unexpected users payload");
   } catch {
     return getUsers();

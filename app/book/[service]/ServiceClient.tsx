@@ -69,8 +69,21 @@ function ServiceInner({ service }: { service: string }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isMainCtaInView, setIsMainCtaInView] = useState(true);
   const mainBookingCtaRef = useRef<HTMLDivElement | null>(null);
+  const [siteContent, setSiteContent] = useState(() => getCatalogSiteContent());
   const locTitle = pooja ? getLocalizedPoojaTitle(pooja, locale) : "";
   const schedule = pooja ? getPoojaSchedule(pooja) : null;
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSiteContent(getCatalogSiteContent());
+    };
+    window.addEventListener("catalog-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("catalog-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const element = mainBookingCtaRef.current;
@@ -104,7 +117,7 @@ function ServiceInner({ service }: { service: string }) {
         currency: "INR",
       });
     }
-  }, [locTitle, pooja?.slug, pooja?.price]);
+  }, [locTitle, pooja]);
 
   if (pooja === undefined) {
     return (
@@ -153,19 +166,7 @@ function ServiceInner({ service }: { service: string }) {
     openBooking(pooja.slug);
   };
 
-  const [siteContent, setSiteContent] = useState(() => getCatalogSiteContent());
 
-  useEffect(() => {
-    const handleUpdate = () => {
-      setSiteContent(getCatalogSiteContent());
-    };
-    window.addEventListener("catalog-updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-    return () => {
-      window.removeEventListener("catalog-updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
-  }, []);
 
   const hasLiveStream = isPoojaLiveStreamAvailable(pooja);
   const isOnline = pooja.online !== false;

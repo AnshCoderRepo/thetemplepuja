@@ -198,7 +198,7 @@ export default function ContinueBookingSection({
         ref={scrollContainerRef}
         className="flex flex-row items-stretch gap-3.5 sm:gap-4 overflow-x-auto pb-2.5 pt-1 scroll-smooth snap-x snap-mandatory no-scrollbar w-full"
       >
-        {visibleDrafts.map((draft) => {
+        {visibleDrafts.map((draft, idx) => {
           const isPaymentPending =
             draft.status === "pending_payment" ||
             draft.status === "payment_processing";
@@ -207,7 +207,7 @@ export default function ContinueBookingSection({
 
           return (
             <div
-              key={draft.bookingId}
+              key={`${draft.bookingId || "draft"}-${idx}`}
               onClick={() => handleResume(draft)}
               role="button"
               tabIndex={0}
