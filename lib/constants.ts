@@ -23,6 +23,10 @@ export const STORAGE_KEYS = {
   CATALOG_BLOGS: "ttp_catalog_blogs_v1",
   /** Catalog override — testimonials. */
   CATALOG_TESTIMONIALS: "ttp_catalog_testimonials_v1",
+  /** Catalog override — faqs. */
+  CATALOG_FAQS: "ttp_catalog_faqs_v1",
+  /** Catalog override — website site content (CMS). */
+  CATALOG_SITE_CONTENT: "ttp_catalog_site_content_v1",
   /** Incomplete booking drafts for resume checkout. */
   INCOMPLETE_BOOKINGS: "ttp_incomplete_bookings_v1",
   /** Active in-progress booking session for refresh persistence. */

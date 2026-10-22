@@ -317,37 +317,50 @@ export default function TemplesManager({
       setError("Please enter English Temple Name or Description first to translate.");
       return;
     }
+    const srcName = draft.name.trim() || draft.hindiName.trim();
+    if (!srcName && !draft.description.trim() && !draft.hindiDescription.trim()) {
+      setError("Please enter the Temple Name or Description in at least one language first.");
+      return;
+    }
+
     setIsTranslating(true);
     setError("");
     try {
-      if (draft.name.trim()) {
+      if (srcName) {
+        const sourceLang = draft.name.trim() ? "en" : "hi";
+        const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
         const res = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: draft.name.trim(), targets: ["hi", "te", "ta"] }),
+          body: JSON.stringify({ text: srcName, source: sourceLang, targets }),
         });
         const data = await res.json();
         if (data.ok && data.translations) {
           setDraft((prev) => ({
             ...prev,
-            hindiName: data.translations.hi || prev.hindiName,
+            name: sourceLang === "en" ? srcName : data.translations.en || prev.name || srcName,
+            hindiName: sourceLang === "hi" ? srcName : data.translations.hi || prev.hindiName || srcName,
             teluguName: data.translations.te || prev.teluguName,
             tamilName: data.translations.ta || prev.tamilName,
           }));
         }
       }
 
-      if (draft.description.trim()) {
+      const srcDesc = draft.description.trim() || draft.hindiDescription.trim();
+      if (srcDesc) {
+        const sourceLang = draft.description.trim() ? "en" : "hi";
+        const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
         const resDesc = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: draft.description.trim(), targets: ["hi", "te", "ta"] }),
+          body: JSON.stringify({ text: srcDesc, source: sourceLang, targets }),
         });
         const dataDesc = await resDesc.json();
         if (dataDesc.ok && dataDesc.translations) {
           setDraft((prev) => ({
             ...prev,
-            hindiDescription: dataDesc.translations.hi || prev.hindiDescription,
+            description: sourceLang === "en" ? srcDesc : dataDesc.translations.en || prev.description || srcDesc,
+            hindiDescription: sourceLang === "hi" ? srcDesc : dataDesc.translations.hi || prev.hindiDescription || srcDesc,
           }));
         }
       }
@@ -382,7 +395,7 @@ export default function TemplesManager({
         }
       }
 
-      showNotification("✨ Temple details translated to Hindi, Telugu, and Tamil!");
+      showNotification("✨ Temple details translated across all languages!");
     } catch {
       setError("Could not complete automatic translation.");
     } finally {

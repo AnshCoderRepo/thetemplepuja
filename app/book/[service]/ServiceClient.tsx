@@ -19,6 +19,7 @@ import {
 import { useBookingModal, useI18n } from "@/components/providers";
 import { ImagePreviewModal, LanguageToggle, PoojaImage } from "@/components/common";
 import { PoojaCatalog, useCatalog } from "@/features/catalog";
+import { getCatalogSiteContent } from "@/lib/catalog";
 import { SITE_CONFIG } from "@/lib/config";
 import {
   DEMO_POOJA,
@@ -152,59 +153,102 @@ function ServiceInner({ service }: { service: string }) {
     openBooking(pooja.slug);
   };
 
+  const [siteContent, setSiteContent] = useState(() => getCatalogSiteContent());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSiteContent(getCatalogSiteContent());
+    };
+    window.addEventListener("catalog-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("catalog-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
   const hasLiveStream = isPoojaLiveStreamAvailable(pooja);
   const isOnline = pooja.online !== false;
 
-  const assurances = [
-    {
-      id: "purohit",
-      icon: ShieldCheck,
-      text: t("service.assurance1"),
-    },
-    {
-      id: "sankalp",
-      icon: CheckCircle2,
-      text: t("service.assurance2"),
-    },
-    ...(hasLiveStream
-      ? [
-          {
-            id: "livestream",
-            icon: Video,
-            text: t("service.assurance3"),
-          },
-        ]
-      : isOnline
-      ? [
-          {
-            id: "recorded",
-            icon: Video,
-            text: t("service.assuranceRecorded"),
-          },
-        ]
+  const customAssuranceItems = siteContent?.vedicAssurances?.items;
+  const assurances =
+    customAssuranceItems && customAssuranceItems.length > 0
+      ? customAssuranceItems
+          .filter((item) => item.active !== false)
+          .map((item) => {
+            const locText =
+              locale === "hi"
+                ? item.hindiTitle || item.title
+                : locale === "te"
+                ? item.teluguTitle || item.title
+                : locale === "ta"
+                ? item.tamilTitle || item.title
+                : item.title;
+            const iconComponent =
+              item.icon === "video" || item.icon === "📹"
+                ? Video
+                : item.icon === "shield" || item.icon === "🛡️"
+                ? ShieldCheck
+                : CheckCircle2;
+            return {
+              id: item.id || item.title,
+              icon: iconComponent,
+              text: locText,
+            };
+          })
       : [
           {
-            id: "inperson",
-            icon: CheckCircle2,
-            text: t("service.assuranceInPerson"),
+            id: "purohit",
+            icon: ShieldCheck,
+            text: t("service.assurance1"),
           },
-        ]),
-    {
-      id: "prasad",
-      icon: CheckCircle2,
-      text: t("service.assurance4"),
-    },
-  ];
+          {
+            id: "sankalp",
+            icon: CheckCircle2,
+            text: t("service.assurance2"),
+          },
+          ...(hasLiveStream
+            ? [
+                {
+                  id: "livestream",
+                  icon: Video,
+                  text: t("service.assurance3"),
+                },
+              ]
+            : isOnline
+            ? [
+                {
+                  id: "recorded",
+                  icon: Video,
+                  text: t("service.assuranceRecorded"),
+                },
+              ]
+            : [
+                {
+                  id: "inperson",
+                  icon: CheckCircle2,
+                  text: t("service.assuranceInPerson"),
+                },
+              ]),
+          {
+            id: "prasad",
+            icon: CheckCircle2,
+            text: t("service.assurance4"),
+          },
+        ];
+
+  const assurancesHeading =
+    siteContent?.vedicAssurances?.heading || t("service.assurancesHeading");
 
   const renderAssurancesSection = (className = "") => (
     <div
       className={`rounded-3xl border border-saffron-200/90 bg-white p-4 sm:p-5 shadow-card space-y-3 ${className}`}
-      aria-label={t("service.assurancesHeading")}
+      aria-label={assurancesHeading}
     >
       <div className="flex items-center justify-between gap-2 border-b border-saffron-100 pb-2.5">
         <span className="text-[11px] font-bold uppercase tracking-wider text-saffron-900 flex items-center gap-1.5">
           <ShieldCheck className="h-4 w-4 text-saffron-600 shrink-0" />
-          {t("service.assurancesHeading")}
+          {assurancesHeading}
         </span>
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 shrink-0">
           <CheckCircle2 className="h-3 w-3 text-emerald-600" />

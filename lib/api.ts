@@ -11,6 +11,8 @@ import {
   getCatalogTemples,
   getCatalogBlogs,
   getCatalogTestimonials,
+  getCatalogFaqs,
+  getCatalogSiteContent,
 } from "./catalog";
 import type { BlogPost } from "./blog-data";
 import {
@@ -47,6 +49,9 @@ import type {
   PlatformSettings,
 } from "./chatbot-types";
 
+import type { FaqItem } from "./data";
+import type { SiteContent } from "./cms-types";
+
 export interface ResolvedCatalog {
   poojas: Pooja[];
   events: UpcomingEventSpec[];
@@ -59,6 +64,8 @@ export interface ResolvedCatalog {
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
+  faqs?: FaqItem[];
+  siteContent?: SiteContent;
 }
 
 const DEFAULT_CONFIG = { email: "admin@thetemplepuja.com", isDefault: true };
@@ -139,6 +146,8 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
             temples: body.temples ?? getCatalogTemples(),
             blogs: body.blogs ?? getCatalogBlogs(),
             testimonials: body.testimonials ?? getCatalogTestimonials(),
+            faqs: body.faqs ?? getCatalogFaqs(),
+            siteContent: body.siteContent ?? getCatalogSiteContent(),
           };
         }
         throw new Error("unexpected catalog payload");
@@ -158,6 +167,8 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
           temples: getCatalogTemples(),
           blogs: getCatalogBlogs(),
           testimonials: getCatalogTestimonials(),
+          faqs: getCatalogFaqs(),
+          siteContent: getCatalogSiteContent(),
         };
       }
     })();
@@ -193,7 +204,9 @@ export type CatalogSection =
   | "poojaDates"
   | "temples"
   | "blogs"
-  | "testimonials";
+  | "testimonials"
+  | "faqs"
+  | "siteContent";
 
 export async function saveCatalogSection(
   section: CatalogSection,

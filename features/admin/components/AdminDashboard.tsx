@@ -23,6 +23,8 @@ import GalleryManager from "@/components/admin/GalleryManager";
 import CustomerProfileModal, { type ProfileTab } from "@/components/admin/CustomerProfileModal";
 import RefundRequestsManager from "@/components/admin/RefundRequestsManager";
 import TestimonialsManager from "@/components/admin/TestimonialsManager";
+import FaqManager from "@/components/admin/FaqManager";
+import CmsManager from "@/components/admin/CmsManager";
 
 interface AdminDashboardProps {
   tab: AdminTab;
@@ -212,6 +214,22 @@ export default function AdminDashboard({
 
           {tab === "testimonials" && (
             <TestimonialsManager
+              token={token || ""}
+              onAuthError={onAuthError}
+              onRefresh={onRefresh}
+            />
+          )}
+
+          {tab === "faq" && (
+            <FaqManager
+              token={token || ""}
+              onAuthError={onAuthError}
+              onRefresh={onRefresh}
+            />
+          )}
+
+          {tab === "cms" && (
+            <CmsManager
               token={token || ""}
               onAuthError={onAuthError}
               onRefresh={onRefresh}

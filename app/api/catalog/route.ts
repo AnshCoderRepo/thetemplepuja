@@ -26,6 +26,8 @@ const SECTIONS: CatalogOverrideSection[] = [
   "chatbotSettings",
   "platformSettings",
   "testimonials",
+  "faqs",
+  "siteContent",
 ];
 
 function bearerToken(req: NextRequest): string | null {
@@ -101,6 +103,29 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       };
     }).filter((b: any) => b.title && b.slug);
+  }
+
+  // Validate and sanitize faqs if provided
+  if (Array.isArray(overrides.faqs)) {
+    overrides.faqs = overrides.faqs
+      .map((f: any, idx: number) => {
+        const cleanQ = String(f.q || "").trim();
+        const cleanA = String(f.a || "").trim();
+        return {
+          id: f.id || `faq-${Date.now()}-${idx}`,
+          q: cleanQ,
+          a: cleanA,
+          hindiQ: f.hindiQ ? String(f.hindiQ).trim() : undefined,
+          hindiA: f.hindiA ? String(f.hindiA).trim() : undefined,
+          teluguQ: f.teluguQ ? String(f.teluguQ).trim() : undefined,
+          teluguA: f.teluguA ? String(f.teluguA).trim() : undefined,
+          tamilQ: f.tamilQ ? String(f.tamilQ).trim() : undefined,
+          tamilA: f.tamilA ? String(f.tamilA).trim() : undefined,
+          order: typeof f.order === "number" ? f.order : idx + 1,
+          active: f.active !== false,
+        };
+      })
+      .filter((f: any) => f.q && f.a);
   }
 
   if (Object.keys(overrides).length > 0) {

@@ -34,6 +34,8 @@ export function normalizeAdminTab(section?: string | null): AdminTab {
   if (s === "addons" || s === "addon" || s === "chadhava" || s === "offerings" || s === "chadhava-offerings") return "addons";
   if (s === "gallery" || s === "our-gallery" || s === "photos" || s === "videos" || s === "media") return "gallery";
   if (s === "testimonials" || s === "reviews" || s === "feedback") return "testimonials";
+  if (s === "faq" || s === "faqs" || s === "questions" || s === "help" || s === "help-center") return "faq";
+  if (s === "cms" || s === "content" || s === "website-content" || s === "site-content") return "cms";
   if (s === "account" || s === "settings" || s === "profile") return "account";
   return "analytics";
 }

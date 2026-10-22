@@ -140,6 +140,7 @@ export default function DevoteeProfileView() {
             phone={profile.phone}
             contained={false}
             defaultExpanded={true}
+            showAll={true}
             className="mt-6"
           />
 
@@ -241,7 +242,7 @@ export default function DevoteeProfileView() {
         </>
       ) : (
         <>
-          <ContinueBookingSection contained={false} defaultExpanded={true} className="mb-6" />
+          <ContinueBookingSection contained={false} defaultExpanded={true} showAll={true} className="mb-6" />
           <DevoteeLookupGate
             inputPhone={inputPhone}
             onPhoneChange={setInputPhone}

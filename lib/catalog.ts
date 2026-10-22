@@ -13,6 +13,8 @@ import {
   poojas as staticPoojas,
   testimonials as staticTestimonials,
   upcomingEventSpecs as staticEventSpecs,
+  faqs as staticFaqs,
+  type FaqItem,
   DEMO_POOJA,
   isDemoSlug,
   resolvePoojaTemple,
@@ -24,6 +26,7 @@ import {
   type Testimonial,
   type UpcomingEventSpec,
 } from "./data";
+import { DEFAULT_SITE_CONTENT, type SiteContent } from "./cms-types";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
 import { STORAGE_KEYS } from "./constants";
 
@@ -35,6 +38,8 @@ const POOJA_DATES_KEY = STORAGE_KEYS.CATALOG_POOJA_DATES;
 const TEMPLES_KEY = STORAGE_KEYS.CATALOG_TEMPLES;
 const BLOGS_KEY = STORAGE_KEYS.CATALOG_BLOGS;
 const TESTIMONIALS_KEY = STORAGE_KEYS.CATALOG_TESTIMONIALS;
+const FAQS_KEY = STORAGE_KEYS.CATALOG_FAQS;
+const SITE_CONTENT_KEY = STORAGE_KEYS.CATALOG_SITE_CONTENT;
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -202,6 +207,34 @@ export function saveCatalogTestimonials(testimonials: Testimonial[]): void {
 
 export function resetCatalogTestimonials(): void {
   clear(TESTIMONIALS_KEY);
+}
+
+// ===================== FAQS =====================
+
+export function getCatalogFaqs(): FaqItem[] {
+  return read<FaqItem[]>(FAQS_KEY) ?? staticFaqs;
+}
+
+export function saveCatalogFaqs(faqs: FaqItem[]): void {
+  write(FAQS_KEY, faqs);
+}
+
+export function resetCatalogFaqs(): void {
+  clear(FAQS_KEY);
+}
+
+// ===================== SITE CONTENT (CMS) =====================
+
+export function getCatalogSiteContent(): SiteContent {
+  return read<SiteContent>(SITE_CONTENT_KEY) ?? DEFAULT_SITE_CONTENT;
+}
+
+export function saveCatalogSiteContent(content: SiteContent): void {
+  write(SITE_CONTENT_KEY, content);
+}
+
+export function resetCatalogSiteContent(): void {
+  clear(SITE_CONTENT_KEY);
 }
 
 

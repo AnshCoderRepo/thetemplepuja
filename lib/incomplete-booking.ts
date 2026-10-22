@@ -166,7 +166,17 @@ export function saveIncompleteBooking(draft: IncompleteBooking): void {
   if (typeof window === "undefined" || !draft.bookingId || !draft.poojaSlug) return;
 
   try {
-    const existing = getIncompleteBookings(draft.phone);
+    let existing: IncompleteBooking[] = [];
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEYS.INCOMPLETE_BOOKINGS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) existing = parsed;
+      }
+    } catch {
+      existing = [];
+    }
+
     const updatedDraft: IncompleteBooking = {
       ...draft,
       status: draft.status || "checkout_incomplete",
@@ -176,7 +186,9 @@ export function saveIncompleteBooking(draft: IncompleteBooking): void {
 
     const map = new Map<string, IncompleteBooking>();
     for (const item of existing) {
-      map.set(item.bookingId, item);
+      if (item && item.bookingId) {
+        map.set(item.bookingId, item);
+      }
     }
     // Update or append
     map.set(updatedDraft.bookingId, updatedDraft);

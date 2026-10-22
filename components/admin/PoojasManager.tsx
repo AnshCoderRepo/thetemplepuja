@@ -815,27 +815,31 @@ export default function PoojasManager({
   };
 
   const translateTitleOnly = async () => {
-    if (!draft.title.trim()) {
-      setError("Please enter the English Puja Name first to translate.");
+    const srcTitle = draft.title.trim() || draft.hindiTitle.trim() || draft.teluguTitle.trim() || draft.tamilTitle.trim();
+    if (!srcTitle) {
+      setError("Please enter the Puja Name in at least one language first to translate.");
       return;
     }
+    const sourceLang = draft.title.trim() ? "en" : draft.hindiTitle.trim() ? "hi" : draft.teluguTitle.trim() ? "te" : "ta";
+    const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
     setTranslatingTarget("title");
     setError("");
     try {
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: draft.title.trim(), targets: ["hi", "te", "ta"] }),
+        body: JSON.stringify({ text: srcTitle, source: sourceLang, targets }),
       });
       const data = await res.json();
       if (data.ok && data.translations) {
         setDraft((prev) => ({
           ...prev,
-          hindiTitle: data.translations.hi || prev.hindiTitle,
-          teluguTitle: data.translations.te || prev.teluguTitle,
-          tamilTitle: data.translations.ta || prev.tamilTitle,
+          title: sourceLang === "en" ? srcTitle : data.translations.en || prev.title || srcTitle,
+          hindiTitle: sourceLang === "hi" ? srcTitle : data.translations.hi || prev.hindiTitle || srcTitle,
+          teluguTitle: sourceLang === "te" ? srcTitle : data.translations.te || prev.teluguTitle || srcTitle,
+          tamilTitle: sourceLang === "ta" ? srcTitle : data.translations.ta || prev.tamilTitle || srcTitle,
         }));
-        showNotification("✨ Puja Name translated to Hindi, Telugu, and Tamil!");
+        showNotification("✨ Puja Name translated across all languages!");
       } else {
         setError(data.error || "Failed to translate Puja Name.");
       }
@@ -848,27 +852,31 @@ export default function PoojasManager({
   };
 
   const translateDescriptionOnly = async () => {
-    if (!draft.description.trim()) {
-      setError("Please enter the English Spiritual Description first to translate.");
+    const srcDesc = draft.description.trim() || draft.hindiDescription.trim() || draft.teluguDescription.trim() || draft.tamilDescription.trim();
+    if (!srcDesc) {
+      setError("Please enter the Spiritual Description in at least one language first to translate.");
       return;
     }
+    const sourceLang = draft.description.trim() ? "en" : draft.hindiDescription.trim() ? "hi" : draft.teluguDescription.trim() ? "te" : "ta";
+    const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
     setTranslatingTarget("description");
     setError("");
     try {
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: draft.description.trim(), targets: ["hi", "te", "ta"] }),
+        body: JSON.stringify({ text: srcDesc, source: sourceLang, targets }),
       });
       const data = await res.json();
       if (data.ok && data.translations) {
         setDraft((prev) => ({
           ...prev,
-          hindiDescription: data.translations.hi || prev.hindiDescription,
-          teluguDescription: data.translations.te || prev.teluguDescription,
-          tamilDescription: data.translations.ta || prev.tamilDescription,
+          description: sourceLang === "en" ? srcDesc : data.translations.en || prev.description || srcDesc,
+          hindiDescription: sourceLang === "hi" ? srcDesc : data.translations.hi || prev.hindiDescription || srcDesc,
+          teluguDescription: sourceLang === "te" ? srcDesc : data.translations.te || prev.teluguDescription || srcDesc,
+          tamilDescription: sourceLang === "ta" ? srcDesc : data.translations.ta || prev.tamilDescription || srcDesc,
         }));
-        showNotification("✨ Spiritual Description translated to Hindi, Telugu, and Tamil!");
+        showNotification("✨ Spiritual Description translated across all languages!");
       } else {
         setError(data.error || "Failed to translate description.");
       }
@@ -881,27 +889,38 @@ export default function PoojasManager({
   };
 
   const translateBenefitsOnly = async () => {
-    if (draft.benefits.length === 0) {
-      setError("Please add at least one Devotee Benefit in English first to translate.");
+    const hasEn = draft.benefits.filter(Boolean).length > 0;
+    const hasHi = draft.hindiBenefits.filter(Boolean).length > 0;
+    const hasTe = draft.teluguBenefits.filter(Boolean).length > 0;
+    const hasTa = draft.tamilBenefits.filter(Boolean).length > 0;
+
+    if (!hasEn && !hasHi && !hasTe && !hasTa) {
+      setError("Please add at least one Devotee Benefit in any language first to translate.");
       return;
     }
+
+    const sourceLang = hasEn ? "en" : hasHi ? "hi" : hasTe ? "te" : "ta";
+    const srcTexts = hasEn ? draft.benefits : hasHi ? draft.hindiBenefits : hasTe ? draft.teluguBenefits : draft.tamilBenefits;
+    const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
+
     setTranslatingTarget("benefits");
     setError("");
     try {
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texts: draft.benefits, targets: ["hi", "te", "ta"] }),
+        body: JSON.stringify({ texts: srcTexts, source: sourceLang, targets }),
       });
       const data = await res.json();
       if (data.ok && data.translations) {
         setDraft((prev) => ({
           ...prev,
-          hindiBenefits: data.translations.hi || prev.hindiBenefits,
-          teluguBenefits: data.translations.te || prev.teluguBenefits,
-          tamilBenefits: data.translations.ta || prev.tamilBenefits,
+          benefits: sourceLang === "en" ? srcTexts : data.translations.en || prev.benefits || srcTexts,
+          hindiBenefits: sourceLang === "hi" ? srcTexts : data.translations.hi || prev.hindiBenefits || srcTexts,
+          teluguBenefits: sourceLang === "te" ? srcTexts : data.translations.te || prev.teluguBenefits || srcTexts,
+          tamilBenefits: sourceLang === "ta" ? srcTexts : data.translations.ta || prev.tamilBenefits || srcTexts,
         }));
-        showNotification("✨ Devotee Benefits translated to Hindi, Telugu, and Tamil!");
+        showNotification("✨ Devotee Benefits translated across all languages!");
       } else {
         setError(data.error || "Failed to translate benefits.");
       }
@@ -914,68 +933,84 @@ export default function PoojasManager({
   };
 
   const autoTranslateAll = async () => {
-    if (!draft.title.trim() && !draft.description.trim()) {
-      setError("Please enter the English Title or Description first to translate.");
+    const srcTitle = draft.title.trim() || draft.hindiTitle.trim() || draft.teluguTitle.trim() || draft.tamilTitle.trim();
+    const srcDesc = draft.description.trim() || draft.hindiDescription.trim() || draft.teluguDescription.trim() || draft.tamilDescription.trim();
+
+    if (!srcTitle && !srcDesc) {
+      setError("Please enter the Title or Description in at least one language first to translate.");
       return;
     }
+
     setTranslatingTarget("all");
     setError("");
     try {
       // 1. Translate Title
-      if (draft.title.trim()) {
+      if (srcTitle) {
+        const sourceLang = draft.title.trim() ? "en" : draft.hindiTitle.trim() ? "hi" : draft.teluguTitle.trim() ? "te" : "ta";
+        const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
         const resTitle = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: draft.title.trim(), targets: ["hi", "te", "ta"] }),
+          body: JSON.stringify({ text: srcTitle, source: sourceLang, targets }),
         });
         const dataTitle = await resTitle.json();
         if (dataTitle.ok && dataTitle.translations) {
           setDraft((prev) => ({
             ...prev,
-            hindiTitle: dataTitle.translations.hi || prev.hindiTitle,
-            teluguTitle: dataTitle.translations.te || prev.teluguTitle,
-            tamilTitle: dataTitle.translations.ta || prev.tamilTitle,
+            title: sourceLang === "en" ? srcTitle : dataTitle.translations.en || prev.title || srcTitle,
+            hindiTitle: sourceLang === "hi" ? srcTitle : dataTitle.translations.hi || prev.hindiTitle || srcTitle,
+            teluguTitle: sourceLang === "te" ? srcTitle : dataTitle.translations.te || prev.teluguTitle || srcTitle,
+            tamilTitle: sourceLang === "ta" ? srcTitle : dataTitle.translations.ta || prev.tamilTitle || srcTitle,
           }));
         }
       }
 
       // 2. Translate Description
-      if (draft.description.trim()) {
+      if (srcDesc) {
+        const sourceLang = draft.description.trim() ? "en" : draft.hindiDescription.trim() ? "hi" : draft.teluguDescription.trim() ? "te" : "ta";
+        const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
         const resDesc = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: draft.description.trim(), targets: ["hi", "te", "ta"] }),
+          body: JSON.stringify({ text: srcDesc, source: sourceLang, targets }),
         });
         const dataDesc = await resDesc.json();
         if (dataDesc.ok && dataDesc.translations) {
           setDraft((prev) => ({
             ...prev,
-            hindiDescription: dataDesc.translations.hi || prev.hindiDescription,
-            teluguDescription: dataDesc.translations.te || prev.teluguDescription,
-            tamilDescription: dataDesc.translations.ta || prev.tamilDescription,
+            description: sourceLang === "en" ? srcDesc : dataDesc.translations.en || prev.description || srcDesc,
+            hindiDescription: sourceLang === "hi" ? srcDesc : dataDesc.translations.hi || prev.hindiDescription || srcDesc,
+            teluguDescription: sourceLang === "te" ? srcDesc : dataDesc.translations.te || prev.teluguDescription || srcDesc,
+            tamilDescription: sourceLang === "ta" ? srcDesc : dataDesc.translations.ta || prev.tamilDescription || srcDesc,
           }));
         }
       }
 
       // 3. Translate Benefits
-      if (draft.benefits.length > 0) {
+      const hasEn = draft.benefits.filter(Boolean).length > 0;
+      const hasHi = draft.hindiBenefits.filter(Boolean).length > 0;
+      if (hasEn || hasHi) {
+        const sourceLang = hasEn ? "en" : "hi";
+        const srcTexts = hasEn ? draft.benefits : draft.hindiBenefits;
+        const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
         const resBen = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ texts: draft.benefits, targets: ["hi", "te", "ta"] }),
+          body: JSON.stringify({ texts: srcTexts, source: sourceLang, targets }),
         });
         const dataBen = await resBen.json();
         if (dataBen.ok && dataBen.translations) {
           setDraft((prev) => ({
             ...prev,
-            hindiBenefits: dataBen.translations.hi || prev.hindiBenefits,
+            benefits: sourceLang === "en" ? srcTexts : dataBen.translations.en || prev.benefits || srcTexts,
+            hindiBenefits: sourceLang === "hi" ? srcTexts : dataBen.translations.hi || prev.hindiBenefits || srcTexts,
             teluguBenefits: dataBen.translations.te || prev.teluguBenefits,
             tamilBenefits: dataBen.translations.ta || prev.tamilBenefits,
           }));
         }
       }
 
-      showNotification("✨ AI Translated all content to Hindi, Telugu, and Tamil successfully!");
+      showNotification("✨ All content translated and synchronized across all languages!");
     } catch (e) {
       console.error("Auto-translate error:", e);
       setError("Could not complete automatic translation. Please try again.");

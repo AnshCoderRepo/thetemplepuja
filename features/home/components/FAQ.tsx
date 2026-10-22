@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { MessageCircle } from "lucide-react";
 import InteractiveImageAccordion, {
   type ImageAccordionItem,
 } from "@/components/ui/interactive-image-accordion";
 import { Reveal, SectionHeading } from "@/components/common";
-import { faqs, getLocalizedFaqQ, getLocalizedFaqA } from "@/lib/data";
+import { faqs as defaultFaqs, getLocalizedFaqQ, getLocalizedFaqA, type FaqItem } from "@/lib/data";
+import { getCatalogFaqs } from "@/lib/catalog";
+import { fetchCatalog } from "@/lib/api";
 import { useI18n } from "@/components/providers";
 
 // Atmospheric imagery for the FAQ tiles (verified Unsplash photos).
@@ -20,8 +23,44 @@ const faqImages = [
 
 export default function FAQ() {
   const { t, locale } = useI18n();
+  const [faqList, setFaqList] = useState<FaqItem[]>(() => getCatalogFaqs());
 
-  const accordionItems: ImageAccordionItem[] = faqs.map((faq, i) => ({
+  const refreshFaqs = useCallback(async () => {
+    try {
+      const c = await fetchCatalog();
+      if (c.faqs && Array.isArray(c.faqs) && c.faqs.length > 0) {
+        setFaqList(c.faqs);
+      } else {
+        setFaqList(getCatalogFaqs());
+      }
+    } catch {
+      setFaqList(getCatalogFaqs());
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshFaqs();
+
+    const handleUpdate = () => {
+      refreshFaqs();
+    };
+
+    window.addEventListener("catalog-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      window.removeEventListener("catalog-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [refreshFaqs]);
+
+  const activeFaqs = faqList
+    .filter((f) => f.active !== false)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  const displayFaqs = activeFaqs.length > 0 ? activeFaqs : defaultFaqs;
+
+  const accordionItems: ImageAccordionItem[] = displayFaqs.map((faq, i) => ({
     id: i + 1,
     title: getLocalizedFaqQ(faq, locale),
     answer: getLocalizedFaqA(faq, locale),
