@@ -42,8 +42,8 @@ export default function Home() {
       <main>
         <Hero />
 
-        {/* Incomplete Booking Persistence & Resume Payment ("Your Seva Awaits") */}
-        <ContinueBookingSection />
+        {/* Incomplete Booking Persistence & Resume Payment ("Your Seva Awaits" - Top 4 on Home, Rest on Profile) */}
+        <ContinueBookingSection limit={4} />
         
         {/* Sacred Poojas Catalog on Landing Page (Shows top 8 with View All link) */}
         <section id="poojas" className="pt-12 pb-12 bg-cream">

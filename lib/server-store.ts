@@ -21,8 +21,11 @@ import {
   type UpcomingEventSpec,
   type Addon,
   type Testimonial,
+  faqs as staticFaqs,
+  type FaqItem,
 } from "./data";
 import type { GalleryItem } from "./gallery-types";
+import { DEFAULT_SITE_CONTENT, type SiteContent } from "./cms-types";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
 import { createMemoryStore, type PersistenceStore } from "./persistence";
 import { mongoStore, resetMongoConnection } from "./mongo-store";
@@ -152,7 +155,9 @@ export type CatalogOverrideSection =
   | "chatbotKnowledge"
   | "chatbotSettings"
   | "platformSettings"
-  | "testimonials";
+  | "testimonials"
+  | "faqs"
+  | "siteContent";
 
 /** Overrides merged over the static defaults — what consumers should render. */
 export async function getResolvedCatalog(): Promise<{
@@ -167,6 +172,8 @@ export async function getResolvedCatalog(): Promise<{
   chatbotSettings: ChatbotSettings;
   platformSettings: PlatformSettings;
   testimonials: Testimonial[];
+  faqs: FaqItem[];
+  siteContent: SiteContent;
 }> {
   const o = await withFallback((s) => s.getCatalogOverrides());
   const resolvedTemples = o.temples ?? staticTemples;
@@ -197,6 +204,8 @@ export async function getResolvedCatalog(): Promise<{
         "https://whatsapp.com/channel/0029Vaexample",
     },
     testimonials: o.testimonials ?? staticTestimonials,
+    faqs: o.faqs ?? staticFaqs,
+    siteContent: o.siteContent ?? DEFAULT_SITE_CONTENT,
   };
 }
 
@@ -212,6 +221,8 @@ export async function saveCatalogOverrides(overrides: {
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
   testimonials?: Testimonial[];
+  faqs?: FaqItem[];
+  siteContent?: SiteContent;
 }): Promise<void> {
   await withFallback((s) => s.saveCatalogOverrides(overrides));
 }
@@ -220,6 +231,29 @@ export async function clearCatalogOverrides(
   sections: CatalogOverrideSection[]
 ): Promise<void> {
   await withFallback((s) => s.clearCatalogOverrides(sections));
+}
+
+// ===================== FAQS & CMS HELPERS =====================
+
+export async function getFaqs(): Promise<FaqItem[]> {
+  const overrides = await withFallback((s) => s.getCatalogOverrides());
+  return overrides.faqs ?? staticFaqs;
+}
+
+export async function saveFaqs(faqs: FaqItem[]): Promise<void> {
+  await saveCatalogOverrides({ faqs });
+}
+
+export async function getSiteContent(): Promise<SiteContent> {
+  const overrides = await withFallback((s) => s.getCatalogOverrides());
+  return overrides.siteContent ?? DEFAULT_SITE_CONTENT;
+}
+
+export async function saveSiteContent(siteContent: SiteContent): Promise<void> {
+  const current = await getSiteContent();
+  await saveCatalogOverrides({
+    siteContent: { ...current, ...siteContent },
+  });
 }
 
 // ===================== CHATBOT & PLATFORM HELPERS =====================
@@ -506,6 +540,22 @@ export async function getAllUsers(): Promise<UserProfile[]> {
       }
     }
   }
+  // Cleanse duplicate bookings per user record if any exist
+  for (const u of users) {
+    if (Array.isArray(u.bookings)) {
+      const seenBookingIds = new Set<string>();
+      const cleanBookings: BookingRecord[] = [];
+      for (const b of u.bookings) {
+        if (b && b.bookingId) {
+          if (seenBookingIds.has(b.bookingId)) continue;
+          seenBookingIds.add(b.bookingId);
+        }
+        cleanBookings.push(b);
+      }
+      u.bookings = cleanBookings;
+    }
+  }
+
   return users;
 }
 

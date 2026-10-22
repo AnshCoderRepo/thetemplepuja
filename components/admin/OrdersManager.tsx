@@ -254,11 +254,16 @@ export default function OrdersManager({
     }
   };
 
-  // Flatten all bookings (orders) across all devotees
+  // Flatten all bookings (orders) across all devotees (deduplicating identical booking records)
   const allOrders = useMemo(() => {
     const list: FlatOrder[] = [];
+    const seenBookingIds = new Set<string>();
     for (const u of users) {
       for (const b of u.bookings) {
+        if (b.bookingId) {
+          if (seenBookingIds.has(b.bookingId)) continue;
+          seenBookingIds.add(b.bookingId);
+        }
         list.push({
           orderId: b.razorpayOrderId || `ORD-${b.bookingId}`,
           booking: b,
@@ -557,10 +562,10 @@ export default function OrdersManager({
                   </td>
                 </tr>
               ) : (
-                paginated.map(({ orderId, booking, user }) => {
+                paginated.map(({ orderId, booking, user }, index) => {
                   return (
                     <tr
-                      key={booking.bookingId}
+                      key={`${orderId}-${booking.bookingId || "ord"}-${index}`}
                       className="hover:bg-orange-50/30 transition-colors"
                     >
                       <td className="px-4 py-3.5 font-mono text-xs">
@@ -1052,9 +1057,9 @@ export default function OrdersManager({
                     Attached Videos in Devotee Account ({attachedVideos.length})
                   </span>
                   <div className="space-y-2">
-                    {attachedVideos.map((v) => (
+                    {attachedVideos.map((v, vIdx) => (
                       <div
-                        key={v.id}
+                        key={v.id || `video-${vIdx}`}
                         className="rounded-xl border border-saffron-100 bg-white p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
                       >
                         <div className="min-w-0">

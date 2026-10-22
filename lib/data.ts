@@ -882,6 +882,7 @@ export function getLocalizedTestimonialName(t: Testimonial, locale?: string): st
 }
 
 export interface FaqItem {
+  id?: string;
   q: string;
   a: string;
   hindiQ?: string;
@@ -890,6 +891,8 @@ export interface FaqItem {
   teluguA?: string;
   tamilQ?: string;
   tamilA?: string;
+  order?: number;
+  active?: boolean;
 }
 
 export const faqs: FaqItem[] = [

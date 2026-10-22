@@ -115,10 +115,15 @@ export default function TestimonialsManager({
   };
 
   const handleAutoTranslateAll = async () => {
-    if (!draft.text.trim()) {
-      setError("Please write the devotee's English review text before translating.");
+    const srcText = draft.text.trim() || draft.hindiText.trim();
+    if (!srcText) {
+      setError("Please write the devotee's review text in at least one language before translating.");
       return;
     }
+
+    const sourceLang = draft.text.trim() ? "en" : "hi";
+    const targets = ["en", "hi", "te", "ta"].filter((l) => l !== sourceLang);
+
     setIsTranslating(true);
     setError("");
     try {
@@ -126,28 +131,30 @@ export default function TestimonialsManager({
       const resText = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: draft.text.trim(), targets: ["hi", "te", "ta"] }),
+        body: JSON.stringify({ text: srcText, source: sourceLang, targets }),
       });
       const dataText = await resText.json();
 
       // Translate location if present
+      const srcLoc = draft.location.trim() || draft.hindiLocation.trim();
       let dataLoc: { ok?: boolean; translations?: Record<string, string> } = {};
-      if (draft.location.trim()) {
+      if (srcLoc) {
         const resLoc = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: draft.location.trim(), targets: ["hi", "te", "ta"] }),
+          body: JSON.stringify({ text: srcLoc, source: sourceLang, targets }),
         });
         dataLoc = await resLoc.json();
       }
 
       // Translate name if present
+      const srcName = draft.name.trim() || draft.hindiName.trim();
       let dataName: { ok?: boolean; translations?: Record<string, string> } = {};
-      if (draft.name.trim()) {
+      if (srcName) {
         const resName = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: draft.name.trim(), targets: ["hi", "te", "ta"] }),
+          body: JSON.stringify({ text: srcName, source: sourceLang, targets }),
         });
         dataName = await resName.json();
       }
@@ -155,17 +162,20 @@ export default function TestimonialsManager({
       if (dataText.ok && dataText.translations) {
         setDraft((prev) => ({
           ...prev,
-          hindiText: dataText.translations.hi || prev.hindiText,
+          text: sourceLang === "en" ? srcText : dataText.translations.en || prev.text || srcText,
+          hindiText: sourceLang === "hi" ? srcText : dataText.translations.hi || prev.hindiText || srcText,
           teluguText: dataText.translations.te || prev.teluguText,
           tamilText: dataText.translations.ta || prev.tamilText,
-          hindiLocation: dataLoc.translations?.hi || prev.hindiLocation,
+          location: sourceLang === "en" ? srcLoc : dataLoc.translations?.en || prev.location || srcLoc,
+          hindiLocation: sourceLang === "hi" ? srcLoc : dataLoc.translations?.hi || prev.hindiLocation || srcLoc,
           teluguLocation: dataLoc.translations?.te || prev.teluguLocation,
           tamilLocation: dataLoc.translations?.ta || prev.tamilLocation,
-          hindiName: dataName.translations?.hi || prev.hindiName,
+          name: sourceLang === "en" ? srcName : dataName.translations?.en || prev.name || srcName,
+          hindiName: sourceLang === "hi" ? srcName : dataName.translations?.hi || prev.hindiName || srcName,
           teluguName: dataName.translations?.te || prev.teluguName,
           tamilName: dataName.translations?.ta || prev.tamilName,
         }));
-        showNotification("✨ Review, name & location successfully translated to Hindi, Telugu & Tamil!");
+        showNotification("✨ Review, name & location successfully synchronized across all languages!");
       } else {
         setError(dataText.error || "Translation service was unable to complete.");
       }

@@ -83,11 +83,16 @@ export default function AnalyticsDashboard({
     return computeAnalytics(users, daysLookback);
   }, [users, daysLookback]);
 
-  // All bookings for recent feed & export
+  // All bookings for recent feed & export (deduplicating identical booking records)
   const allBookings = useMemo(() => {
     const list = [];
+    const seenBookingIds = new Set<string>();
     for (const u of users) {
       for (const b of u.bookings) {
+        if (b.bookingId) {
+          if (seenBookingIds.has(b.bookingId)) continue;
+          seenBookingIds.add(b.bookingId);
+        }
         list.push({ booking: b, user: u });
       }
     }
@@ -755,8 +760,8 @@ export default function AnalyticsDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-saffron-50">
-                  {allBookings.slice(0, 6).map(({ booking, user }) => (
-                    <tr key={booking.bookingId} className="hover:bg-orange-50/20 transition-colors">
+                  {allBookings.slice(0, 6).map(({ booking, user }, index) => (
+                    <tr key={`${booking.bookingId || "bk"}-${user.id || user.phone || "u"}-${index}`} className="hover:bg-orange-50/20 transition-colors">
                       <td className="px-3.5 py-2.5 font-mono font-bold text-saffron-800">
                         {booking.bookingId}
                       </td>
@@ -1348,9 +1353,9 @@ export default function AnalyticsDashboard({
                   </div>
 
                   <div className="space-y-1.5 pt-2 border-t border-saffron-100">
-                    {devotee.bookings.map((b) => (
+                    {devotee.bookings.map((b, bIdx) => (
                       <div
-                        key={b.bookingId}
+                        key={`${b.bookingId || "booking"}-${bIdx}`}
                         className="flex justify-between items-center text-xs bg-white p-2.5 rounded-xl border border-saffron-50"
                       >
                         <div>

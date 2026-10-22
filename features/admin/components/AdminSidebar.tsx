@@ -19,6 +19,8 @@ import {
   Users,
   RotateCcw,
   MessageSquareQuote,
+  HelpCircle,
+  LayoutTemplate,
 } from "lucide-react";
 import type { AdminTab, NavItem } from "../types/admin.types";
 
@@ -30,6 +32,8 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "temples", label: "Temples", icon: Building2, group: "Management" },
   { id: "blogs", label: "Blog Articles", icon: BookOpen, group: "Management" },
   { id: "gallery", label: "Our Gallery", icon: Images, group: "Management" },
+  { id: "faq", label: "FAQ Manager", icon: HelpCircle, group: "Content & CMS" },
+  { id: "cms", label: "Website Content (CMS)", icon: LayoutTemplate, group: "Content & CMS" },
   { id: "chatbot", label: "AI Chatbot Training", icon: Bot, group: "Management" },
   { id: "bookings", label: "Successful Bookings", icon: ShieldCheck, group: "Orders & Sevas" },
   { id: "orders", label: "All Orders & Payments", icon: ShoppingBag, group: "Orders & Sevas" },

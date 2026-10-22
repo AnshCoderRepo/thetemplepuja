@@ -14,5 +14,7 @@ export { default as GalleryManager } from "./GalleryManager";
 export { default as CustomerProfileModal, type ProfileTab } from "./CustomerProfileModal";
 export { default as RefundRequestsManager } from "./RefundRequestsManager";
 export { default as TestimonialsManager } from "./TestimonialsManager";
+export { default as FaqManager } from "./FaqManager";
+export { default as CmsManager } from "./CmsManager";
 export { default as ServiceCardEditModal } from "./ServiceCardEditModal";
 export { default as ConfirmDialog } from "./ConfirmDialog";

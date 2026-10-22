@@ -172,16 +172,16 @@ export default function DevoteeBookingsList({
 
   return (
     <div className="space-y-6">
-      {profile.bookings.map((b) => {
+      {profile.bookings.map((b, idx) => {
         // Find videos attached to this booking or profile videos tagged with this bookingId
         const bookingVideos = [
           ...(b.videos || []),
           ...(profile.videos || []).filter((v) => v.bookingId === b.bookingId),
-        ].filter((v, idx, arr) => arr.findIndex((x) => x.id === v.id) === idx);
+        ].filter((v, vIdx, arr) => arr.findIndex((x) => x.id === v.id) === vIdx);
 
         return (
           <article
-            key={b.bookingId}
+            key={`${b.bookingId || "booking"}-${idx}`}
             className="overflow-hidden rounded-3xl border border-saffron-100 bg-white shadow-card transition-shadow hover:shadow-soft"
           >
             <div className="flex flex-col gap-4 border-b border-saffron-100/60 p-6 sm:flex-row sm:items-center sm:justify-between">

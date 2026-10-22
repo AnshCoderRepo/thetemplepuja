@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Phone, Mail, MessageCircle, ExternalLink } from "lucide-react";
 import { useI18n } from "@/components/providers";
 import { SITE_CONFIG, getWhatsAppChannelUrl, getWhatsAppUrl } from "@/lib/config";
 import { useCatalog } from "@/features/catalog";
+import { getCatalogSiteContent } from "@/lib/catalog";
 
 function WhatsAppIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -48,9 +50,37 @@ function YouTubeIcon({ className = "h-5 w-5" }: { className?: string }) {
 }
 
 export default function Footer() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { platformSettings } = useCatalog();
   const channelUrl = platformSettings?.whatsappChannelUrl || getWhatsAppChannelUrl();
+
+  const [siteContent, setSiteContent] = useState(() => getCatalogSiteContent());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSiteContent(getCatalogSiteContent());
+    };
+    window.addEventListener("catalog-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("catalog-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  const aboutText =
+    siteContent?.footer?.aboutText ||
+    t("footer.description") ||
+    "Connecting devotees worldwide with authentic Vedic rituals, sacred temples, and verified certified pandits.";
+
+  const helplinePhone = siteContent?.footer?.phone || SITE_CONFIG.contact.phoneDisplay;
+  const helplinePhoneRaw = siteContent?.footer?.phone
+    ? siteContent.footer.phone.replace(/\s+/g, "")
+    : SITE_CONFIG.contact.phoneRaw;
+  const supportEmail = siteContent?.footer?.email || SITE_CONFIG.contact.email;
+  const copyrightText =
+    siteContent?.footer?.copyrightText ||
+    `© ${new Date().getFullYear()} ${SITE_CONFIG.brandName}. ${t("footer.rights")} ${t("footer.madeWith")}`;
 
   const navLinks = [
     { label: t("nav.home"), href: "/#home" },
@@ -99,8 +129,7 @@ export default function Footer() {
               </div>
             </Link>
             <p className="text-xs leading-relaxed text-cream/70">
-              {t("footer.description") ||
-                "Connecting devotees worldwide with authentic Vedic rituals, sacred temples, and verified certified pandits."}
+              {aboutText}
             </p>
 
             {/* Official Social Media Community Links */}
@@ -253,9 +282,9 @@ export default function Footer() {
             <div className="flex flex-col gap-2">
               {/* Direct Phone Helpline */}
               <a
-                href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+                href={`tel:${helplinePhoneRaw}`}
                 className="flex items-center gap-3 rounded-xl bg-cream/[0.06] border border-cream/10 px-3 py-2 text-cream transition-all hover:border-saffron-400 hover:bg-saffron-500/10 hover:text-white group"
-                title={`Call ${SITE_CONFIG.contact.phoneDisplay}`}
+                title={`Call ${helplinePhone}`}
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                   <Phone className="h-3.5 w-3.5" />
@@ -263,16 +292,16 @@ export default function Footer() {
                 <div className="flex flex-col min-w-0">
                   <span className="text-[10px] text-cream/50 uppercase tracking-wider font-semibold">Pooja Helpline</span>
                   <span className="font-bold text-xs text-white group-hover:text-saffron-300 transition-colors">
-                    {SITE_CONFIG.contact.phoneDisplay}
+                    {helplinePhone}
                   </span>
                 </div>
               </a>
 
               {/* Direct Support Email */}
               <a
-                href={`mailto:${SITE_CONFIG.contact.email}`}
+                href={`mailto:${supportEmail}`}
                 className="flex items-center gap-3 rounded-xl bg-cream/[0.06] border border-cream/10 px-3 py-2 text-cream transition-all hover:border-saffron-400 hover:bg-saffron-500/10 hover:text-white group"
-                title={`Email ${SITE_CONFIG.contact.email}`}
+                title={`Email ${supportEmail}`}
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-saffron-500/20 text-saffron-400 shrink-0 group-hover:bg-saffron-500 group-hover:text-white transition-colors">
                   <Mail className="h-3.5 w-3.5" />
@@ -280,7 +309,7 @@ export default function Footer() {
                 <div className="flex flex-col min-w-0">
                   <span className="text-[10px] text-cream/50 uppercase tracking-wider font-semibold">Devotee Care Email</span>
                   <span className="font-bold text-xs text-white group-hover:text-saffron-300 transition-colors truncate">
-                    {SITE_CONFIG.contact.email}
+                    {supportEmail}
                   </span>
                 </div>
               </a>
@@ -320,21 +349,21 @@ export default function Footer() {
         {/* ─── Bottom Copyright Row ─── */}
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-cream/10 pt-6 text-xs text-cream/50">
           <div>
-            © {new Date().getFullYear()} {SITE_CONFIG.brandName}. {t("footer.rights")} {t("footer.madeWith")}
+            {copyrightText}
           </div>
           <div className="flex flex-wrap items-center gap-4 text-cream/60">
             <a
-              href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+              href={`tel:${helplinePhoneRaw}`}
               className="hover:text-saffron-400 transition-colors"
             >
-              📞 {SITE_CONFIG.contact.phoneDisplay}
+              📞 {helplinePhone}
             </a>
             <span className="opacity-30">•</span>
             <a
-              href={`mailto:${SITE_CONFIG.contact.email}`}
+              href={`mailto:${supportEmail}`}
               className="hover:text-saffron-400 transition-colors"
             >
-              ✉️ {SITE_CONFIG.contact.email}
+              ✉️ {supportEmail}
             </a>
             <span className="opacity-30">•</span>
             <Link href="/privacy-policy" className="hover:text-saffron-400 transition-colors">

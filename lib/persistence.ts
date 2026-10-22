@@ -1,4 +1,4 @@
-import { defaultAddons, type Addon, type Coupon, type FestivalEvent, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec, type Testimonial } from "./data";
+import { defaultAddons, type Addon, type Coupon, type FestivalEvent, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec, type Testimonial, type FaqItem } from "./data";
 import type { BlogPost } from "./blog-data";
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
@@ -8,6 +8,7 @@ import type {
   PlatformSettings,
 } from "./chatbot-types";
 import { DEFAULT_GALLERY_ITEMS, type GalleryItem } from "./gallery-types";
+import type { SiteContent } from "./cms-types";
 
 export interface CatalogOverrides {
   poojas?: Pooja[];
@@ -21,6 +22,8 @@ export interface CatalogOverrides {
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
   testimonials?: Testimonial[];
+  faqs?: FaqItem[];
+  siteContent?: SiteContent;
 }
 
 export interface AdminCreds {
@@ -44,6 +47,8 @@ export interface PersistenceStore {
       | "chatbotSettings"
       | "platformSettings"
       | "testimonials"
+      | "faqs"
+      | "siteContent"
     )[]
   ): Promise<void>;
   getAdminCreds(): Promise<AdminCreds>;

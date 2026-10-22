@@ -73,6 +73,9 @@ function getDb(): Promise<Db> {
   return g.__ttpMongo.db;
 }
 
+import type { FaqItem, Testimonial } from "./data";
+import type { SiteContent } from "./cms-types";
+
 interface CatalogDoc extends Document {
   _id: string;
   poojas?: Pooja[];
@@ -85,6 +88,9 @@ interface CatalogDoc extends Document {
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
   chatbotSettings?: ChatbotSettings;
   platformSettings?: PlatformSettings;
+  testimonials?: Testimonial[];
+  faqs?: FaqItem[];
+  siteContent?: SiteContent;
 }
 
 interface AdminDoc extends Document {
@@ -205,6 +211,9 @@ export const mongoStore: PersistenceStore = {
     if (doc.chatbotKnowledge) out.chatbotKnowledge = doc.chatbotKnowledge;
     if (doc.chatbotSettings) out.chatbotSettings = doc.chatbotSettings;
     if (doc.platformSettings) out.platformSettings = doc.platformSettings;
+    if (doc.testimonials) out.testimonials = doc.testimonials;
+    if (doc.faqs) out.faqs = doc.faqs;
+    if (doc.siteContent) out.siteContent = doc.siteContent;
     return out;
   },
 

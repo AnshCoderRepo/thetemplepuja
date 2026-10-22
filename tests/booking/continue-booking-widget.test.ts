@@ -6,49 +6,33 @@ import {
   type IncompleteBooking,
 } from "@/lib/incomplete-booking";
 
-describe("Compact Continue Booking Widget Logic", () => {
+describe("Continue Booking Horizontal Cards & 4-Item Limit Logic", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
   });
 
-  const draft1: IncompleteBooking = {
-    bookingId: "BK-DRAFT-1",
+  const createDraft = (id: string, minsAgo: number = 0, status: IncompleteBooking["status"] = "checkout_incomplete"): IncompleteBooking => ({
+    bookingId: `BK-DRAFT-${id}`,
     poojaSlug: "someshwar-mahadev-abhisek",
-    poojaTitle: "Someshwar Mahadev Abhisek",
-    packageTier: "single",
-    amount: 251,
-    date: "2026-10-20",
+    poojaTitle: `Someshwar Mahadev Abhisek ${id}`,
+    templeName: "Someshwar Mahadev Mandir",
+    packageTier: "couple",
+    amount: 251 + parseInt(id, 10) * 100,
+    date: "2026-10-25",
     time: "10:00 AM IST",
     primaryName: "Ansh Kumar",
     gotra: "Kashyap",
     phone: "9876543210",
     step: 2,
-    status: "checkout_incomplete",
-    createdAt: new Date(Date.now() - 5000).toISOString(),
-    updatedAt: new Date(Date.now() - 5000).toISOString(),
-  };
-
-  const draft2: IncompleteBooking = {
-    bookingId: "BK-DRAFT-2",
-    poojaSlug: "someshwar-mahadev-abhisek",
-    poojaTitle: "Someshwar Mahadev Abhisek",
-    packageTier: "couple",
-    amount: 652,
-    date: "2026-10-20",
-    time: "10:00 AM IST",
-    primaryName: "Ansh Kumar",
-    gotra: "Kashyap",
-    phone: "9876543210",
-    step: 4,
-    status: "pending_payment",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+    status,
+    createdAt: new Date(Date.now() - minsAgo * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - minsAgo * 60000).toISOString(),
+  });
 
   it("manages multiple incomplete booking drafts accurately", () => {
-    saveIncompleteBooking(draft1);
-    saveIncompleteBooking(draft2);
+    saveIncompleteBooking(createDraft("1", 10));
+    saveIncompleteBooking(createDraft("2", 5));
 
     const list = getIncompleteBookings();
     expect(list.length).toBe(2);
@@ -59,8 +43,8 @@ describe("Compact Continue Booking Widget Logic", () => {
   });
 
   it("removes a single draft when dismissed while keeping others", () => {
-    saveIncompleteBooking(draft1);
-    saveIncompleteBooking(draft2);
+    saveIncompleteBooking(createDraft("1", 10));
+    saveIncompleteBooking(createDraft("2", 5));
 
     removeIncompleteBooking("BK-DRAFT-1");
     const remaining = getIncompleteBookings();
@@ -68,81 +52,101 @@ describe("Compact Continue Booking Widget Logic", () => {
     expect(remaining[0].bookingId).toBe("BK-DRAFT-2");
   });
 
-  it("stores user collapsed/expanded UI preference in localStorage", () => {
-    const STORAGE_KEY = "ttp_continue_booking_expanded";
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
-
-    window.localStorage.setItem(STORAGE_KEY, "true");
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("true");
-
-    window.localStorage.setItem(STORAGE_KEY, "false");
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("false");
-  });
-
   it("identifies payment pending vs draft status accurately", () => {
-    expect(draft1.status).toBe("checkout_incomplete");
-    expect(draft2.status).toBe("pending_payment");
+    const draftPending = createDraft("1", 0, "pending_payment");
+    const draftFailed = createDraft("2", 0, "payment_failed");
+    const draftNormal = createDraft("3", 0, "checkout_incomplete");
+
+    expect(draftPending.status).toBe("pending_payment");
+    expect(draftFailed.status).toBe("payment_failed");
+    expect(draftNormal.status).toBe("checkout_incomplete");
   });
 
-  describe("Responsive floating widget classes and viewport constraints", () => {
-    it("configures floating positioning on mobile while preserving desktop container layout", () => {
-      // Classes applied when contained={true} (default)
-      const mobileFloatingClasses =
-        "fixed bottom-20 sm:bottom-24 inset-x-0 z-40 mx-auto w-fit max-w-[calc(100vw-2rem)] px-2 sm:px-4 pointer-events-auto md:relative md:bottom-auto md:inset-auto md:z-auto md:mx-auto md:w-full md:max-w-7xl md:container-px md:my-5 md:px-6 lg:px-8";
+  describe("Horizontal Card Type Layout Architecture", () => {
+    it("configures horizontal scrolling card container with snap scrolling", () => {
+      const containerClasses =
+        "flex flex-row items-stretch gap-3.5 sm:gap-4 overflow-x-auto pb-2.5 pt-1 scroll-smooth snap-x snap-mandatory no-scrollbar w-full";
 
-      // Mobile floating rules
-      expect(mobileFloatingClasses).toContain("fixed bottom-20");
-      expect(mobileFloatingClasses).toContain("z-40");
-      expect(mobileFloatingClasses).toContain("inset-x-0");
-      expect(mobileFloatingClasses).toContain("mx-auto");
-      expect(mobileFloatingClasses).toContain("w-fit");
-      expect(mobileFloatingClasses).toContain("max-w-[calc(100vw-2rem)]");
-
-      // Desktop layout preservation rules
-      expect(mobileFloatingClasses).toContain("md:relative");
-      expect(mobileFloatingClasses).toContain("md:bottom-auto");
-      expect(mobileFloatingClasses).toContain("md:container-px");
-      expect(mobileFloatingClasses).toContain("md:my-5");
+      expect(containerClasses).toContain("flex flex-row");
+      expect(containerClasses).toContain("overflow-x-auto");
+      expect(containerClasses).toContain("snap-x");
+      expect(containerClasses).toContain("snap-mandatory");
+      expect(containerClasses).not.toContain("flex-col");
     });
 
-    it("verifies mobile panel opens upward without colliding with screen bottom or bottom controls", () => {
-      const flexContainerClasses = "flex-col-reverse items-center md:flex-col md:items-start";
-      expect(flexContainerClasses).toContain("flex-col-reverse items-center");
-      expect(flexContainerClasses).toContain("md:flex-col md:items-start");
+    it("verifies card-type structure for each incomplete booking (not line by line)", () => {
+      const cardClasses =
+        "group relative flex flex-col justify-between w-[265px] xs:w-[285px] sm:w-[300px] lg:w-[calc(25%-0.75rem)] lg:min-w-[260px] lg:flex-1 shrink-0 snap-start rounded-2xl border border-saffron-200/90 bg-white hover:border-saffron-400 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 select-none";
 
-      const panelClasses =
-        "w-[calc(100vw-24px)] max-w-lg rounded-2xl border border-saffron-200/90 bg-white p-3 sm:p-4 shadow-2xl md:shadow-card animate-in fade-in duration-200 flex flex-col max-h-[65vh] sm:max-h-[70vh] mb-2.5 md:mb-0 md:mt-2.5 slide-in-from-bottom-2 md:slide-in-from-top-2";
-      expect(panelClasses).toContain("max-h-[65vh]");
-      expect(panelClasses).toContain("w-[calc(100vw-24px)]");
-      expect(panelClasses).toContain("mb-2.5");
-      expect(panelClasses).toContain("md:mt-2.5");
+      expect(cardClasses).toContain("rounded-2xl");
+      expect(cardClasses).toContain("border");
+      expect(cardClasses).toContain("shrink-0");
+      expect(cardClasses).toContain("snap-start");
+      // Cards have defined widths and are not 1-line strips
+      expect(cardClasses).toContain("w-[265px]");
     });
 
-    it("supports 320px, 375px, and 430px viewport widths without overflow", () => {
-      const viewports = [320, 375, 430];
-      for (const vw of viewports) {
-        const availablePanelWidth = vw - 24; // w-[calc(100vw-24px)]
-        expect(availablePanelWidth).toBeLessThanOrEqual(512); // max-w-lg
-        expect(availablePanelWidth).toBeGreaterThan(0);
+    it("includes card banner with overlay, price badge, and dismiss button", () => {
+      const bannerClasses = "relative h-28 xs:h-32 w-full overflow-hidden bg-slate-900 shrink-0";
+      expect(bannerClasses).toContain("h-28");
+      expect(bannerClasses).toContain("w-full");
+    });
+  });
 
-        const availablePillWidth = vw - 32; // max-w-[calc(100vw-2rem)]
-        const estimatedPillWidth = 230; // icon (20) + label (~135) + count (20) + chevron (14) + paddings (41)
-        expect(estimatedPillWidth).toBeLessThanOrEqual(availablePillWidth);
+  describe("4-Booking Home Page Limit & Rest on Profile Page", () => {
+    it("limits homepage drafts to 4 and determines remaining drafts for profile page", () => {
+      // Save 6 drafts
+      for (let i = 1; i <= 6; i++) {
+        saveIncompleteBooking(createDraft(i.toString(), 10 - i));
       }
+
+      const allDrafts = getIncompleteBookings();
+      expect(allDrafts.length).toBe(6);
+
+      // Homepage behavior with limit = 4
+      const limit = 4;
+      const visibleOnHome = allDrafts.slice(0, limit);
+      const remainingCount = allDrafts.length - visibleOnHome.length;
+
+      expect(visibleOnHome.length).toBe(4);
+      expect(remainingCount).toBe(2);
+
+      // Verify first 4 are the most recent drafts
+      expect(visibleOnHome.map((d) => d.bookingId)).toEqual([
+        "BK-DRAFT-6",
+        "BK-DRAFT-5",
+        "BK-DRAFT-4",
+        "BK-DRAFT-3",
+      ]);
     });
 
-    it("ensures only authenticated devotee drafts are returned (Requirement 7)", () => {
-      saveIncompleteBooking(draft1); // phone: 9876543210
+    it("shows all drafts when showAll={true} (Profile page behavior)", () => {
+      for (let i = 1; i <= 6; i++) {
+        saveIncompleteBooking(createDraft(i.toString(), 10 - i));
+      }
+
+      const allDrafts = getIncompleteBookings();
+      const showAll = true;
+      const limit = 4;
+
+      const effectiveLimit = showAll ? allDrafts.length : limit;
+      const visibleOnProfile = allDrafts.slice(0, effectiveLimit);
+      const remainingOnProfile = allDrafts.length - visibleOnProfile.length;
+
+      expect(visibleOnProfile.length).toBe(6);
+      expect(remainingOnProfile).toBe(0);
+    });
+
+    it("ensures user telephone scoping is preserved for devotee drafts", () => {
+      saveIncompleteBooking(createDraft("1", 5)); // 9876543210
       saveIncompleteBooking({
-        ...draft2,
-        bookingId: "BK-ANOTHER-PHONE",
-        phone: "9123456789",
+        ...createDraft("2", 1),
+        phone: "9123456789", // different phone
       });
 
-      // User with 9876543210 logged in
-      const list = getIncompleteBookings("9876543210");
-      expect(list.every((d) => d.phone === "9876543210")).toBe(true);
-      expect(list.find((d) => d.bookingId === "BK-ANOTHER-PHONE")).toBeUndefined();
+      const devoteeList = getIncompleteBookings("9876543210");
+      expect(devoteeList.length).toBe(1);
+      expect(devoteeList[0].bookingId).toBe("BK-DRAFT-1");
     });
   });
 });

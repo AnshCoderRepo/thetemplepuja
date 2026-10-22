@@ -16,6 +16,8 @@ export type AdminTab =
   | "addons"
   | "gallery"
   | "testimonials"
+  | "faq"
+  | "cms"
   | "account";
 
 export interface NavItem {

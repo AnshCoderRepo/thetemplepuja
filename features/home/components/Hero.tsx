@@ -24,6 +24,7 @@ import {
   type FestivalEvent,
   type Pooja,
 } from "@/lib/data";
+import { getCatalogSiteContent } from "@/lib/catalog";
 
 const TICKER_ITEMS_MAP: Record<string, { icon: string; label: string }[]> = {
   hi: [
@@ -104,6 +105,20 @@ export default function Hero() {
   const { poojas, temples, testimonials } = useCatalog();
   const { locale, t } = useI18n();
 
+  const [siteContent, setSiteContent] = useState(() => getCatalogSiteContent());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSiteContent(getCatalogSiteContent());
+    };
+    window.addEventListener("catalog-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("catalog-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [, startTransition] = useTransition();
@@ -146,7 +161,16 @@ export default function Hero() {
 
   // Active pujas dynamically filtered by admin display placement settings
   const heroRitualPoojas: Pooja[] = poojas.filter(isPoojaInHero);
-  const heroCardPoojas: Pooja[] = poojas.filter(isPoojaInHeroCard);
+  const baseHeroCardPoojas: Pooja[] = poojas.filter(isPoojaInHeroCard);
+
+  // If admin designated a featured puja for the hero, prioritize it at the top of hero cards
+  const featuredPujaSlug = siteContent?.hero?.featuredPujaSlug;
+  const featuredPooja = featuredPujaSlug
+    ? poojas.find((p) => p.slug === featuredPujaSlug && isPoojaActive(p))
+    : null;
+  const heroCardPoojas: Pooja[] = featuredPooja
+    ? [featuredPooja, ...baseHeroCardPoojas.filter((p) => p.slug !== featuredPooja.slug)]
+    : baseHeroCardPoojas;
 
   const [heroCardIndex, setHeroCardIndex] = useState(0);
 
@@ -194,7 +218,23 @@ export default function Hero() {
   // Background visual image: White Marble Lord Ganesha sanctum as the hero backdrop
   const heroBackground = "/hero-ganesha-marble.jpg";
 
-  const tickerItems = TICKER_ITEMS_MAP[locale] || TICKER_ITEMS_MAP.en;
+  const tickerItems =
+    siteContent?.announcementStrip?.items && siteContent.announcementStrip.items.length > 0
+      ? siteContent.announcementStrip.items.map((item) => {
+          const locText =
+            locale === "hi"
+              ? item.hindiLabel || item.label
+              : locale === "te"
+              ? item.teluguLabel || item.label
+              : locale === "ta"
+              ? item.tamilLabel || item.label
+              : item.label;
+          return {
+            icon: item.icon || "🙏",
+            label: locText || item.label,
+          };
+        })
+      : TICKER_ITEMS_MAP[locale] || TICKER_ITEMS_MAP.en;
   const statsLabels = STATS_LABELS[locale] || STATS_LABELS.en;
 
   const activeTemples = temples.filter((t) => t.active !== false);
@@ -209,42 +249,74 @@ export default function Hero() {
         ).toFixed(1)
       : "5.0";
 
-  // Localized texts with high-quality regional fallbacks
+  // Localized texts with high-quality regional fallbacks or admin CMS overrides
   const fallbackBadge =
-    locale === "hi"
+    (locale === "hi"
+      ? siteContent?.hero?.hindiBadgeText
+      : locale === "te"
+      ? siteContent?.hero?.teluguBadgeText
+      : locale === "ta"
+      ? siteContent?.hero?.tamilBadgeText
+      : siteContent?.hero?.badgeText) ||
+    siteContent?.hero?.badgeText ||
+    (locale === "hi"
       ? "🪔 प्रामाणिक वैदिक पूजा सेवाएं"
       : locale === "te"
       ? "🪔 ప్రామాణిక వేద పూజా సేవలు"
       : locale === "ta"
       ? "🪔 வேத முறை பூசை சேவைகள்"
-      : "🪔 Authentic Vedic Puja Services";
+      : "🪔 Authentic Vedic Puja Services");
 
   const fallbackTitle =
-    locale === "hi"
+    (locale === "hi"
+      ? siteContent?.hero?.hindiTitle
+      : locale === "te"
+      ? siteContent?.hero?.teluguTitle
+      : locale === "ta"
+      ? siteContent?.hero?.tamilTitle
+      : siteContent?.hero?.title) ||
+    siteContent?.hero?.title ||
+    (locale === "hi"
       ? "घर पर पाएं प्रभु का पावन आशीर्वाद"
       : locale === "te"
       ? "మీ ఇంటికి దైవిక ఆశీస్సులు"
       : locale === "ta"
       ? "உங்கள் இல்லத்திற்கே இறையருள்"
-      : "Bring the Divine Home";
+      : "Bring the Divine Home");
 
   const fallbackSubtitle =
-    locale === "hi"
+    (locale === "hi"
+      ? siteContent?.hero?.hindiSubtitle
+      : locale === "te"
+      ? siteContent?.hero?.teluguSubtitle
+      : locale === "ta"
+      ? siteContent?.hero?.tamilSubtitle
+      : siteContent?.hero?.subtitle) ||
+    siteContent?.hero?.subtitle ||
+    (locale === "hi"
       ? "प्रमाणित पंडित। प्रामाणिक वैदिक अनुष्ठान। व्यक्तिगत संकल्प और पावन प्रसाद सेवा।"
       : locale === "te"
       ? "ధృవీకరించబడిన పండితులు. ప్రామాణిక వేద పూజలు. వ్యక్తిగత సంకల్పం మరియు పవిత్ర ప్రసాదం."
       : locale === "ta"
       ? "சரிபார்க்கப்பட்ட பண்டிதர்கள். பிரமாணிக வேத சடங்குகள். தனிப்பயன் சங்கல்பம் மற்றும் புனித பிரசாதம்."
-      : "Verified pandits. Authentic Vedic rituals. Dedicated sankalp and sacred prasad delivery.";
+      : "Verified pandits. Authentic Vedic rituals. Dedicated sankalp and sacred prasad delivery.");
 
   const fallbackCta =
-    locale === "hi"
+    (locale === "hi"
+      ? siteContent?.hero?.hindiCtaText
+      : locale === "te"
+      ? siteContent?.hero?.teluguCtaText
+      : locale === "ta"
+      ? siteContent?.hero?.tamilCtaText
+      : siteContent?.hero?.ctaText) ||
+    siteContent?.hero?.ctaText ||
+    (locale === "hi"
       ? "पूजाएं देखें"
       : locale === "te"
       ? "పూజలను అన్వేషించండి"
       : locale === "ta"
       ? "பூஜைகளை ஆராயுங்கள்"
-      : "Explore Poojas";
+      : "Explore Poojas");
 
   const fallbackSecondaryCta =
     locale === "hi"
@@ -605,20 +677,22 @@ export default function Hero() {
       </div>
 
       {/* Bottom Golden Promotional Ticker Strip */}
-      <div className="relative z-20 w-full overflow-hidden bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 py-1.5 sm:py-2 text-stone-950 shadow-inner shrink-0 border-y border-amber-600/25">
-        <div className="flex w-max items-center animate-marquee hover:[animation-play-state:paused]">
-          {[...tickerItems, ...tickerItems].map((item, idx) => (
-            <div
-              key={`${item.label}-${idx}`}
-              className="inline-flex items-center gap-2 px-3 sm:px-5 md:px-6 text-xs sm:text-sm font-bold tracking-wide text-stone-950 shrink-0"
-            >
-              <span className="text-sm sm:text-base">{item.icon}</span>
-              <span>{item.label}</span>
-              <span className="opacity-35 ml-3 sm:ml-5 text-stone-800">•</span>
-            </div>
-          ))}
+      {siteContent?.announcementStrip?.enabled !== false && (
+        <div className="relative z-20 w-full overflow-hidden bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 py-1.5 sm:py-2 text-stone-950 shadow-inner shrink-0 border-y border-amber-600/25">
+          <div className="flex w-max items-center animate-marquee hover:[animation-play-state:paused]">
+            {[...tickerItems, ...tickerItems].map((item, idx) => (
+              <div
+                key={`${item.label}-${idx}`}
+                className="inline-flex items-center gap-2 px-3 sm:px-5 md:px-6 text-xs sm:text-sm font-bold tracking-wide text-stone-950 shrink-0"
+              >
+                <span className="text-sm sm:text-base">{item.icon}</span>
+                <span>{item.label}</span>
+                <span className="opacity-35 ml-3 sm:ml-5 text-stone-800">•</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
