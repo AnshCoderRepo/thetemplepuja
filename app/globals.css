@@ -4,6 +4,7 @@
 
 :root {
   --bg-cream: #fffbf4;
+  --font-devanagari: 'Noto Sans Devanagari', var(--font-sans), sans-serif;
 }
 
 html {
