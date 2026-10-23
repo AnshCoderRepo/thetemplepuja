@@ -226,7 +226,14 @@ export function resetCatalogFaqs(): void {
 // ===================== SITE CONTENT (CMS) =====================
 
 export function getCatalogSiteContent(): SiteContent {
-  return read<SiteContent>(SITE_CONTENT_KEY) ?? DEFAULT_SITE_CONTENT;
+  const content = read<SiteContent>(SITE_CONTENT_KEY) ?? DEFAULT_SITE_CONTENT;
+  if (content?.footer?.phone && (content.footer.phone.includes("9988776655") || content.footer.phone.includes("998877"))) {
+    content.footer.phone = DEFAULT_SITE_CONTENT.footer?.phone || "+91 96210 14155";
+  }
+  if (content?.footer?.whatsappNumber && (content.footer.whatsappNumber.includes("9988776655") || content.footer.whatsappNumber.includes("998877"))) {
+    content.footer.whatsappNumber = DEFAULT_SITE_CONTENT.footer?.whatsappNumber || "+91 96210 14155";
+  }
+  return content;
 }
 
 export function saveCatalogSiteContent(content: SiteContent): void {
