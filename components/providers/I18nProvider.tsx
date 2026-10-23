@@ -17,20 +17,25 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 const LOCALE_KEY = "ttp_locale";
+const USER_SELECTED_KEY = "ttp_locale_user_selected";
 
 function getStoredLocale(): Locale | null {
   if (typeof window === "undefined") return null;
   try {
+    const isUserSelected = localStorage.getItem(USER_SELECTED_KEY) === "true";
     const saved = localStorage.getItem(LOCALE_KEY);
-    if (saved === "en" || saved === "hi" || saved === "te" || saved === "ta") {
+    // If the user explicitly picked a language, honor their choice
+    if (isUserSelected && (saved === "en" || saved === "hi" || saved === "te" || saved === "ta")) {
       return saved as Locale;
     }
   } catch {
     // ignore
   }
   try {
+    const cookieSelected = document.cookie.includes("ttp_locale_user_selected=true");
     const match = document.cookie.match(/(?:^|;\s*)ttp_locale=([^;]+)/);
     if (
+      cookieSelected &&
       match &&
       (match[1] === "en" || match[1] === "hi" || match[1] === "te" || match[1] === "ta")
     ) {
@@ -39,6 +44,7 @@ function getStoredLocale(): Locale | null {
   } catch {
     // ignore
   }
+  // Default to Hindi for all new/unspecified sessions
   return null;
 }
 
@@ -78,11 +84,13 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
     try {
+      localStorage.setItem(USER_SELECTED_KEY, "true");
       localStorage.setItem(LOCALE_KEY, newLocale);
     } catch {
       // ignore
     }
     try {
+      document.cookie = `ttp_locale_user_selected=true;path=/;max-age=31536000;SameSite=Lax`;
       document.cookie = `${LOCALE_KEY}=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
     } catch {
       // ignore

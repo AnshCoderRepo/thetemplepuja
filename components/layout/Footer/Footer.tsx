@@ -73,9 +73,11 @@ export default function Footer() {
     t("footer.description") ||
     "Connecting devotees worldwide with authentic Vedic rituals, sacred temples, and verified certified pandits.";
 
-  const helplinePhone = siteContent?.footer?.phone || SITE_CONFIG.contact.phoneDisplay;
-  const helplinePhoneRaw = siteContent?.footer?.phone
-    ? siteContent.footer.phone.replace(/\s+/g, "")
+  const rawHelpline = siteContent?.footer?.phone;
+  const isOldDummyNumber = rawHelpline && (rawHelpline.includes("9988776655") || rawHelpline.includes("998877"));
+  const helplinePhone = !isOldDummyNumber && rawHelpline ? rawHelpline : SITE_CONFIG.contact.phoneDisplay;
+  const helplinePhoneRaw = !isOldDummyNumber && rawHelpline
+    ? rawHelpline.replace(/\s+/g, "")
     : SITE_CONFIG.contact.phoneRaw;
   const supportEmail = siteContent?.footer?.email || SITE_CONFIG.contact.email;
   const copyrightText =

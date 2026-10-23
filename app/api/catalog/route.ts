@@ -76,8 +76,28 @@ export async function GET() {
     imageUrl: registerDataUrl(p.imageUrl) || p.imageUrl,
   }));
 
+  const siteContent = catalog.siteContent
+    ? {
+        ...catalog.siteContent,
+        footer: catalog.siteContent.footer
+          ? {
+              ...catalog.siteContent.footer,
+              phone:
+                catalog.siteContent.footer.phone?.includes("9988776655")
+                  ? "+91 96210 14155"
+                  : catalog.siteContent.footer.phone,
+              whatsappNumber:
+                catalog.siteContent.footer.whatsappNumber?.includes("9988776655")
+                  ? "+91 96210 14155"
+                  : catalog.siteContent.footer.whatsappNumber,
+            }
+          : undefined,
+      }
+    : undefined;
+
   const payload = {
     ...catalog,
+    siteContent: siteContent || catalog.siteContent,
     temples,
     poojas,
     events: withEventBookedSeats(catalog.events, bookings),

@@ -70,7 +70,9 @@ export default function LanguageToggle({
             Language / भाषा
           </div>
           <div className="mt-1 space-y-0.5">
-            {SUPPORTED_LANGUAGES.map((lang) => {
+            {[...SUPPORTED_LANGUAGES]
+              .sort((a, b) => (a.code === "hi" ? -1 : b.code === "hi" ? 1 : 0))
+              .map((lang) => {
               const isSelected = lang.code === locale;
               return (
                 <button

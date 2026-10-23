@@ -192,9 +192,9 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   footer: {
     aboutText: "TemplePujaSewa is India's leading authentic Vedic puja booking platform connecting devotees worldwide with sacred temples and verified scholars.",
     tagline: "Connecting Devotees to Divine Blessings Worldwide",
-    phone: "+91 9988776655",
+    phone: "+91 96210 14155",
     email: "infotemplepujasewa@gmail.com",
-    whatsappNumber: "+91 9988776655",
+    whatsappNumber: "+91 96210 14155",
     address: "Kashi Sanctuary, Varanasi, Uttar Pradesh, India",
   },
 };
