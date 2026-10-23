@@ -17,6 +17,17 @@ export async function GET(
     return new NextResponse("Not Found", { status: 404 });
   }
 
+  const ifNoneMatch = req.headers.get("if-none-match");
+  if (ifNoneMatch === `"${filename}"`) {
+    return new NextResponse(null, {
+      status: 304,
+      headers: {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "ETag": `"${filename}"`,
+      },
+    });
+  }
+
   return new NextResponse(media.buffer as any, {
     status: 200,
     headers: {

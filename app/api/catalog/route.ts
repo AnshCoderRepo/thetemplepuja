@@ -38,7 +38,25 @@ function bearerToken(req: NextRequest): string | null {
 
 import { registerDataUrl } from "@/lib/media-cache";
 
+let cachedCatalogPayload: any = null;
+let cachedCatalogTimestamp = 0;
+const CATALOG_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+function invalidateCatalogApiCache(): void {
+  cachedCatalogPayload = null;
+  cachedCatalogTimestamp = 0;
+}
+
 export async function GET() {
+  const now = Date.now();
+  if (cachedCatalogPayload && now - cachedCatalogTimestamp < CATALOG_CACHE_TTL_MS) {
+    return NextResponse.json(cachedCatalogPayload, {
+      headers: {
+        "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
+      },
+    });
+  }
+
   const catalog = await getResolvedCatalog();
   // Attach confirmed-seat counts per event so the home page and admin show
   // live, cross-device availability (remaining = capacity − confirmed seats,
@@ -58,19 +76,21 @@ export async function GET() {
     imageUrl: registerDataUrl(p.imageUrl) || p.imageUrl,
   }));
 
-  return NextResponse.json(
-    {
-      ...catalog,
-      temples,
-      poojas,
-      events: withEventBookedSeats(catalog.events, bookings),
+  const payload = {
+    ...catalog,
+    temples,
+    poojas,
+    events: withEventBookedSeats(catalog.events, bookings),
+  };
+
+  cachedCatalogPayload = payload;
+  cachedCatalogTimestamp = now;
+
+  return NextResponse.json(payload, {
+    headers: {
+      "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
     },
-    {
-      headers: {
-        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
-      },
-    }
-  );
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -148,6 +168,9 @@ export async function POST(req: NextRequest) {
       overrides as Parameters<typeof saveCatalogOverrides>[0]
     );
   }
+
+  // Clear in-memory catalog cache so new changes take effect immediately
+  invalidateCatalogApiCache();
 
   // Revalidate Next.js cache so SSR pages and landing page update immediately
   try {

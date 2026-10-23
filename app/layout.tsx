@@ -68,8 +68,19 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
+          rel="preload"
+          as="style"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap"
+        />
+        <link
           href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap"
           rel="stylesheet"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href="/hero-ganesha-marble.jpg"
+          fetchPriority="high"
         />
         <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://connect.facebook.net" />
