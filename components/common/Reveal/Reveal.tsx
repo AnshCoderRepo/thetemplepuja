@@ -13,6 +13,7 @@ interface RevealProps {
   className?: string;
   delay?: number;
   as?: ElementType;
+  initialVisible?: boolean;
 }
 
 export default function Reveal({
@@ -20,11 +21,13 @@ export default function Reveal({
   className = "",
   delay = 0,
   as = "div",
+  initialVisible = false,
 }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(initialVisible);
 
   useEffect(() => {
+    if (initialVisible) return;
     const el = ref.current;
     if (!el) return;
 
@@ -37,14 +40,22 @@ export default function Reveal({
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.05, rootMargin: "50px 0px" }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [initialVisible]);
 
   const Component = as;
+
+  if (initialVisible) {
+    return (
+      <Component ref={ref as any} className={`opacity-100 translate-y-0 ${className}`}>
+        {children}
+      </Component>
+    );
+  }
 
   return (
     <Component

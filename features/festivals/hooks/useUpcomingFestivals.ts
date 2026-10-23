@@ -19,14 +19,9 @@ export function useUpcomingFestivals(): {
   hasFestivals: boolean;
 } {
   const { festivals: catalogFestivals, loaded } = useCatalog();
-  const [today, setToday] = useState<Date | null>(null);
+  const [today] = useState<Date>(() => new Date());
 
-  useEffect(() => {
-    setToday(new Date());
-  }, []);
-
-  const currentDate = today || new Date();
-  const upcoming = getUpcomingFestivals(currentDate, catalogFestivals);
+  const upcoming = getUpcomingFestivals(today, catalogFestivals);
 
   return {
     festivals: upcoming,

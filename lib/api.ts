@@ -128,7 +128,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
   if (!catalogCache) {
     catalogCache = (async () => {
       try {
-        const res = await fetch("/api/catalog", { cache: "no-store" });
+        const res = await fetch("/api/catalog");
         if (!res.ok) throw new Error("catalog request failed");
         const body = (await res.json()) as Partial<ResolvedCatalog>;
         if (

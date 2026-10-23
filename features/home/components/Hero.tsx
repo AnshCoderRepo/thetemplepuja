@@ -382,20 +382,20 @@ export default function Hero() {
       <div className="container-px relative z-10 mx-auto w-full max-w-7xl flex-1 flex flex-col justify-center py-1 sm:pt-8 md:pt-10 pb-2 min-h-0">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center">
           {/* Left Column: Glassmorphic Devotional Card */}
-          <div className="lg:col-span-6 xl:col-span-5 mt-12 flex flex-col items-start text-left bg-stone-950/50 sm:bg-stone-950/40 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-amber-300/20 p-4 sm:p-5 lg:p-6 shadow-2xl">
+          <div className="lg:col-span-6 xl:col-span-5 mt-12 flex flex-col items-start text-left bg-stone-950/85 sm:bg-stone-950/40 sm:backdrop-blur-md rounded-2xl sm:rounded-3xl border border-amber-300/20 p-4 sm:p-5 lg:p-6 shadow-2xl">
             {/* Top Pill Badges: Festival Name & Countdown / Live Status */}
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-saffron-400/40 bg-saffron-950/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-saffron-300 shadow-soft backdrop-blur-md">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-saffron-400/40 bg-saffron-950/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-saffron-300 shadow-soft sm:backdrop-blur-md">
                 <Sparkles className="h-3 w-3 text-saffron-400 shrink-0" />
                 {displayBadge}
               </span>
 
               {activeFestival && (
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-md transition-colors ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold sm:backdrop-blur-md transition-colors ${
                     activeFestival.status?.isLive
-                      ? "border border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
-                      : "border border-amber-400/30 bg-amber-950/70 text-amber-200"
+                      ? "border border-emerald-500/50 bg-emerald-950/90 text-emerald-300"
+                      : "border border-amber-400/30 bg-amber-950/80 text-amber-200"
                   }`}
                 >
                   <Clock className="h-3 w-3 shrink-0" />
@@ -452,7 +452,7 @@ export default function Hero() {
 
               <a
                 href="#poojas"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-white backdrop-blur-md transition-all duration-300 hover:border-saffron-400/50 hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 sm:bg-white/5 px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-white sm:backdrop-blur-md transition-all duration-300 hover:border-saffron-400/50 hover:bg-white/10"
               >
                 {displaySecondaryCta}
               </a>
@@ -478,7 +478,7 @@ export default function Hero() {
                       key={pooja.slug}
                       type="button"
                       onClick={() => router.push(`/book/${pooja.slug}`)}
-                      className="group flex items-center gap-2 rounded-xl border border-saffron-400/25 bg-slate-900/85 px-3 py-1.5 text-xs text-slate-200 backdrop-blur-md transition-all duration-300 hover:border-saffron-400/70 hover:bg-saffron-950/70 hover:shadow-glow text-left cursor-pointer shrink-0"
+                      className="group flex items-center gap-2 rounded-xl border border-saffron-400/25 bg-slate-900/95 sm:bg-slate-900/85 px-3 py-1.5 text-xs text-slate-200 sm:backdrop-blur-md transition-all duration-300 hover:border-saffron-400/70 hover:bg-saffron-950/70 hover:shadow-glow text-left cursor-pointer shrink-0"
                     >
                       <span className="text-sm">{pooja.emoji || "🪔"}</span>
                       <span className="font-bold text-white group-hover:text-amber-200 transition-colors truncate max-w-[200px] sm:max-w-none">

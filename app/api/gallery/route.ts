@@ -14,6 +14,21 @@ export const revalidate = 0;
  *   - mediaType: "photo" | "video" -> filter by media type
  *   - category: string -> filter by category name
  */
+import { registerDataUrl } from "@/lib/media-cache";
+import type { GalleryItem } from "@/lib/gallery-types";
+
+function optimizeGalleryItem(item: GalleryItem): GalleryItem {
+  const images = item.images?.map((img) => registerDataUrl(img) || img);
+  const imageUrl = registerDataUrl(item.imageUrl) || item.imageUrl;
+  const thumbnailUrl = registerDataUrl(item.thumbnailUrl) || item.thumbnailUrl;
+  return {
+    ...item,
+    images: images && images.length > 0 ? images : undefined,
+    imageUrl: imageUrl || images?.[0],
+    thumbnailUrl: thumbnailUrl || imageUrl || images?.[0],
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -24,10 +39,17 @@ export async function GET(req: Request) {
 
     if (isHomepage) {
       const homepageItems = await getHomepageGalleryItems(6);
-      return NextResponse.json({
-        ok: true,
-        items: homepageItems,
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          items: homepageItems.map(optimizeGalleryItem),
+        },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+          },
+        }
+      );
     }
 
     const items = await getActiveGalleryItems({
@@ -35,10 +57,17 @@ export async function GET(req: Request) {
       category,
     });
 
-    return NextResponse.json({
-      ok: true,
-      items,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        items: items.map(optimizeGalleryItem),
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (err: any) {
     console.error("[gallery-api] Error fetching gallery items:", err);
     return NextResponse.json(

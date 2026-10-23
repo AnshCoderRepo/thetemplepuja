@@ -22,11 +22,14 @@ import { PoojaImage } from "@/components/common";
 import { useCatalog } from "../hooks/useCatalog";
 import { trackBookingStart } from "@/lib/meta-pixel";
 
+import type { Temple } from "@/lib/data";
+
 export interface PoojaCardProps {
   pooja: Pooja;
+  temples?: Temple[];
 }
 
-export default function PoojaCard({ pooja: p }: PoojaCardProps) {
+export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardProps) {
   const { locale, t } = useI18n();
   const router = useRouter();
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
@@ -35,7 +38,7 @@ export default function PoojaCard({ pooja: p }: PoojaCardProps) {
   const bannerImage = p.imageUrl ? p.imageUrl.trim() : getPoojaBannerImage(p);
   const poojaTitle = getLocalizedPoojaTitle(p, locale);
   const nativeBadge = getLocalizedPoojaNativeBadge(p, locale);
-  const { temples } = useCatalog();
+  const temples = propTemples || [];
   const assignedTemple = resolvePoojaTemple(p, temples);
   const templeName = assignedTemple
     ? getLocalizedTempleName(assignedTemple, locale) || assignedTemple.name

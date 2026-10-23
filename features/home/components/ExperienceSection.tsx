@@ -8,7 +8,7 @@ export default function ExperienceSection() {
     <div id="experience">
       <PoojaExperience title="Experience a Sacred Pooja">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-amber-200 backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-stone-900/80 sm:bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-amber-200 sm:backdrop-blur">
             🙏 Watch Before You Book
           </span>
           <h3 className="mt-6 font-display text-3xl font-bold text-white md:text-4xl">

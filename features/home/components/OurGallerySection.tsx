@@ -6,8 +6,12 @@ import { ArrowRight, Calendar, Sparkles, Image as ImageIcon } from "lucide-react
 import type { GalleryItem } from "@/lib/gallery-types";
 import { fetchPublicGallery } from "@/lib/api";
 import { useBookingModal, useI18n } from "@/components/providers";
+import dynamic from "next/dynamic";
 import GalleryCard, { type GalleryCardOpenOptions } from "@/components/gallery/GalleryCard";
-import GalleryModal from "@/components/gallery/GalleryModal";
+
+const GalleryModal = dynamic(() => import("@/components/gallery/GalleryModal"), {
+  ssr: false,
+});
 
 const GALLERY_CONTENT = {
   hi: {
@@ -120,11 +124,11 @@ export default function OurGallerySection() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {items.map((item, idx) => (
+            {items.map((item) => (
               <GalleryCard
                 key={item.id || item._id}
                 item={item}
-                priority={idx < 2}
+                priority={false}
                 onOpen={(it, opts) => {
                   setSelectedItem(it);
                   setModalOptions(opts);
