@@ -32,12 +32,29 @@ const nextConfig = {
         ? { exclude: ["error", "warn"] }
         : false,
   },
-  // ── Security headers ──────────────────────────────────────────────
-  // Security headers (CSP, HSTS, X-Frame-Options, etc.) are set by
-  // middleware.ts on every response. We keep them ONLY in middleware
-  // because next.config headers apply to ALL routes including _next/static,
-  // which interferes with CSS/JS serving in dev mode (MIME type errors).
-  // Middleware correctly excludes _next/static via its matcher.
+  // Cache-Control headers for static assets and media endpoints
+  async headers() {
+    return [
+      {
+        source: "/:all*(svg|jpg|jpeg|png|webp|avif|ico|woff|woff2)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/api/media/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

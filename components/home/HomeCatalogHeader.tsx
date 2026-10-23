@@ -34,7 +34,7 @@ export default function HomeCatalogHeader() {
   const c = CONTENT[locale] || CONTENT.en;
 
   return (
-    <div className="container-px mb-8 text-center animate-fadeIn">
+    <div className="container-px mb-8 text-center">
       <span className="eyebrow">
         <span className="text-saffron-500">🪔</span>
         {c.eyebrow}

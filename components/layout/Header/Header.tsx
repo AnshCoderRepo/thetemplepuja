@@ -32,7 +32,7 @@ function YouTubeIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
 }
 
 export default function Header() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const pathname = usePathname();
   const isHomePage = pathname === "/" || pathname === "";
   const [scrolled, setScrolled] = useState(false);
@@ -69,7 +69,15 @@ export default function Header() {
               <span className="font-devanagari text-sm">{t("header.greeting")}</span>
               <span className="opacity-40">|</span>
               <span className="tracking-wide hidden sm:inline">{t("header.tagline")}</span>
-              <span className="hidden lg:inline text-amber-200/80">🙏 100% Certified Vedic Pandits</span>
+              <span className="hidden lg:inline text-amber-200/80">
+                {locale === "hi"
+                  ? "🙏 100% प्रमाणित वैदिक पंडित"
+                  : locale === "te"
+                  ? "🙏 100% ధృవీకరించబడిన వేద పండితులు"
+                  : locale === "ta"
+                  ? "🙏 100% சான்றளிக்கப்பட்ட வேத பண்டிதர்கள்"
+                  : "🙏 100% Certified Vedic Pandits"}
+              </span>
             </p>
             <div className="flex items-center gap-3.5 text-amber-200/90 font-medium text-[11px]">
               <a

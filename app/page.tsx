@@ -2,12 +2,18 @@ import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { Footer } from "@/components/layout";
 import { JsonLd, ContinueBookingSection } from "@/components/common";
-import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
+import { Hero, WhyChooseUs } from "@/features/home";
 import { PoojaCatalog } from "@/features/catalog";
 import HomeCatalogHeader from "@/components/home/HomeCatalogHeader";
 
 const OurGallerySection = dynamic(
   () => import("@/features/home").then((m) => m.OurGallerySection)
+);
+const Testimonials = dynamic(
+  () => import("@/features/home").then((m) => m.Testimonials)
+);
+const FAQ = dynamic(
+  () => import("@/features/home").then((m) => m.FAQ)
 );
 const MessageCeoSection = dynamic(
   () => import("@/components/home/MessageCeoSection")

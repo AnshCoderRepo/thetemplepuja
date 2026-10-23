@@ -68,7 +68,7 @@ describe("CEO Email Notification Service", () => {
     const result = await sendCeoMessageEmail({
       id: "CEO-send-99999",
       name: "Govind Das",
-      contact: "+91 9988776655",
+      contact: "+91 96210 14155",
       subject: "Darshan Streaming Inquiry",
       message: "Kindly verify if the live stream link will be sent on WhatsApp.",
     });

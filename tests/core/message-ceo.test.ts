@@ -39,7 +39,7 @@ describe("Message the CEO Service", () => {
     const { updateCeoMessageStatus } = await import("@/lib/server-store");
     const msg = await saveCeoMessage({
       name: "Anand Sharma",
-      contact: "+91 9988776655",
+      contact: "+91 96210 14155",
       subject: "Pooja booking feedback",
       message: "Pandit ji performed the puja with great devotion.",
     });

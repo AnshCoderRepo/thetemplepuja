@@ -221,7 +221,9 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
               <span>Language / भाषा</span>
             </p>
             <div className="grid grid-cols-2 gap-1.5">
-              {SUPPORTED_LANGUAGES.map((lang) => {
+              {[...SUPPORTED_LANGUAGES]
+                .sort((a, b) => (a.code === "hi" ? -1 : b.code === "hi" ? 1 : 0))
+                .map((lang) => {
                 const isSelected = lang.code === locale;
                 return (
                   <button

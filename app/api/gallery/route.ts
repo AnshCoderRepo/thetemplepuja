@@ -29,6 +29,10 @@ function optimizeGalleryItem(item: GalleryItem): GalleryItem {
   };
 }
 
+let cachedHomepageGallery: any = null;
+let cachedHomepageGalleryTime = 0;
+const GALLERY_CACHE_TTL_MS = 60 * 1000;
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -38,18 +42,28 @@ export async function GET(req: Request) {
     const category = searchParams.get("category") || undefined;
 
     if (isHomepage) {
-      const homepageItems = await getHomepageGalleryItems(6);
-      return NextResponse.json(
-        {
-          ok: true,
-          items: homepageItems.map(optimizeGalleryItem),
-        },
-        {
+      const now = Date.now();
+      if (cachedHomepageGallery && now - cachedHomepageGalleryTime < GALLERY_CACHE_TTL_MS) {
+        return NextResponse.json(cachedHomepageGallery, {
           headers: {
-            "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+            "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
           },
-        }
-      );
+        });
+      }
+
+      const homepageItems = await getHomepageGalleryItems(6);
+      const payload = {
+        ok: true,
+        items: homepageItems.map(optimizeGalleryItem),
+      };
+      cachedHomepageGallery = payload;
+      cachedHomepageGalleryTime = now;
+
+      return NextResponse.json(payload, {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
+        },
+      });
     }
 
     const items = await getActiveGalleryItems({

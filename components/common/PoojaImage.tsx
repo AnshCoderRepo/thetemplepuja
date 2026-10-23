@@ -23,6 +23,7 @@ export default function PoojaImage({
   fallbackSize = "md",
   showBrandText = true,
   onClick,
+  priority = false,
   onAspectRatioChange,
 }: PoojaImageProps) {
   const [hasError, setHasError] = useState(false);
@@ -32,23 +33,6 @@ export default function PoojaImage({
   useEffect(() => {
     setHasError(false);
   }, [src]);
-
-  // Measure natural dimensions as soon as image source is available or loaded
-  useEffect(() => {
-    if (!cleanSrc || !onAspectRatioChange) return;
-    const img = new Image();
-    img.src = cleanSrc;
-    const reportRatio = () => {
-      if (img.naturalWidth && img.naturalHeight) {
-        onAspectRatioChange(img.naturalWidth / img.naturalHeight);
-      }
-    };
-    if (img.complete && img.naturalWidth) {
-      reportRatio();
-    } else {
-      img.onload = reportRatio;
-    }
-  }, [cleanSrc, onAspectRatioChange]);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
@@ -79,20 +63,16 @@ export default function PoojaImage({
       onClick={onClick}
       className={`relative h-full w-full overflow-hidden bg-slate-950 flex items-center justify-center ${className}`}
     >
-      {/* Ambient blurred backdrop to softly fill letterbox without clipping or distortion */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={cleanSrc}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-      />
+      {/* Clean ambient backdrop for uncropped aspect ratio */}
+      <div className="absolute inset-0 bg-radial from-slate-900/80 to-slate-950 pointer-events-none" />
 
       {/* Uncropped foreground image preserving 100% of the original aspect ratio */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={cleanSrc}
         alt={alt}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
         className={`relative z-0 h-full w-full object-contain transition-transform duration-300 ${imgClassName}`}
         onLoad={handleImageLoad}
         onError={() => setHasError(true)}
