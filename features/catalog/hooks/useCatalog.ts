@@ -38,59 +38,70 @@ export interface CatalogState {
   loaded: boolean;
 }
 
-export function useCatalog(): CatalogState {
-  const [catalog, setCatalog] = useState<ResolvedCatalog | null>(null);
-  const [catalogVersion, setCatalogVersion] = useState(() => getCatalogVersion());
+// Module-level shared singleton state to eliminate duplicate network requests and re-render cascading
+let globalCatalog: ResolvedCatalog | null = null;
+let globalVersion = 0;
+let isFetching = false;
+const subscribers = new Set<() => void>();
 
-  useEffect(() => {
-    let live = true;
-    fetchCatalog().then((c) => {
-      if (live) setCatalog(c);
+function notifySubscribers() {
+  subscribers.forEach((fn) => fn());
+}
+
+function loadCatalog() {
+  if (isFetching) return;
+  isFetching = true;
+  fetchCatalog()
+    .then((c) => {
+      globalCatalog = c;
+      notifySubscribers();
+    })
+    .finally(() => {
+      isFetching = false;
     });
-    return () => {
-      live = false;
-    };
-  }, [catalogVersion]);
+}
 
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "ttp_catalog_version_v1") {
-        clearCatalogMemoryCache();
-        setCatalogVersion(Number(e.newValue) || Date.now());
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+// Global listeners attached only once per browser session
+if (typeof window !== "undefined") {
+  globalVersion = getCatalogVersion();
 
-  useEffect(() => {
-    let lastCheck = Date.now();
-    const onVis = () => {
-      if (document.visibilityState === "visible") {
-        const now = Date.now();
-        if (now - lastCheck > 60000) {
-          lastCheck = now;
-          const currentVer = getCatalogVersion();
-          if (currentVer > catalogVersion) {
-            clearCatalogMemoryCache();
-            setCatalogVersion(currentVer);
-          }
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [catalogVersion]);
-
-  useEffect(() => {
-    const onCatalogUpdated = (e: Event) => {
-      const customVer = (e as CustomEvent<{ version?: number }>).detail?.version;
+  window.addEventListener("storage", (e: StorageEvent) => {
+    if (e.key === "ttp_catalog_version_v1") {
       clearCatalogMemoryCache();
-      setCatalogVersion(customVer || getCatalogVersion() || Date.now());
+      globalCatalog = null;
+      globalVersion = Number(e.newValue) || Date.now();
+      loadCatalog();
+    }
+  });
+
+  window.addEventListener("catalog-updated", (e: Event) => {
+    const customVer = (e as CustomEvent<{ version?: number }>).detail?.version;
+    clearCatalogMemoryCache();
+    globalCatalog = null;
+    globalVersion = customVer || getCatalogVersion() || Date.now();
+    loadCatalog();
+  });
+}
+
+export function useCatalog(): CatalogState {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const onStoreUpdate = () => {
+      setTick((t) => t + 1);
     };
-    window.addEventListener("catalog-updated", onCatalogUpdated);
-    return () => window.removeEventListener("catalog-updated", onCatalogUpdated);
+    subscribers.add(onStoreUpdate);
+
+    if (!globalCatalog) {
+      loadCatalog();
+    }
+
+    return () => {
+      subscribers.delete(onStoreUpdate);
+    };
   }, []);
+
+  const catalog = globalCatalog;
 
   return {
     poojas: catalog?.poojas ?? staticPoojas,

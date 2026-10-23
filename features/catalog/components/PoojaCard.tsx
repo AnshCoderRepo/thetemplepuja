@@ -32,7 +32,6 @@ export interface PoojaCardProps {
 export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardProps) {
   const { locale, t } = useI18n();
   const router = useRouter();
-  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
   const schedule = getPoojaSchedule(p);
   const isNewlyAdded = Boolean(p.isNew || !DEFAULT_POOJA_SLUGS.includes(p.slug));
   const bannerImage = p.imageUrl ? p.imageUrl.trim() : getPoojaBannerImage(p);
@@ -79,16 +78,6 @@ export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardP
     ? (p.badge && p.badge.trim() ? p.badge.trim() : fallbackBadgeText)
     : null;
 
-  // Determine appropriate container aspect ratio based on actual banner dimensions.
-  // - If landscape (e.g. 16:9 = 1.78, 3:2 = 1.5, 4:3 = 1.33): allow it to display as a full
-  //   landscape banner across the available card width without forcing into a portrait crop.
-  // - If portrait (e.g. 4:5 = 0.8, 3:4 = 0.75): adapt container height so the complete banner
-  //   is clearly visible without large side bars or excessive empty space.
-  // - Clamp between 0.75 (3:4 portrait) and 1.85 (~16:9 widescreen) with max-height to protect grid stability.
-  const containerAspect = aspectRatio
-    ? Math.max(0.75, Math.min(aspectRatio, 1.85))
-    : null;
-
   return (
     <div
       onClick={handleNavigateToPooja}
@@ -110,18 +99,12 @@ export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardP
             handleNavigateToPooja();
           }
         }}
-        style={containerAspect ? { aspectRatio: `${containerAspect}` } : undefined}
         className="relative flex w-full aspect-[16/10] sm:aspect-[4/3] items-center justify-center bg-slate-950 text-white overflow-hidden cursor-pointer max-h-[380px] transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-400 focus-visible:ring-offset-2"
       >
         <PoojaImage
           src={bannerImage}
           alt={poojaTitle}
           fallbackSize="md"
-          onAspectRatioChange={(ratio) => {
-            if (ratio && Number.isFinite(ratio)) {
-              setAspectRatio(ratio);
-            }
-          }}
           imgClassName="transition-transform duration-300 group-hover:scale-[1.02]"
         />
 
