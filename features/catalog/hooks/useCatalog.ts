@@ -64,15 +64,23 @@ export function useCatalog(): CatalogState {
   }, []);
 
   useEffect(() => {
+    let lastCheck = Date.now();
     const onVis = () => {
       if (document.visibilityState === "visible") {
-        clearCatalogMemoryCache();
-        setCatalogVersion(Date.now());
+        const now = Date.now();
+        if (now - lastCheck > 60000) {
+          lastCheck = now;
+          const currentVer = getCatalogVersion();
+          if (currentVer > catalogVersion) {
+            clearCatalogMemoryCache();
+            setCatalogVersion(currentVer);
+          }
+        }
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
+  }, [catalogVersion]);
 
   useEffect(() => {
     const onCatalogUpdated = (e: Event) => {

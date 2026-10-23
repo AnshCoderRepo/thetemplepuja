@@ -36,6 +36,8 @@ function bearerToken(req: NextRequest): string | null {
   return header.replace(/^Bearer\s+/i, "").trim() || null;
 }
 
+import { registerDataUrl } from "@/lib/media-cache";
+
 export async function GET() {
   const catalog = await getResolvedCatalog();
   // Attach confirmed-seat counts per event so the home page and admin show
@@ -43,16 +45,29 @@ export async function GET() {
   // so cancellations free a seat automatically on the next fetch).
   const users = await getAllUsers();
   const bookings = users.flatMap((u) => u.bookings);
+
+  // Normalize base64 image strings to fast, cached binary URLs
+  const temples = catalog.temples.map((t) => ({
+    ...t,
+    image: registerDataUrl(t.image) || t.image,
+    gallery: t.gallery?.map((img) => registerDataUrl(img) || img),
+  }));
+
+  const poojas = catalog.poojas.map((p) => ({
+    ...p,
+    imageUrl: registerDataUrl(p.imageUrl) || p.imageUrl,
+  }));
+
   return NextResponse.json(
     {
       ...catalog,
+      temples,
+      poojas,
       events: withEventBookedSeats(catalog.events, bookings),
     },
     {
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-        Pragma: "no-cache",
-        Expires: "0",
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
       },
     }
   );

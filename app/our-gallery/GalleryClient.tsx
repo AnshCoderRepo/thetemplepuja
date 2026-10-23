@@ -16,10 +16,14 @@ import {
 import type { GalleryItem, GalleryMediaType } from "@/lib/gallery-types";
 import { GALLERY_CATEGORIES } from "@/lib/gallery-types";
 import { fetchPublicGallery } from "@/lib/api";
+import dynamic from "next/dynamic";
 import { useBookingModal, useI18n } from "@/components/providers";
 import GalleryCard, { type GalleryCardOpenOptions } from "@/components/gallery/GalleryCard";
-import GalleryModal from "@/components/gallery/GalleryModal";
 import { trackCustomEvent } from "@/lib/meta-pixel";
+
+const GalleryModal = dynamic(() => import("@/components/gallery/GalleryModal"), {
+  ssr: false,
+});
 
 const PAGE_SIZE = 9;
 

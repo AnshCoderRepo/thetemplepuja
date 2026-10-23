@@ -29,7 +29,7 @@ export default function PoojaCatalog({
   showViewAll = false,
   viewAllHref = "/book",
 }: PoojaCatalogProps) {
-  const { poojas } = useCatalog();
+  const { poojas, temples } = useCatalog();
   const { locale } = useI18n();
   // Filter active poojas configured to appear in the public catalog (safe default true)
   const list = activePoojas(poojas).filter((p) => p.showInCatalog !== false);
@@ -227,8 +227,12 @@ export default function PoojaCatalog({
         <>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {displayedPoojas.map((pooja, index) => (
-              <Reveal key={pooja.slug} delay={Math.min(index * 50, 300)}>
-                <PoojaCard pooja={pooja} />
+              <Reveal
+                key={pooja.slug}
+                delay={Math.min(index * 50, 300)}
+                initialVisible={index < 4}
+              >
+                <PoojaCard pooja={pooja} temples={temples} />
               </Reveal>
             ))}
           </div>

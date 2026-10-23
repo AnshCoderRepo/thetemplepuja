@@ -26,7 +26,7 @@ export default function FeaturedDemoBanner() {
   const ctaLink = card.ctaLink?.trim() || "/book/demo-pooja";
 
   return (
-    <div className="container-px mx-auto max-w-6xl mb-8 animate-fadeIn">
+    <div className="container-px mx-auto max-w-6xl mb-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-amber-50 via-saffron-50/60 to-rose-50 border border-amber-200/90 p-4 sm:p-5 shadow-xs transition-all hover:shadow-md">
         <div className="flex items-center gap-3">
           {card.imageUrl ? (

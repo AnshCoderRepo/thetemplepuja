@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { Footer } from "@/components/layout";
 import { JsonLd, ContinueBookingSection } from "@/components/common";
-import { Hero, WhyChooseUs, Testimonials, FAQ, OurGallerySection } from "@/features/home";
+import { Hero, WhyChooseUs, Testimonials, FAQ } from "@/features/home";
 import { PoojaCatalog } from "@/features/catalog";
 import HomeCatalogHeader from "@/components/home/HomeCatalogHeader";
-import MessageCeoSection from "@/components/home/MessageCeoSection";
+
+const OurGallerySection = dynamic(
+  () => import("@/features/home").then((m) => m.OurGallerySection)
+);
+const MessageCeoSection = dynamic(
+  () => import("@/components/home/MessageCeoSection")
+);
 import { faqs } from "@/lib/data";
 import { faqPageLd, organizationLd, websiteLd, SITE_URL } from "@/lib/seo";
 

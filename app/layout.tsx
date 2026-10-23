@@ -2,32 +2,37 @@ import type { Metadata } from "next";
 import { Playfair_Display, Poppins, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 
+import dynamic from "next/dynamic";
+import Script from "next/script";
+
 const display = Playfair_Display({
   subsets: ["latin"],
+  weight: ["600", "700"],
   variable: "--font-display",
   display: "swap",
 });
 
 const sans = Poppins({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
 
 const devanagari = Noto_Sans_Devanagari({
   subsets: ["devanagari"],
+  weight: ["400", "600", "700"],
   variable: "--font-devanagari",
   display: "swap",
 });
 import { SITE_URL } from "@/lib/seo";
 import { ErrorBoundary } from "@/components/common";
-import { FloatingWhatsApp } from "@/features/contact";
-import { BookingModal } from "@/features/bookings";
 import { PublicHeader } from "@/components/layout";
 import { MetaPixel } from "@/components/analytics";
 import Providers from "@/components/providers/Providers";
 import { FB_PIXEL_ID } from "@/lib/meta-pixel";
+
+import GlobalClientModals from "@/components/common/GlobalClientModals";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -64,9 +69,15 @@ export default function RootLayout({
       className={`${display.variable} ${sans.variable} ${devanagari.variable}`}
     >
       <head>
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://connect.facebook.net" />
+        <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
+        <link rel="dns-prefetch" href="https://api.razorpay.com" />
         {FB_PIXEL_ID && (
           <>
-            <script
+            <Script
+              id="fb-pixel"
+              strategy="afterInteractive"
               dangerouslySetInnerHTML={{
                 __html: `
                   !function(f,b,e,v,n,t,s)
@@ -100,8 +111,7 @@ export default function RootLayout({
           <ErrorBoundary>
             <PublicHeader />
             {children}
-            <BookingModal />
-            <FloatingWhatsApp />
+            <GlobalClientModals />
           </ErrorBoundary>
         </Providers>
       </body>

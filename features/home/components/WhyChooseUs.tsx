@@ -26,7 +26,7 @@ export default function WhyChooseUs() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {whyUs.map((item, i) => (
             <Reveal key={item.title} delay={i * 70}>
-              <div className="group card-hover flex h-full flex-col items-start gap-3 rounded-2xl border border-saffron-100 bg-white/90 p-6 shadow-soft backdrop-blur">
+              <div className="group card-hover flex h-full flex-col items-start gap-3 rounded-2xl border border-saffron-100 bg-white sm:bg-white/90 p-6 shadow-soft sm:backdrop-blur">
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-saffron-50 text-2xl shadow-xs border border-saffron-100">
                   {item.icon}
                 </span>
