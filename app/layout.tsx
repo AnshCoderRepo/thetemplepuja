@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Poppins, Noto_Sans_Devanagari } from "next/font/google";
+import { Playfair_Display, Poppins } from "next/font/google";
 import "./globals.css";
 
 import dynamic from "next/dynamic";
@@ -7,7 +7,6 @@ import Script from "next/script";
 
 const display = Playfair_Display({
   subsets: ["latin"],
-  weight: ["600", "700"],
   variable: "--font-display",
   display: "swap",
 });
@@ -16,13 +15,6 @@ const sans = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-const devanagari = Noto_Sans_Devanagari({
-  subsets: ["devanagari"],
-  weight: ["400", "600", "700"],
-  variable: "--font-devanagari",
   display: "swap",
 });
 import { SITE_URL } from "@/lib/seo";
@@ -66,9 +58,19 @@ export default function RootLayout({
     <html
       lang="hi"
       suppressHydrationWarning
-      className={`${display.variable} ${sans.variable} ${devanagari.variable}`}
+      className={`${display.variable} ${sans.variable}`}
     >
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap"
+          rel="stylesheet"
+        />
         <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://connect.facebook.net" />
         <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
