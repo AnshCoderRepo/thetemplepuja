@@ -1,0 +1,6 @@
+---
+description: Engineering guidelines and rules for agents
+alwaysApply: true
+---
+
+Follow AGENTS.md in the repo root strictly.
