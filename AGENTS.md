@@ -233,6 +233,7 @@ Agents must NEVER skip running `npm run typecheck` and `npm test` after modifyin
    - `test(devotee): add unit tests for booking rescheduling`
    - `docs(agents): update engineering guidelines and DoD`
 3. **Single Source of Truth**: When architecture decisions or patterns change, update `AGENTS.md` and `ARCHITECTURE.md` in the exact same commit/PR.
+4. **Never Push Automatically**: Autonomous agents must NEVER run `git push`. Pushing to remote repositories (`origin` or any remote) must strictly remain a manual developer action.
 
 ---
 
