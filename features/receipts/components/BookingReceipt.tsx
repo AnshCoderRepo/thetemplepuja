@@ -244,6 +244,12 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
                   : "Standard Plan"}
               </dd>
             </div>
+            {booking.address && (
+              <div className="sm:col-span-2">
+                <dt className="text-ink-soft font-medium">Ritual Location (Devotee Home Address)</dt>
+                <dd className="font-semibold text-ink mt-0.5">🏡 {booking.address}</dd>
+              </div>
+            )}
           </dl>
 
           {/* Full Devotees List for Couple / Family */}

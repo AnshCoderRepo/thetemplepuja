@@ -595,7 +595,14 @@ export default function OrdersManager({
                         <div className="text-[11px] text-ink-soft">{user.phone}</div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="font-semibold text-ink">{booking.poojaTitle}</div>
+                        <div className="font-semibold text-ink flex items-center gap-1.5 flex-wrap">
+                          <span>{booking.poojaTitle}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            booking.ritualType === "home" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+                          }`}>
+                            {booking.ritualType === "home" ? "🏡 Home" : "🛕 Temple"}
+                          </span>
+                        </div>
                         <div className="text-[10px] text-ink-soft">
                           Scheduled: {booking.date}
                         </div>
@@ -768,6 +775,20 @@ export default function OrdersManager({
                   <span className="text-ink-soft">Gotra & City:</span>
                   <span className="text-ink">{selectedOrder.user.gotra || "Kashyap"} • {selectedOrder.user.city}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-soft">Ritual Type:</span>
+                  <span className="font-semibold text-ink">
+                    {selectedOrder.booking.ritualType === "home" ? "🏡 Home Puja (Devotee Doorstep Visit)" : "🛕 Temple Puja (Online)"}
+                  </span>
+                </div>
+                {(selectedOrder.booking.address || selectedOrder.user.address) && (
+                  <div className="flex flex-col gap-0.5 pt-1.5 border-t border-saffron-100/60 text-xs">
+                    <span className="text-ink-soft font-semibold">Devotee Home Address:</span>
+                    <span className="font-medium text-ink break-words bg-blue-50/50 p-2 rounded-lg border border-blue-100">
+                      🏡 {selectedOrder.booking.address || selectedOrder.user.address}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-saffron-100 bg-cream/30 p-4 space-y-2">

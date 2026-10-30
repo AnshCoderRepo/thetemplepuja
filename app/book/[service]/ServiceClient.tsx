@@ -351,7 +351,9 @@ function ServiceInner({ service }: { service: string }) {
                     {pooja.emoji || "🪔"}
                   </span>
                   <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">
-                    {getLocalizedTempleName(temple, locale)}
+                    {pooja.type === "home"
+                      ? (locale === "hi" ? "🏡 गृह पूजा • घर पर पुरोहित जी" : "🏡 Home Puja • Devotee's Doorstep")
+                      : getLocalizedTempleName(temple, locale)}
                   </span>
                 </div>
                 <h2 className="font-display text-lg sm:text-xl font-bold text-white drop-shadow-sm leading-tight">
@@ -503,32 +505,59 @@ function ServiceInner({ service }: { service: string }) {
                   </div>
                 </div>
 
-                {/* Where / Temple Venue */}
-                <div className="rounded-2xl border border-saffron-200/80 bg-white p-4 space-y-2 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
-                      {t("service.templeVenueLabel")}
-                    </span>
-                    <p className="font-display text-base font-bold text-ink leading-tight mt-0.5">
-                      {getLocalizedTempleName(temple, locale)}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium mt-1">
-                      <MapPin className="h-3.5 w-3.5 text-saffron-600 shrink-0" />
-                      <span>{temple.city}, {temple.state}</span>
+                {/* Where / Venue: Devotee Home vs Temple Mandir */}
+                {pooja.type === "home" ? (
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 space-y-2 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 block flex items-center gap-1">
+                        <span>🏡</span>
+                        <span>{locale === "hi" ? "स्थान: यजमान का निवास स्थल" : "Ritual Location: Devotee's Home"}</span>
+                      </span>
+                      <p className="font-display text-base font-bold text-slate-900 leading-tight mt-1">
+                        {locale === "hi" ? "घर पर वैदिक पूजा अनुष्ठान" : "Doorstep Vedic Puja Ceremony"}
+                      </p>
+                      <div className="flex items-start gap-1.5 text-xs text-slate-600 font-medium mt-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-blue-600 shrink-0 mt-0.5" />
+                        <span>
+                          {locale === "hi"
+                            ? "आचार्य / पुरोहित जी स्वयं पवित्र पूजा सामग्री सहित आपके दिए गए पते पर पधारेंगे।"
+                            : "Certified Vedic Panditji arrives in person with sanctified samagri at your provided address."}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pt-1.5 border-t border-blue-100 text-[11px] font-semibold text-blue-800">
+                      ✓ {locale === "hi" ? "घर का पूरा पता बुकिंग फॉर्म में दर्ज करें" : "Devotee home address collected during booking"}
                     </div>
                   </div>
-                  {temple.slug && (
-                    <div className="pt-1.5 border-t border-saffron-100/80">
-                      <Link
-                        href={`/temples/${temple.slug}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-saffron-700 hover:text-saffron-800 hover:underline transition-colors"
-                      >
-                        <span>{t("temples.viewDetails")}</span>
-                        <span aria-hidden="true">→</span>
-                      </Link>
+                ) : (
+                  <div className="rounded-2xl border border-saffron-200/80 bg-white p-4 space-y-2 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+                        {t("service.templeVenueLabel")}
+                      </span>
+                      <p className="font-display text-base font-bold text-ink leading-tight mt-0.5">
+                        {getLocalizedTempleName(temple, locale)}
+                      </p>
+                      {temple && (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium mt-1">
+                          <MapPin className="h-3.5 w-3.5 text-saffron-600 shrink-0" />
+                          <span>{temple.city}, {temple.state}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                    {temple?.slug && (
+                      <div className="pt-1.5 border-t border-saffron-100/80">
+                        <Link
+                          href={`/temples/${temple.slug}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-saffron-700 hover:text-saffron-800 hover:underline transition-colors"
+                        >
+                          <span>{t("temples.viewDetails")}</span>
+                          <span aria-hidden="true">→</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Pre-Scheduled Muhurat Notice */}

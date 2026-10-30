@@ -13,6 +13,8 @@ export interface ActiveBookingSessionState {
   bookingId: string;
   poojaSlug: string;
   poojaTitle?: string;
+  ritualType?: "temple" | "home";
+  address?: string;
   step: 1 | 2 | 3 | 4;
   packageTier: PackageTier;
   addons: Record<string, number>;

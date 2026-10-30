@@ -135,7 +135,7 @@ describe("Temple Management & Public Temple Information", () => {
 
     // From puja -> temple
     const resolvedTemple = getTempleForPooja(mockPooja, [mockTemple]);
-    expect(resolvedTemple.slug).toBe("somnath-temple");
+    expect(resolvedTemple?.slug).toBe("somnath-temple");
 
     // From temple -> related pujas
     const relatedPujas = getRelatedPoojasForTemple(mockTemple, [mockPooja]);

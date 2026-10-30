@@ -64,6 +64,44 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Enforce Temple Puja vs Home Puja business logic
+    const isHomePuja = pooja.type === "home";
+    booking.ritualType = isHomePuja ? "home" : "temple";
+
+    if (isHomePuja) {
+      // Home Puja: In-person pandit visit. Devotee home address is required.
+      const rawAddress =
+        typeof booking.address === "string" && booking.address.trim()
+          ? booking.address.trim()
+          : typeof (body as { address?: unknown }).address === "string" &&
+            (body as { address: string }).address.trim()
+          ? (body as { address: string }).address.trim()
+          : "";
+
+      if (!rawAddress) {
+        return NextResponse.json(
+          { error: "Devotee home address is required for Home Puja bookings." },
+          { status: 400 }
+        );
+      }
+      booking.address = rawAddress;
+      // Home Pujas must NEVER be associated with a temple
+      booking.templeId = undefined;
+      booking.templeSlug = undefined;
+      booking.templeName = undefined;
+    } else {
+      // Temple Puja: Devotee attends online; associate temple if available
+      const { resolvePoojaTemple } = await import("@/lib/data");
+      const assignedTemple = resolvePoojaTemple(pooja, catalog.temples);
+      if (assignedTemple) {
+        booking.templeId = assignedTemple._id
+          ? String(assignedTemple._id)
+          : assignedTemple.id || assignedTemple.slug;
+        booking.templeSlug = assignedTemple.slug;
+        booking.templeName = assignedTemple.name;
+      }
+    }
     if (Array.isArray(booking.addons) && booking.addons.length > 0) {
       const dbAddons = await getAllAddons();
       const assignedIds = new Set(pooja.assignedAddonIds || []);
@@ -267,11 +305,12 @@ export async function POST(req: NextRequest) {
     gotra: typeof body.gotra === "string" ? body.gotra : "",
     city: typeof body.city === "string" ? body.city : "",
     email: typeof body.email === "string" ? body.email : "",
-    address: typeof (body as any).address === "string"
-      ? (body as any).address.trim()
+    address: typeof (body as { address?: unknown }).address === "string"
+      ? (body as { address: string }).address.trim()
       : typeof booking.address === "string"
       ? booking.address.trim()
       : undefined,
+    ritualType: booking.ritualType,
     booking,
     passwordHash,
     generatedPassword: devoteePassword,

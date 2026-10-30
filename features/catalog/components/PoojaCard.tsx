@@ -58,20 +58,24 @@ export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardP
     }
   };
 
+  // Ritual Type Badge
+  const ritualTypeBadge =
+    p.type === "home"
+      ? (locale === "hi" ? "गृह पूजा" : locale === "te" ? "ఇంటి పూజ" : locale === "ta" ? "வீட்டு பூஜை" : "Home Puja")
+      : p.online !== false
+      ? (locale === "hi" ? "ऑनलाइन पूजा" : locale === "te" ? "ఆన్‌లైన్ పూజ" : locale === "ta" ? "ஆன்லைன் பூஜை" : "Online Puja")
+      : (locale === "hi" ? "मंदिर पूजा" : locale === "te" ? "దేవాలయ పూజ" : locale === "ta" ? "கோவில் பூஜை" : "Temple Puja");
+
   // Top-right badge on the image:
   // If p.showBadge is explicitly false, hide the badge.
   // If custom badge text is provided (e.g. "DEMO"), use it.
-  // Otherwise fall back to native script or category.
+  // Otherwise fall back to ritual type or native script.
   const isDifferentFromTitle = Boolean(
     nativeBadge && nativeBadge.trim() !== poojaTitle.trim()
   );
-  const fallbackBadgeText = isDifferentFromTitle
-    ? nativeBadge
-    : p.category && p.category.trim()
-    ? p.category.trim()
-    : p.type === "home"
-    ? "Home Puja"
-    : "Vedic Seva";
+  const fallbackBadgeText = p.badge && p.badge.trim()
+    ? p.badge.trim()
+    : ritualTypeBadge;
 
   const isBadgeVisible = p.showBadge !== false;
   const topBadgeText = isBadgeVisible
@@ -207,8 +211,12 @@ export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardP
         </div>
 
         <div className="mt-auto pt-4 flex flex-wrap items-center justify-between gap-2 border-t border-saffron-100/60 text-xs">
-          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md text-[11px] shrink-0">
-            🕉️ Authentic Vedic Seva
+          <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-md text-[11px] shrink-0 border ${
+            p.type === "home"
+              ? "text-blue-800 bg-blue-50 border-blue-200/60"
+              : "text-emerald-800 bg-emerald-50 border-emerald-200/60"
+          }`}>
+            {p.type === "home" ? "🏡 Pandit Doorstep Visit" : "🛕 Temple Mandir Seva"}
           </span>
           <button
             type="button"

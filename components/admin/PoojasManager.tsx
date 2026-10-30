@@ -1036,10 +1036,11 @@ export default function PoojasManager({
     setSourcePoojaTitle("");
     setSlugManuallyEdited(true);
 
-    const assignedTemple = resolvePoojaTemple(p, temples);
-    const resolvedTempleId = p.templeId || (assignedTemple ? (assignedTemple._id ? String(assignedTemple._id) : (assignedTemple.id || assignedTemple.slug)) : "");
-    const resolvedTempleSlug = p.templeSlug || (assignedTemple ? assignedTemple.slug : (p.templeSlugs?.[0] ?? ""));
-    const resolvedTempleName = p.templeName || (assignedTemple ? assignedTemple.name : "");
+    const isHome = p.type === "home";
+    const assignedTemple = isHome ? null : resolvePoojaTemple(p, temples);
+    const resolvedTempleId = isHome ? "" : (p.templeId || (assignedTemple ? (assignedTemple._id ? String(assignedTemple._id) : (assignedTemple.id || assignedTemple.slug)) : ""));
+    const resolvedTempleSlug = isHome ? "" : (p.templeSlug || (assignedTemple ? assignedTemple.slug : (p.templeSlugs?.[0] ?? "")));
+    const resolvedTempleName = isHome ? "" : (p.templeName || (assignedTemple ? assignedTemple.name : ""));
 
     setDraft({
       slug: p.slug,
@@ -1072,10 +1073,10 @@ export default function PoojasManager({
       capacity: p.capacity !== undefined ? String(p.capacity) : "",
       live: p.live ?? false,
       deities: p.deities ? [...p.deities] : ["Lord Shiva"],
-      templeId: resolvedTempleId,
-      templeSlug: resolvedTempleSlug,
-      templeName: resolvedTempleName,
-      templeSlugs: p.templeSlugs && p.templeSlugs.length > 0 ? [...p.templeSlugs] : (resolvedTempleSlug ? [resolvedTempleSlug] : []),
+      templeId: isHome ? "" : resolvedTempleId,
+      templeSlug: isHome ? "" : resolvedTempleSlug,
+      templeName: isHome ? "" : resolvedTempleName,
+      templeSlugs: isHome ? [] : (p.templeSlugs && p.templeSlugs.length > 0 ? [...p.templeSlugs] : (resolvedTempleSlug ? [resolvedTempleSlug] : [])),
       assignedAddonIds: p.assignedAddonIds ? [...p.assignedAddonIds] : [],
       chadhavaOptions: p.chadhavaOptions ? [...p.chadhavaOptions] : [],
       packages: p.packages && p.packages.length > 0
@@ -1381,10 +1382,10 @@ export default function PoojasManager({
       gradient: draft.gradient,
       imageUrl: draft.imageUrl.trim() || undefined,
       deities: draft.deities,
-      templeId: draft.templeId.trim() || undefined,
-      templeSlug: draft.templeSlug.trim() || undefined,
-      templeName: draft.templeName.trim() || undefined,
-      templeSlugs: draft.templeSlugs.filter(Boolean),
+      templeId: draft.type === "home" ? undefined : (draft.templeId.trim() || undefined),
+      templeSlug: draft.type === "home" ? undefined : (draft.templeSlug.trim() || undefined),
+      templeName: draft.type === "home" ? undefined : (draft.templeName.trim() || undefined),
+      templeSlugs: draft.type === "home" ? [] : draft.templeSlugs.filter(Boolean),
       assignedAddonIds: draft.assignedAddonIds,
       chadhavaOptions: draft.chadhavaOptions,
       packages: draft.packages.length > 0 ? draft.packages : undefined,
@@ -1870,7 +1871,16 @@ export default function PoojasManager({
                             </button>
                             <button
                               type="button"
-                              onClick={() => setDraft({ ...draft, type: "home" })}
+                              onClick={() =>
+                                setDraft({
+                                  ...draft,
+                                  type: "home",
+                                  templeId: "",
+                                  templeSlug: "",
+                                  templeName: "",
+                                  templeSlugs: [],
+                                })
+                              }
                               className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${
                                 draft.type === "home"
                                   ? "border-saffron-500 bg-saffron-50 text-saffron-700 shadow-sm"
@@ -1883,24 +1893,26 @@ export default function PoojasManager({
                         </div>
                       </div>
 
-                      {/* Associated Temple Dropdown (Shown on Homepage Card) */}
-                      <div className="rounded-2xl border border-saffron-100 bg-amber-50/30 p-3.5 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <label className="block text-xs font-bold text-ink flex items-center gap-1.5">
-                            <span>🛕</span>
-                            <span>Associated Temple (Shown on Homepage Card Badge)</span>
-                          </label>
-                          {selectedTemple && (
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <Check className="h-3 w-3" /> Linked to Temple
-                            </span>
-                          )}
+                      {/* Associated Temple Dropdown (Only shown for Temple Pujas) */}
+                      {draft.type === "temple" && (
+                        <div className="rounded-2xl border border-saffron-100 bg-amber-50/30 p-3.5 space-y-1.5 animate-fadeIn">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-xs font-bold text-ink flex items-center gap-1.5">
+                              <span>🛕</span>
+                              <span>Associated Temple (Shown on Homepage Card Badge)</span>
+                            </label>
+                            {selectedTemple && (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <Check className="h-3 w-3" /> Linked to Temple
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-ink-soft">
+                            Select the temple from the Temple Management module. Its name will display as an elegant badge on the homepage card banner.
+                          </p>
+                          {renderTempleDropdown()}
                         </div>
-                        <p className="text-[11px] text-ink-soft">
-                          Select the temple from the Temple Management module. Its name will display as an elegant badge on the homepage card banner.
-                        </p>
-                        {renderTempleDropdown()}
-                      </div>
+                      )}
 
                       {/* English Description */}
                       <div>
@@ -3143,15 +3155,21 @@ export default function PoojasManager({
                           📁 {draft.category}
                         </span>
                         <span className="rounded-md bg-purple-100 px-2 py-1 font-semibold text-purple-800">
-                          🛕 {draft.type === "temple" ? "Temple Puja" : "Home Puja"}
+                          {draft.type === "temple" ? "🛕 Temple Puja" : "🏡 Home Puja"}
                         </span>
-                        {draft.templeName ? (
-                          <span className="rounded-md bg-amber-100 px-2.5 py-1 font-semibold text-amber-900 border border-amber-300/60 flex items-center gap-1">
-                            🛕 {draft.templeName}
-                          </span>
+                        {draft.type === "temple" ? (
+                          draft.templeName ? (
+                            <span className="rounded-md bg-amber-100 px-2.5 py-1 font-semibold text-amber-900 border border-amber-300/60 flex items-center gap-1">
+                              🛕 {draft.templeName}
+                            </span>
+                          ) : (
+                            <span className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-slate-600">
+                              No Temple Assigned
+                            </span>
+                          )
                         ) : (
-                          <span className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-slate-600">
-                            No Temple Assigned
+                          <span className="rounded-md bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-900 border border-emerald-300/60 flex items-center gap-1">
+                            🏡 Devotee Doorstep Visit
                           </span>
                         )}
                         <span className="rounded-md bg-emerald-100 px-2 py-1 font-semibold text-emerald-800">

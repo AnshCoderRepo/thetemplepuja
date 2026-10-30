@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { withEventBookedSeats } from "@/lib/data";
+import { withEventBookedSeats, type Pooja, type Temple } from "@/lib/data";
 import {
   clearCatalogOverrides,
   getAllUsers,
@@ -137,6 +137,61 @@ export async function POST(req: NextRequest) {
   const overrides: Record<string, unknown> = {};
   for (const s of SECTIONS) {
     if (body[s] !== undefined) overrides[s] = body[s];
+  }
+
+  // Validate and sanitize poojas (Enforcing Temple Puja vs Home Puja business logic)
+  if (Array.isArray(overrides.poojas)) {
+    const currentCatalog = await getResolvedCatalog();
+    const currentTemples = Array.isArray(overrides.temples)
+      ? (overrides.temples as Temple[])
+      : currentCatalog.temples;
+
+    overrides.poojas = (overrides.poojas as Pooja[]).map((p) => {
+      const isHome = p.type === "home";
+      const sanitizedType: "temple" | "home" = isHome ? "home" : "temple";
+
+      if (isHome) {
+        // Home Puja: In-person doorstep visit, MUST NOT have temple associations
+        return {
+          ...p,
+          type: sanitizedType,
+          templeId: undefined,
+          templeSlug: undefined,
+          templeName: undefined,
+          templeSlugs: [],
+        };
+      }
+
+      // Temple Puja: validate temple reference against active Temple Management
+      let resolvedTempleId = p.templeId ? String(p.templeId).trim() : undefined;
+      let resolvedTempleSlug = p.templeSlug ? String(p.templeSlug).trim() : undefined;
+      let resolvedTempleName = p.templeName ? String(p.templeName).trim() : undefined;
+
+      if (resolvedTempleId) {
+        const matched = currentTemples.find((t) => {
+          const tid = t._id ? String(t._id) : "";
+          return (
+            (tid && tid === resolvedTempleId) ||
+            (t.id && String(t.id) === resolvedTempleId) ||
+            t.slug === resolvedTempleId
+          );
+        });
+        if (matched) {
+          resolvedTempleId = matched._id ? String(matched._id) : (matched.id || matched.slug);
+          resolvedTempleSlug = matched.slug;
+          resolvedTempleName = matched.name;
+        }
+      }
+
+      return {
+        ...p,
+        type: sanitizedType,
+        templeId: resolvedTempleId || undefined,
+        templeSlug: resolvedTempleSlug || undefined,
+        templeName: resolvedTempleName || undefined,
+        templeSlugs: Array.isArray(p.templeSlugs) ? p.templeSlugs.filter(Boolean) : undefined,
+      };
+    });
   }
 
   // Validate and sanitize blogs if provided
