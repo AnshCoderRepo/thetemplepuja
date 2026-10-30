@@ -835,13 +835,14 @@ export async function savePlatformSettingsRemote(
 
 export async function sendChatMessage(
   messages: Array<{ from: "bot" | "user"; text: string }>,
-  phone?: string
+  phone?: string,
+  locale?: string
 ): Promise<{ reply: string; ok: boolean; requiresPhone?: boolean; bookingFound?: boolean }> {
   try {
     const res = await fetch("/api/ai/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, phone }),
+      body: JSON.stringify({ messages, phone, locale }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { sendChatMessage } from "@/lib/api";
 import { getWhatsAppUrl } from "@/lib/config";
-import { useBookingModal } from "@/components/providers";
+import { useBookingModal, useI18n } from "@/components/providers";
 
 interface Message {
   from: "bot" | "user";
@@ -24,17 +24,90 @@ interface Message {
   isError?: boolean;
 }
 
-const DEFAULT_GREETING =
-  "🙏 Namaste! I am your Pandit AI Spiritual Guide. Ask me anything about our Vedic poojas, temple sevas, dakshina/pricing, chadhava add-ons, or booking status!";
+const LOCALIZED_GUIDE_CONFIG: Record<
+  string,
+  {
+    greeting: string;
+    suggestions: string[];
+    placeholder: string;
+    badge: string;
+    subBadge: string;
+    humanHelp: string;
+    chatWithHuman: string;
+  }
+> = {
+  en: {
+    greeting:
+      "🙏 Namaste! I am your Pandit AI Spiritual Guide. Ask me anything about our Vedic poojas, temple sevas, dakshina/pricing, chadhava add-ons, or booking status!",
+    suggestions: [
+      "What poojas do you offer?",
+      "What are the pricing & packages?",
+      "How do I book online?",
+      "Check my booking status",
+      "Is physical presence required?",
+      "What chadhava items are available?",
+    ],
+    placeholder: "Ask about pooja, muhurat, pricing...",
+    badge: "Pandit AI Guide",
+    subBadge: "Online • 24/7 Spiritual Guidance",
+    humanHelp: "Need human assistance?",
+    chatWithHuman: "WhatsApp Support",
+  },
+  hi: {
+    greeting:
+      "🙏 नमस्ते! मैं आपका पंडित एआई आध्यात्मिक मार्गदर्शक हूँ। हमारी वैदिक पूजाओं, मंदिर सेवा, दक्षिणा/मूल्य, चढ़ावा या बुकिंग स्थिति के बारे में कुछ भी पूछें!",
+    suggestions: [
+      "कौन सी पूजाएँ उपलब्ध हैं?",
+      "पूजा की दक्षिणा और पैकेज क्या हैं?",
+      "ऑनलाइन संकल्प कैसे होता है?",
+      "मेरी बुकिंग स्थिति जांचें",
+      "क्या शारीरिक उपस्थिति अनिवार्य है?",
+      "कौन से चढ़ावे उपलब्ध हैं?",
+    ],
+    placeholder: "पूजा, मुहूर्त, दक्षिणा के बारे में पूछें...",
+    badge: "पंडित एआई गाइड",
+    subBadge: "ऑनलाइन • 24/7 आध्यात्मिक मार्गदर्शन",
+    humanHelp: "सहायता चाहिए?",
+    chatWithHuman: "व्हाट्सएप सहायता",
+  },
+  te: {
+    greeting:
+      "🙏 నమస్కారం! నేను మీ పండిట్ AI ఆధ్యాత్మిక మార్గదర్శకుడిని. మా వేద పూజలు, ఆలయ సేవలు, దక్షిణ/ధరలు, చఢావా లేదా బుకింగ్ స్థితి గురించి ఏదైనా అడగండి!",
+    suggestions: [
+      "ఏ పూజలు అందుబాటులో ఉన్నాయి?",
+      "పూజ ధరలు మరియు ప్యాకేజీలు ఏమిటి?",
+      "ఆన్‌లైన్ సంకల్పం ఎలా పనిచేస్తుంది?",
+      "నా బుకింగ్ స్థితిని తనిఖీ చేయండి",
+      "ప్రత్యక్ష హాజరు తప్పనిసరా?",
+      "ఏయే చఢావా సేవలు అందుబాటులో ఉన్నాయి?",
+    ],
+    placeholder: "పూజ, ముహూర్తం, దక్షిణ గురించి అడగండి...",
+    badge: "పండిట్ AI గైడ్",
+    subBadge: "ఆన్‌లైన్ • 24/7 వేద మార్గదర్శకత్వం",
+    humanHelp: "సహాయం కావాలా?",
+    chatWithHuman: "వాట్సాప్ సపోర్ట్",
+  },
+  ta: {
+    greeting:
+      "🙏 வணக்கம்! நான் உங்கள் பண்டிட் AI ஆன்மீக வழிகாட்டி. எங்கள் வேத பூஜைகள், கோயில் சேவைகள், தட்சிணை/கட்டணம், காணிக்கை அல்லது முன்பதிவு நிலை பற்றி எது வேண்டுமானாலும் கேளுங்கள்!",
+    suggestions: [
+      "என்னென்ன பூஜைகள் உள்ளன?",
+      "பூஜை கட்டணம் மற்றும் தொகுப்புகள் யாவை?",
+      "ஆன்லைன் சங்கல்பம் எவ்வாறு செய்யப்படுகிறது?",
+      "என் முன்பதிவு நிலையை சரிபார்க்கவும்",
+      "நேரில் வருவது அவசியமா?",
+      "என்னென்ன காணிக்கைகள் உள்ளன?",
+    ],
+    placeholder: "பூஜை, முஹூர்த்தம், கட்டணம் பற்றி கேளுங்கள்...",
+    badge: "பண்டிட் AI வழிகாட்டி",
+    subBadge: "ஆன்லைன் • 24/7 ஆன்மீக வழிகாட்டுதல்",
+    humanHelp: "உதவி தேவையா?",
+    chatWithHuman: "வாட்ஸ்அப் ஆதரவு",
+  },
+};
 
-const SUGGESTIONS = [
-  "What poojas do you offer?",
-  "What are the pricing & packages?",
-  "How do I book online?",
-  "Check my booking status",
-  "Is physical presence required?",
-  "What chadhava items are available?",
-];
+const DEFAULT_GREETING = LOCALIZED_GUIDE_CONFIG.en.greeting;
+const SUGGESTIONS = LOCALIZED_GUIDE_CONFIG.en.suggestions;
 
 // Simple, safe Markdown-like formatter for bot replies (bold, links, bullet points)
 function formatBotText(text: string) {
@@ -109,12 +182,15 @@ function formatBotText(text: string) {
 }
 
 export default function AIGuide() {
+  const { locale } = useI18n();
+  const guideConfig = LOCALIZED_GUIDE_CONFIG[locale] || LOCALIZED_GUIDE_CONFIG.en;
+
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       from: "bot",
-      text: DEFAULT_GREETING,
+      text: (LOCALIZED_GUIDE_CONFIG[locale] || LOCALIZED_GUIDE_CONFIG.en).greeting,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     },
   ]);
@@ -126,6 +202,22 @@ export default function AIGuide() {
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { isOpen: isBookingModalOpen } = useBookingModal();
+
+  // Synchronize initial greeting when locale changes if user hasn't chatted yet
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].from === "bot") {
+        return [
+          {
+            from: "bot",
+            text: guideConfig.greeting,
+            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ];
+      }
+      return prev;
+    });
+  }, [locale, guideConfig.greeting]);
 
   // Auto-close AI guide if booking modal is opened
   useEffect(() => {
@@ -141,7 +233,16 @@ export default function AIGuide() {
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    const handleOpenAiGuide = () => {
+      setOpen(true);
+    };
+    window.addEventListener("open-ai-guide", handleOpenAiGuide);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("open-ai-guide", handleOpenAiGuide);
+    };
   }, []);
 
   useEffect(() => {
@@ -215,7 +316,9 @@ export default function AIGuide() {
 
     try {
       const res = await sendChatMessage(
-        nextMessages.map((m) => ({ from: m.from, text: m.text }))
+        nextMessages.map((m) => ({ from: m.from, text: m.text })),
+        undefined,
+        locale
       );
 
       setLoading(false);
@@ -234,7 +337,14 @@ export default function AIGuide() {
         ...prev,
         {
           from: "bot",
-          text: "🙏 Namaste. I had a brief network delay. Please connect directly with our coordinators on WhatsApp.",
+          text:
+            locale === "hi"
+              ? "🙏 नमस्ते। नेटवर्क में कुछ विलंब हुआ है। कृपया त्वरित सहायता के लिए व्हाट्सएप पर हमारे मंदिर समन्वयकों से संपर्क करें।"
+              : locale === "te"
+              ? "🙏 నమస్కారం. నెట్‌వర్క్ జాప్యం జరిగింది. తక్షణ సహాయం కోసం దయచేసి వాట్సాప్‌లో మా ఆలయ సమన్వయకర్తలను సంప్రదించండి."
+              : locale === "ta"
+              ? "🙏 வணக்கம். நெட்வொர்க் தாமதம் ஏற்பட்டது. உடனடி உதவிக்கு வாட்ஸ்அப்பில் எங்கள் கோயில் ஒருங்கிணைப்பாளர்களைத் தொடர்பு கொள்ளவும்."
+              : "🙏 Namaste. I had a brief network delay. Please connect directly with our coordinators on WhatsApp.",
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           isError: true,
         },
@@ -246,7 +356,7 @@ export default function AIGuide() {
     setMessages([
       {
         from: "bot",
-        text: DEFAULT_GREETING,
+        text: guideConfig.greeting,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ]);
@@ -301,7 +411,7 @@ export default function AIGuide() {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h3 className="font-display text-sm font-bold tracking-tight text-white">
-                    Pandit AI Guide
+                    {guideConfig.badge}
                   </h3>
                   <span className="rounded-md bg-saffron-500/30 px-1.5 py-0.2 text-[9px] font-bold text-amber-200 border border-saffron-400/30">
                     Vedic AI
@@ -309,7 +419,7 @@ export default function AIGuide() {
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-amber-200/90 font-medium">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Online • 24/7 Spiritual Guidance</span>
+                  <span>{guideConfig.subBadge}</span>
                 </div>
               </div>
             </div>
@@ -337,7 +447,7 @@ export default function AIGuide() {
           {/* Quick Suggestion Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto bg-cream/70 px-3 py-2 border-b border-saffron-100 scrollbar-none text-[11px]">
             <Sparkles className="h-3 w-3 text-saffron-600 shrink-0" />
-            {SUGGESTIONS.map((suggestion, i) => (
+            {guideConfig.suggestions.map((suggestion, i) => (
               <button
                 key={i}
                 type="button"
@@ -407,7 +517,7 @@ export default function AIGuide() {
           <div className="flex items-center justify-between border-t border-saffron-100 bg-cream/40 px-3.5 py-1.5 text-[11px] text-ink-soft">
             <span className="flex items-center gap-1">
               <ShieldCheck className="h-3 w-3 text-emerald-600" />
-              <span>Need human assistance?</span>
+              <span>{guideConfig.humanHelp}</span>
             </span>
             <a
               href={whatsappSupportUrl}
@@ -415,7 +525,7 @@ export default function AIGuide() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:text-emerald-700"
             >
-              <span>WhatsApp Support</span>
+              <span>{guideConfig.chatWithHuman}</span>
               <ExternalLink className="h-2.5 w-2.5" />
             </a>
           </div>
@@ -434,7 +544,7 @@ export default function AIGuide() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about pooja, muhurat, pricing..."
+                placeholder={guideConfig.placeholder}
                 disabled={loading}
                 className="flex-1 rounded-full border border-saffron-100 bg-cream/40 px-4 py-2.5 text-xs text-ink outline-none transition-all placeholder:text-ink-soft/40 focus:border-saffron-400 focus:bg-white focus:ring-2 focus:ring-saffron-200/50"
               />

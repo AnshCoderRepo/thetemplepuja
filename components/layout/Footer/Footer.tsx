@@ -338,7 +338,7 @@ export default function Footer() {
               {/* Live Chat with Pandit AI button */}
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent("open-chat-widget"))}
+                onClick={() => window.dispatchEvent(new CustomEvent("open-ai-guide"))}
                 className="mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-ink-soft border border-cream/15 px-3 py-2 text-xs font-semibold text-white hover:border-saffron-400 hover:text-saffron-300 transition-all cursor-pointer shadow-soft"
               >
                 <MessageCircle className="h-3.5 w-3.5 text-saffron-400" />

@@ -9,6 +9,7 @@ import {
 import { createRequestLimiter } from "@/lib/rate-limit";
 import { getWhatsAppUrl } from "@/lib/config";
 import type { ChatbotKnowledgeEntry } from "@/lib/chatbot-types";
+import { translateText } from "@/lib/translate-service";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,16 @@ function extractPhone(text: string): string | null {
   }
   const anyDigits = text.match(/\b([6-9]\d{9})\b/);
   return anyDigits ? anyDigits[1] : null;
+}
+
+function detectLanguage(text: string, clientLocale?: string): "hi" | "te" | "ta" | "en" {
+  if (/[\u0900-\u097F]/.test(text)) return "hi";
+  if (/[\u0C00-\u0C7F]/.test(text)) return "te";
+  if (/[\u0B80-\u0BFF]/.test(text)) return "ta";
+  if (clientLocale && ["hi", "te", "ta", "en"].includes(clientLocale.toLowerCase())) {
+    return clientLocale.toLowerCase() as "hi" | "te" | "ta" | "en";
+  }
+  return "en";
 }
 
 // ── Fallback RAG Engine (Local Semantic & Keyword Matcher) ──
@@ -99,7 +110,11 @@ function matchLocalKnowledge(
 
   // Also check dynamic catalog if query mentions specific poojas
   for (const pooja of catalog.poojas) {
-    const title = pooja.title || (pooja as any).name || "";
+    const title =
+      pooja.title ||
+      ("name" in pooja && typeof (pooja as { name?: unknown }).name === "string"
+        ? ((pooja as { name: string }).name)
+        : "");
     const titleLower = title.toLowerCase();
     if (titleLower && (q.includes(titleLower) || qWords.some((w) => titleLower.includes(w) && w.length > 3))) {
       const priceText = pooja.price ? `starting at ₹${pooja.price}` : "custom dakshina";
@@ -128,50 +143,156 @@ function matchLocalKnowledge(
   return null;
 }
 
-// ── External AI Provider Execution (Gemini / OpenAI) ──
+interface FormattedGeminiContent {
+  role: "user" | "model";
+  parts: Array<{ text: string }>;
+}
+
+function formatGeminiContents(messages: ChatMessage[]): FormattedGeminiContent[] {
+  const formatted: FormattedGeminiContent[] = [];
+
+  for (const m of messages) {
+    const text = m.text?.trim();
+    if (!text) continue;
+    const role: "user" | "model" = m.from === "user" ? "user" : "model";
+
+    // Gemini API rejects contents starting with "model"
+    if (formatted.length === 0 && role === "model") {
+      continue;
+    }
+
+    // Combine consecutive turns of the same role
+    if (formatted.length > 0 && formatted[formatted.length - 1].role === role) {
+      formatted[formatted.length - 1].parts[0].text += `\n\n${text}`;
+    } else {
+      formatted.push({
+        role,
+        parts: [{ text }],
+      });
+    }
+  }
+
+  // Ensure at least one user message
+  if (formatted.length === 0) {
+    const lastUser = [...messages].reverse().find((m) => m.from === "user");
+    formatted.push({
+      role: "user",
+      parts: [{ text: lastUser?.text?.trim() || "Namaste" }],
+    });
+  }
+
+  // If the last message was "model", append the user's latest query
+  if (formatted[formatted.length - 1].role !== "user") {
+    const lastUser = [...messages].reverse().find((m) => m.from === "user");
+    if (lastUser?.text?.trim()) {
+      formatted.push({
+        role: "user",
+        parts: [{ text: lastUser.text.trim() }],
+      });
+    }
+  }
+
+  return formatted;
+}
+
+// ── External AI Provider Execution (Gemini / Groq / OpenAI) ──
 async function callExternalAI(
   systemPrompt: string,
   messages: ChatMessage[],
   geminiKey?: string,
+  groqKey?: string,
   openAiKey?: string
 ): Promise<string | null> {
-  // 1. Google Gemini Flash
+  // 1. Google Gemini Flash (Primary)
   if (geminiKey) {
+    const formattedContents = formatGeminiContents(messages);
+    const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash"];
+
+    for (const model of modelsToTry) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: systemPrompt }],
+            },
+            contents: formattedContents,
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 600,
+            },
+          }),
+          signal: AbortSignal.timeout(8000),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidate && typeof candidate === "string" && candidate.trim()) {
+            return candidate.trim();
+          }
+        }
+      } catch {
+        // Continue to fallback
+      }
+    }
+  }
+
+  // 2. Groq LLM (High-speed Llama 3.3 70B)
+  if (groqKey) {
     try {
-      const contents = [
-        {
-          role: "user",
-          parts: [{ text: `SYSTEM INSTRUCTIONS:\n${systemPrompt}` }],
-        },
-        ...messages.map((m) => ({
-          role: m.from === "user" ? "user" : "model",
-          parts: [{ text: m.text }],
-        })),
+      const url = "https://api.groq.com/openai/v1/chat/completions";
+      const sanitizedMessages = [
+        { role: "system" as const, content: systemPrompt },
+        ...messages
+          .filter((m) => m.text && m.text.trim())
+          .map((m) => ({
+            role: m.from === "user" ? ("user" as const) : ("assistant" as const),
+            content: m.text.trim(),
+          })),
       ];
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: sanitizedMessages,
+          temperature: 0.3,
+          max_tokens: 500,
+        }),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidate && typeof candidate === "string" && candidate.trim()) {
-          return candidate.trim();
-        }
+        const reply = data?.choices?.[0]?.message?.content;
+        if (reply && typeof reply === "string") return reply.trim();
       }
     } catch {
       // Fallback
     }
   }
 
-  // 2. OpenAI (if key provided)
+  // 3. OpenAI GPT-4o-mini
   if (openAiKey) {
     try {
       const url = "https://api.openai.com/v1/chat/completions";
+      const sanitizedMessages = [
+        { role: "system" as const, content: systemPrompt },
+        ...messages
+          .filter((m) => m.text && m.text.trim())
+          .map((m) => ({
+            role: m.from === "user" ? ("user" as const) : ("assistant" as const),
+            content: m.text.trim(),
+          })),
+      ];
+
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -180,16 +301,11 @@ async function callExternalAI(
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages.map((m) => ({
-              role: m.from === "user" ? "user" : "assistant",
-              content: m.text,
-            })),
-          ],
+          messages: sanitizedMessages,
           temperature: 0.3,
-          max_tokens: 450,
+          max_tokens: 500,
         }),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (res.ok) {
@@ -239,21 +355,41 @@ export async function POST(req: NextRequest) {
   const lastUserMsg = [...rawMessages].reverse().find((m) => m.from === "user");
   const userText = lastUserMsg?.text?.trim() || "";
 
+  const requestedLocale = typeof body.locale === "string" ? body.locale : undefined;
+  const devoteeLang = detectLanguage(userText, requestedLocale);
+
   if (!userText) {
+    let emptyGreeting = "Namaste! How may I assist you with your sacred pooja today?";
+    if (devoteeLang !== "en") {
+      emptyGreeting = await translateText(emptyGreeting, "en", devoteeLang);
+    }
     return NextResponse.json({
-      reply: "Namaste! How may I assist you with your sacred pooja today?",
+      reply: emptyGreeting,
       ok: true,
     });
   }
 
+  // Pre-translate Indic query to English for high-precision semantic matching & booking detection
+  let englishQuery = userText;
+  if (devoteeLang !== "en") {
+    try {
+      const translated = await translateText(userText, devoteeLang, "en");
+      if (translated && translated.trim()) {
+        englishQuery = translated.trim();
+      }
+    } catch {
+      // Keep userText
+    }
+  }
+
   // 3. Check for Devotee Booking Status Query (Requires Authentication / Phone)
   const isBookingLookup =
-    /(booking|status|order|track|receipt|my pooja|my puja|reservation|slot)/i.test(
+    /(booking|status|order|track|receipt|my pooja|my puja|reservation|slot|बुकिंग|स्थिति|स्टेटस|रसीद|ఆర్డర్|బుకింగ్|முன்பதிவு)/i.test(
       userText
-    );
+    ) || /(booking|status|order|track|receipt|my pooja|my puja|reservation|slot)/i.test(englishQuery);
 
   const phoneCandidate =
-    body.phone?.toString()?.trim() || extractPhone(userText);
+    body.phone?.toString()?.trim() || extractPhone(userText) || extractPhone(englishQuery);
 
   if (isBookingLookup || (phoneCandidate && phoneCandidate.length === 10)) {
     if (phoneCandidate) {
@@ -266,7 +402,10 @@ export async function POST(req: NextRequest) {
           return `${i + 1}. **${b.poojaTitle}**\n   • Booking ID: \`${b.bookingId}\`\n   • Date & Time: ${b.date} at ${b.time}\n   • Status: **${b.status.toUpperCase()}**\n   • Dakshina: ₹${b.amount}`;
         });
 
-        const reply = `🙏 **Devotee Records Verified for ${user.name}**\n\nHere are your recent pooja bookings:\n\n${bookingSummaries.join("\n\n")}\n\nTo view full receipts or recordings, please visit your [Devotee Profile](/profile) or message our coordinators on WhatsApp.`;
+        let reply = `🙏 **Devotee Records Verified for ${user.name}**\n\nHere are your recent pooja bookings:\n\n${bookingSummaries.join("\n\n")}\n\nTo view full receipts or recordings, please visit your [Devotee Profile](/profile) or message our coordinators on WhatsApp.`;
+        if (devoteeLang !== "en") {
+          reply = await translateText(reply, "en", devoteeLang);
+        }
 
         return NextResponse.json({
           reply,
@@ -275,7 +414,10 @@ export async function POST(req: NextRequest) {
         });
       } else if (phoneCandidate && isBookingLookup) {
         const whatsappUrl = getWhatsAppUrl();
-        const reply = `🙏 We could not find any active bookings under mobile number **+91 ${phoneCandidate}**.\n\nIf you completed payment via UPI QR recently, our team may take 5–10 minutes to verify your UTR reference. You can connect with our support team on WhatsApp here: [WhatsApp Support](${whatsappUrl}).`;
+        let reply = `🙏 We could not find any active bookings under mobile number **+91 ${phoneCandidate}**.\n\nIf you completed payment via UPI QR recently, our team may take 5–10 minutes to verify your UTR reference. You can connect with our support team on WhatsApp here: [WhatsApp Support](${whatsappUrl}).`;
+        if (devoteeLang !== "en") {
+          reply = await translateText(reply, "en", devoteeLang);
+        }
         return NextResponse.json({
           reply,
           ok: true,
@@ -283,9 +425,12 @@ export async function POST(req: NextRequest) {
         });
       }
     } else if (isBookingLookup) {
+      let reply = "🔒 To protect your privacy and securely check your booking details, please provide your **10-digit registered mobile number** (e.g. *Status for 9876543210*).";
+      if (devoteeLang !== "en") {
+        reply = await translateText(reply, "en", devoteeLang);
+      }
       return NextResponse.json({
-        reply:
-          "🔒 To protect your privacy and securely check your booking details, please provide your **10-digit registered mobile number** (e.g. *Status for 9876543210*).",
+        reply,
         ok: true,
         requiresPhone: true,
       });
@@ -300,11 +445,12 @@ export async function POST(req: NextRequest) {
     getPlatformSettings(),
   ]);
 
-  // 5. Try External AI Model (Gemini / OpenAI) if key is configured
+  // 5. Try External AI Model (Gemini / Groq / OpenAI) if key is configured
   const geminiKey = process.env.GEMINI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
   const openAiKey = process.env.OPENAI_API_KEY;
 
-  if (geminiKey || openAiKey) {
+  if (geminiKey || groqKey || openAiKey) {
     const businessKnowledgePrompt = knowledge
       .map(
         (k) =>
@@ -313,12 +459,26 @@ export async function POST(req: NextRequest) {
       .join("\n\n");
 
     const poojasSummary = catalog.poojas
-      .map((p) => `- ${p.title || (p as any).name} (Price from ₹${p.price || 501})`)
+      .map((p) => {
+        const pTitle =
+          p.title ||
+          ("name" in p && typeof (p as { name?: unknown }).name === "string"
+            ? ((p as { name: string }).name)
+            : "Sacred Pooja");
+        return `- ${pTitle} (Price from ₹${p.price || 501})`;
+      })
       .join("\n");
 
     const templesSummary = catalog.temples
       .map((t) => `- ${t.name} (${t.city || t.state})`)
       .join("\n");
+
+    const langNames: Record<string, string> = {
+      hi: "Hindi (हिंदी)",
+      te: "Telugu (తెలుగు)",
+      ta: "Tamil (தமிழ்)",
+      en: "English",
+    };
 
     const fullSystemPrompt = `${settings.systemInstructions}
 
@@ -335,6 +495,10 @@ ${businessKnowledgePrompt}
 WhatsApp Channel: ${platformSettings.whatsappChannelUrl || "Available on website"}
 Customer Support: WhatsApp link or call ${settings.supportPhone || "+91 96210 14155"}
 
+LANGUAGE REQUIREMENT:
+- The devotee is speaking/browsing in ${langNames[devoteeLang] || "English"}.
+- You MUST respond in ${langNames[devoteeLang] || "English"} using sacred, respectful Indian devotional terminology.
+
 IMPORTANT RULES:
 - Only answer based on the verified business knowledge and catalog above.
 - Do not invent nonexistent poojas, fake prices, or false guarantees.
@@ -344,6 +508,7 @@ IMPORTANT RULES:
       fullSystemPrompt,
       rawMessages,
       geminiKey,
+      groqKey,
       openAiKey
     );
 
@@ -353,14 +518,24 @@ IMPORTANT RULES:
   }
 
   // 6. Intelligent Spiritual RAG Fallback (Zero external dependencies)
-  const matched = matchLocalKnowledge(userText, knowledge, catalog);
+  const matched =
+    matchLocalKnowledge(englishQuery, knowledge, catalog) ||
+    (englishQuery !== userText ? matchLocalKnowledge(userText, knowledge, catalog) : null);
+
   if (matched) {
-    return NextResponse.json({ reply: matched.answer, ok: true });
+    let reply = matched.answer;
+    if (devoteeLang !== "en") {
+      reply = await translateText(reply, "en", devoteeLang);
+    }
+    return NextResponse.json({ reply, ok: true });
   }
 
   // 7. General Fallback with Direct WhatsApp Support
   const whatsappUrl = getWhatsAppUrl();
-  const fallback = `${settings.fallbackMessage || "🪔 That is a sacred inquiry! For personalized muhurat guidance or questions not covered here, please connect directly with our temple coordinators on WhatsApp."}\n\n👉 [Click here to chat on WhatsApp](${whatsappUrl}) or call us at **${settings.supportPhone || "+91 96210 14155"}**.`;
+  let fallback = `${settings.fallbackMessage || "🪔 That is a sacred inquiry! For personalized muhurat guidance or questions not covered here, please connect directly with our temple coordinators on WhatsApp."}\n\n👉 [Click here to chat on WhatsApp](${whatsappUrl}) or call us at **${settings.supportPhone || "+91 96210 14155"}**.`;
+  if (devoteeLang !== "en") {
+    fallback = await translateText(fallback, "en", devoteeLang);
+  }
 
   return NextResponse.json({
     reply: fallback,

@@ -129,5 +129,24 @@ describe("AI Chatbot Knowledge & Persona System", () => {
       expect(json.ok).toBe(true);
       expect(json.reply).toContain("WhatsApp");
     });
+
+    it("detects Indic script in user query and translates response to devotee language", async () => {
+      const { POST } = await import("@/app/api/ai/chat/route");
+      const { NextRequest } = await import("next/server");
+
+      const req = new NextRequest("http://localhost:3000/api/ai/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [{ from: "user", text: "पूजा की कीमत क्या है?" }],
+        }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.ok).toBe(true);
+      // Hindi response should contain Devanagari characters
+      expect(/[\u0900-\u097F]/.test(json.reply)).toBe(true);
+    });
   });
 });
