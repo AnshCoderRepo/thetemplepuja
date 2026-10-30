@@ -435,7 +435,7 @@ describe("catalog updates & dynamic temples", () => {
     };
 
     const resolved = getTempleForPooja(pooja, [customTemple]);
-    expect(resolved.slug).toBe("somnath-jyotirlinga");
-    expect(resolved.name).toBe("Somnath Jyotirlinga Temple");
+    expect(resolved?.slug).toBe("somnath-jyotirlinga");
+    expect(resolved?.name).toBe("Somnath Jyotirlinga Temple");
   });
 });

@@ -40,6 +40,8 @@ export interface BookingRecord {
   receiptNumber?: string; // e.g. "RCPT-20261001-000123"
   poojaSlug: string;
   poojaTitle: string;
+  ritualType?: "temple" | "home";
+  templeId?: string;
   templeSlug?: string;
   templeName?: string;
   date: string; // e.g. "Wed, 12 Aug"
@@ -188,6 +190,7 @@ export interface BookingInput {
   city: string;
   email: string;
   address?: string;
+  ritualType?: "temple" | "home";
   booking: BookingRecord;
   password?: string;
   passwordHash?: string;

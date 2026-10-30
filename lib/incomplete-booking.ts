@@ -12,8 +12,10 @@ export interface IncompleteBooking {
   poojaTitle: string;
   poojaImageUrl?: string;
   poojaEmoji?: string;
+  ritualType?: "temple" | "home";
   templeSlug?: string;
   templeName?: string;
+  address?: string;
   packageTier: "single" | "couple" | "family";
   amount: number;
   discount?: number;

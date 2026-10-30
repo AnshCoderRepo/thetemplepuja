@@ -2547,6 +2547,8 @@ export function resolvePoojaTemple(
   templesList?: Temple[]
 ): Temple | null {
   if (!pooja) return null;
+  // Home Pujas are performed in-person at devotee's home and are NEVER associated with a temple
+  if (pooja.type === "home") return null;
   const pool = templesList && templesList.length > 0 ? templesList : defaultTemples;
 
   // 1. Check explicit templeId (MongoDB _id, id, or slug)
@@ -2605,12 +2607,17 @@ export function resolvePoojaTemple(
 export function getTempleForPooja(
   pooja?: Pooja | null,
   templesList?: Temple[]
-): Temple {
+): Temple | null {
+  if (!pooja) return null;
+  // Home Pujas must NEVER be associated with a temple or fall back to a default temple
+  if (pooja.type === "home") return null;
+
   const pool = templesList && templesList.length > 0 ? templesList : defaultTemples;
-  const fallback = pool.find((t) => t.slug === "kashi-vishwanath") || pool[0] || defaultTemples[1];
-  if (!pooja) return fallback;
   const resolved = resolvePoojaTemple(pooja, pool);
   if (resolved) return resolved;
+
+  // Fallback to default temple only for Temple/Online Pujas
+  const fallback = pool.find((t) => t.slug === "kashi-vishwanath") || pool[0] || defaultTemples[1];
   return fallback;
 }
 

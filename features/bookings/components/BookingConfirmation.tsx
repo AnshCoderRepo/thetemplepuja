@@ -285,6 +285,15 @@ export default function BookingConfirmation({
                 label: t("booking.confirm.labelIntention"),
                 value: confirmed.reason,
               },
+              ...(confirmed.address
+                ? [
+                    {
+                      icon: "🏡",
+                      label: "Ritual Location",
+                      value: confirmed.address,
+                    },
+                  ]
+                : []),
             ].map((row) => (
               <div
                 key={row.label}

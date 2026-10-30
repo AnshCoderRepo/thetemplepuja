@@ -155,6 +155,11 @@ export default function BookingFlow({
   );
 
   const [phone, setPhone] = useState(effectiveResume?.phone || "");
+  const [homeAddress, setHomeAddress] = useState(
+    effectiveResume?.address ||
+    (effectiveResume as { homeAddress?: string })?.homeAddress ||
+    ""
+  );
   const [activeBookingId, setActiveBookingId] = useState(effectiveResume?.bookingId || "");
   const [formError, setFormError] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -183,6 +188,9 @@ export default function BookingFlow({
       setFamilyMembers(resumeData.familyMembers);
     }
     if (resumeData.phone) setPhone(resumeData.phone);
+    if (resumeData.address || (resumeData as { homeAddress?: string })?.homeAddress) {
+      setHomeAddress(resumeData.address || (resumeData as { homeAddress?: string })?.homeAddress || "");
+    }
     if (resumeData.bookingId) setActiveBookingId(resumeData.bookingId);
     if (resumeData.step) setCurrentStep(resumeData.step as 1 | 2 | 3 | 4);
     if (resumeData.couponCode) {
@@ -398,7 +406,8 @@ export default function BookingFlow({
       setActiveBookingId(bId);
     }
 
-    const temple = getTempleForPooja(selectedPooja, temples);
+    const isHome = selectedPooja.type === "home";
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
     const draftStatus = currentStep === 4 ? "pending_payment" : "checkout_incomplete";
 
     saveIncompleteBooking({
@@ -407,8 +416,10 @@ export default function BookingFlow({
       poojaTitle: selectedPooja.title,
       poojaImageUrl: selectedPooja.imageUrl || getPoojaBannerImage(selectedPooja),
       poojaEmoji: selectedPooja.emoji,
-      templeSlug: temple?.slug,
-      templeName: temple?.name,
+      ritualType: isHome ? "home" : "temple",
+      templeSlug: isHome ? undefined : temple?.slug,
+      templeName: isHome ? undefined : temple?.name,
+      address: isHome ? homeAddress.trim() || undefined : undefined,
       packageTier: selectedTier,
       amount: finalTotal,
       discount,
@@ -433,6 +444,8 @@ export default function BookingFlow({
       bookingId: bId,
       poojaSlug: selectedPooja.slug,
       poojaTitle: selectedPooja.title,
+      ritualType: isHome ? "home" : "temple",
+      address: isHome ? homeAddress.trim() || undefined : undefined,
       step: currentStep,
       packageTier: selectedTier,
       addons: selectedAddons,
@@ -458,6 +471,7 @@ export default function BookingFlow({
     name,
     gotra,
     phone,
+    homeAddress,
     partnerName,
     partnerGotra,
     familyMembers,
@@ -610,6 +624,13 @@ export default function BookingFlow({
       return;
     }
 
+    if (selectedPooja?.type === "home") {
+      if (!homeAddress.trim() || homeAddress.trim().length < 8) {
+        setFormError("Please enter your complete home address (House/Flat No., Street, Area, City, Pincode) for Panditji's visit.");
+        return;
+      }
+    }
+
     const cleanPhone = phone.replace(/\D/g, "").slice(-10);
     const userEmail = `${cleanPhone}@templepujasewa.com`;
     const primaryName =
@@ -643,7 +664,8 @@ export default function BookingFlow({
 
     const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
     const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
-    const temple = getTempleForPooja(selectedPooja, temples);
+    const isHome = selectedPooja?.type === "home";
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
 
     // Unique booking ID created upfront so pending -> failed -> confirmed lifecycle is linked
     const bId = activeBookingId || ("BK-" + Math.random().toString(36).substring(2, 8).toUpperCase());
@@ -655,8 +677,10 @@ export default function BookingFlow({
       receiptNumber: activeReceiptNum,
       poojaSlug: selectedPooja?.slug || prayerSlug,
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
-      templeSlug: temple?.slug || "thetemplepuja",
-      templeName: temple?.name || SITE_CONFIG.brandName,
+      ritualType: isHome ? "home" : "temple",
+      address: isHome ? homeAddress.trim() : undefined,
+      templeSlug: isHome ? undefined : (temple?.slug || "thetemplepuja"),
+      templeName: isHome ? undefined : (temple?.name || SITE_CONFIG.brandName),
       date: finalDate,
       time: finalTime,
       panditName: "Acharya Ji (Vedic Purohit)",
@@ -698,7 +722,9 @@ export default function BookingFlow({
         name: primaryName,
         phone: cleanPhone,
         gotra: primaryGotra,
-        city: temple?.city || "India",
+        city: isHome ? (homeAddress.trim().split(",").pop()?.trim() || "India") : (temple?.city || "India"),
+        address: isHome ? homeAddress.trim() : undefined,
+        ritualType: isHome ? "home" : "temple",
         email: userEmail,
         booking: pendingBookingRecord,
       });
@@ -790,7 +816,9 @@ export default function BookingFlow({
                   name: primaryName,
                   phone: cleanPhone,
                   gotra: primaryGotra,
-                  city: temple?.city || "India",
+                  city: isHome ? (homeAddress.trim().split(",").pop()?.trim() || "India") : (temple?.city || "India"),
+                  address: isHome ? homeAddress.trim() : undefined,
+                  ritualType: isHome ? "home" : "temple",
                   email: userEmail,
                   booking: dismissedRecord,
                 });
@@ -861,7 +889,9 @@ export default function BookingFlow({
                 name: primaryName,
                 phone: cleanPhone,
                 gotra: primaryGotra,
-                city: temple?.city || "India",
+                city: isHome ? (homeAddress.trim().split(",").pop()?.trim() || "India") : (temple?.city || "India"),
+                address: isHome ? homeAddress.trim() : undefined,
+                ritualType: isHome ? "home" : "temple",
                 email: userEmail,
                 booking: failedRecord,
               });
@@ -953,15 +983,18 @@ export default function BookingFlow({
 
     const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
     const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
-    const temple = getTempleForPooja(selectedPooja, temples);
+    const isHome = selectedPooja?.type === "home";
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
 
     const upiBookingRecord: BookingRecord = {
       bookingId: bId,
       receiptNumber: receiptNum,
       poojaSlug: selectedPooja?.slug || prayerSlug,
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
-      templeSlug: temple?.slug || "thetemplepuja",
-      templeName: temple?.name || SITE_CONFIG.brandName,
+      ritualType: isHome ? "home" : "temple",
+      address: isHome ? homeAddress.trim() : undefined,
+      templeSlug: isHome ? undefined : (temple?.slug || "thetemplepuja"),
+      templeName: isHome ? undefined : (temple?.name || SITE_CONFIG.brandName),
       date: finalDate,
       time: finalTime,
       panditName: "Acharya Ji (Vedic Purohit)",
@@ -991,7 +1024,9 @@ export default function BookingFlow({
         name: primaryName,
         phone: cleanPhone,
         gotra: primaryGotra,
-        city: temple?.city || "India",
+        city: isHome ? (homeAddress.trim().split(",").pop()?.trim() || "India") : (temple?.city || "India"),
+        address: isHome ? homeAddress.trim() : undefined,
+        ritualType: isHome ? "home" : "temple",
         email: userEmail,
         booking: upiBookingRecord,
         payment: {
@@ -1022,6 +1057,7 @@ export default function BookingFlow({
       panditName: "Acharya Ji (Vedic Purohit)",
       name: primaryName,
       gotra: primaryGotra,
+      address: isHome ? homeAddress.trim() : undefined,
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
       reason: "General Well-being & Divine Blessings",
       packageTier: selectedTier,
@@ -1067,6 +1103,8 @@ export default function BookingFlow({
     const paidTotal = summary?.amount ?? finalTotal;
     const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
     const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
+    const isHome = selectedPooja?.type === "home";
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
 
     const devoteesList: DevoteeMember[] =
       selectedTier === "single"
@@ -1102,8 +1140,10 @@ export default function BookingFlow({
       receiptNumber: receiptNum,
       poojaSlug: selectedPooja?.slug || prayerSlug,
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
-      templeSlug: temple?.slug || "thetemplepuja",
-      templeName: temple?.name || SITE_CONFIG.brandName,
+      ritualType: isHome ? "home" : "temple",
+      address: isHome ? homeAddress.trim() : undefined,
+      templeSlug: isHome ? undefined : (temple?.slug || "thetemplepuja"),
+      templeName: isHome ? undefined : (temple?.name || SITE_CONFIG.brandName),
       date: finalDate,
       time: finalTime,
       panditName: "Acharya Ji (Vedic Purohit)",
@@ -1136,7 +1176,9 @@ export default function BookingFlow({
         name: primaryName,
         phone: cleanPhone,
         gotra: primaryGotra,
-        city: temple?.city || "India",
+        city: isHome ? (homeAddress.trim().split(",").pop()?.trim() || "India") : (temple?.city || "India"),
+        address: isHome ? homeAddress.trim() : undefined,
+        ritualType: isHome ? "home" : "temple",
         email: userEmail,
         booking: newBookingRecord,
         payment,
@@ -1163,6 +1205,7 @@ export default function BookingFlow({
       panditName: "Acharya Ji (Vedic Purohit)",
       name: primaryName,
       gotra: primaryGotra,
+      address: isHome ? homeAddress.trim() : undefined,
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
       reason: "General Well-being & Divine Blessings",
       packageTier: selectedTier,
@@ -1569,6 +1612,31 @@ export default function BookingFlow({
             </p>
           </div>
 
+          {/* Ritual Venue Notice: Home Puja Doorstep vs Temple Mandir Online */}
+          {selectedPooja?.type === "home" ? (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-3.5 sm:p-4 text-xs space-y-1">
+              <div className="flex items-center gap-2 font-bold text-blue-900">
+                <span className="text-base">🏡</span>
+                <span>Home Visit Puja • Panditji Arrives In Person</span>
+              </div>
+              <p className="text-blue-800 leading-relaxed text-[11px] sm:text-xs">
+                A verified Vedic Panditji will visit your home in person with sanctified puja samagri to conduct the sacred rituals. Please provide your complete residential address below.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3.5 sm:p-4 text-xs space-y-1">
+              <div className="flex items-center gap-2 font-bold text-amber-950">
+                <span className="text-base">🛕</span>
+                <span>
+                  {temple?.name ? `Performed at ${temple.name}` : "Sacred Temple Mandir Seva"}
+                </span>
+              </div>
+              <p className="text-amber-900 leading-relaxed text-[11px] sm:text-xs">
+                Devotee participates online through Name, Gotra & Vedic Sankalp. Live darshan/video recording and consecrated prasad will be coordinated for you.
+              </p>
+            </div>
+          )}
+
           {/* Form error notification */}
           {formError && (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 animate-shake">
@@ -1922,10 +1990,39 @@ export default function BookingFlow({
             <p className="text-[11px] text-ink-soft mt-1.5 flex items-center gap-1.5">
               <span>📲</span>
               <span>
-                Only 1 contact number needed. Live darshan link & Vedic sankalp confirmation will be sent here on WhatsApp.
+                {selectedPooja?.type === "home"
+                  ? "Only 1 contact number needed. Panditji will coordinate his arrival time and ritual updates on WhatsApp."
+                  : "Only 1 contact number needed. Live darshan link & Vedic sankalp confirmation will be sent here on WhatsApp."}
               </span>
             </p>
           </div>
+
+          {/* Devotee Home Address (Mandatory for Home Puja, Hidden for Temple Puja) */}
+          {selectedPooja?.type === "home" && (
+            <div className="rounded-2xl border border-blue-200 bg-white p-4 sm:p-5 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-ink">
+                  🏡 Devotee Home Address <span className="text-rose-500">*</span>
+                </label>
+                <span className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                  Required for Panditji Visit
+                </span>
+              </div>
+              <textarea
+                rows={3}
+                value={homeAddress}
+                onChange={(e) => {
+                  setHomeAddress(e.target.value);
+                  if (formError) setFormError("");
+                }}
+                placeholder="House / Flat No., Apartment / Building Name, Street, Landmark, City, Pincode"
+                className="w-full rounded-xl border border-blue-200 bg-white px-3.5 py-2.5 text-xs sm:text-sm text-ink placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <p className="text-[11px] text-slate-500">
+                Please provide your complete address with landmark so Purohit ji can arrive punctually with the sacred samagri.
+              </p>
+            </div>
+          )}
 
           {/* Coupon Input */}
           {coupons && Object.keys(coupons).length > 0 && (
