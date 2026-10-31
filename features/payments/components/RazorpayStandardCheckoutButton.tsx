@@ -116,7 +116,7 @@ export default function RazorpayStandardCheckoutButton({
         name,
         description,
         order_id: orderId,
-        image: "/logo.jpeg",
+        image: "/icon.png",
         prefill: {
           name: prefill?.name || "",
           email: prefill?.email || "",

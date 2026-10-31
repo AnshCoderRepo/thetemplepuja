@@ -32,7 +32,11 @@ export const metadata: Metadata = {
   description:
     "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals and HD video recordings of every pooja.",
   icons: {
-    icon: "/logo.jpeg",
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/logo.jpeg", type: "image/jpeg" },
+    ],
+    apple: "/apple-icon.png",
   },
   openGraph: {
     type: "website",
@@ -40,14 +44,14 @@ export const metadata: Metadata = {
     title: "templepujasewa | Online Pooja Booking & Sacred Rituals",
     description:
       "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals and HD video recordings of every pooja.",
-    images: [{ url: "/logo.jpeg", alt: "templepujasewa" }],
+    images: [{ url: "/logo.png", alt: "templepujasewa" }],
   },
   twitter: {
     card: "summary",
     title: "templepujasewa | Online Pooja Booking & Sacred Rituals",
     description:
       "Book pandit ji online for Satyanarayan Katha, Griha Pravesh, Rudrabhishek, Shani Dev Pooja, Navgraha Shanti. Certified pandits, authentic Vedic rituals and HD video recordings of every pooja.",
-    images: ["/logo.jpeg"],
+    images: ["/logo.png"],
   },
 };
 

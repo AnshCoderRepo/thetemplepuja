@@ -49,7 +49,7 @@ export default function PoojaImageFallback({
           </span>
           <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-md bg-white p-0.5 shadow-2xs border border-saffron-200">
             <Image
-              src="/logo.jpeg"
+              src="/icon.png"
               alt={SITE_CONFIG.brandName}
               width={24}
               height={24}
@@ -72,10 +72,10 @@ export default function PoojaImageFallback({
             </span>
           </div>
 
-          {/* Official TPS Logo */}
+          {/* Official TPS Logo Icon */}
           <div className="relative rounded-2xl bg-white p-2 shadow-sm border border-saffron-200/90 shrink-0 transition-transform duration-300 hover:scale-105">
             <Image
-              src="/logo.jpeg"
+              src="/icon.png"
               alt={SITE_CONFIG.brandName}
               width={64}
               height={64}
@@ -111,7 +111,7 @@ export default function PoojaImageFallback({
             <div className="h-6 w-px bg-saffron-300/60" aria-hidden="true" />
             <div className="relative rounded-xl bg-white p-1.5 shadow-2xs border border-saffron-200/90 shrink-0">
               <Image
-                src="/logo.jpeg"
+                src="/icon.png"
                 alt={SITE_CONFIG.brandName}
                 width={48}
                 height={48}
