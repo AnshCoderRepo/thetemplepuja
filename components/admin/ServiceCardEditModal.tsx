@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import type { Pooja } from "@/lib/data";
-import { isPoojaActive } from "@/lib/data";
+import { isPoojaActive, getPoojaBannerImage } from "@/lib/data";
 import { PoojaImage } from "@/components/common";
 
 interface ServiceCardEditModalProps {
@@ -273,15 +273,18 @@ export default function ServiceCardEditModal({
 
             <div className="rounded-2xl border border-saffron-200 bg-white p-4 shadow-sm space-y-3">
               <div className="flex items-start gap-3">
-                {imageUrl ? (
-                  <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl border border-saffron-200 bg-slate-900 shadow-2xs">
-                    <PoojaImage src={imageUrl} alt={title || "Preview"} fallbackSize="sm" />
-                  </div>
-                ) : (
-                  <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-xl bg-saffron-100 text-2xl border border-saffron-200">
-                    {pooja.emoji || "🪔"}
-                  </div>
-                )}
+                {(() => {
+                  const effectiveSrc = imageUrl?.trim() || (pooja ? getPoojaBannerImage(pooja) : "");
+                  return effectiveSrc ? (
+                    <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl border border-saffron-200 bg-slate-900 shadow-2xs">
+                      <PoojaImage src={effectiveSrc} alt={title || "Preview"} fallbackSize="sm" />
+                    </div>
+                  ) : (
+                    <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-xl bg-saffron-100 text-2xl border border-saffron-200">
+                      {pooja?.emoji || "🪔"}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -384,24 +387,29 @@ export default function ServiceCardEditModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               {/* Image Preview Box */}
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-saffron-200 bg-slate-900 flex items-center justify-center">
-                {imageUrl ? (
-                  <>
-                    <PoojaImage src={imageUrl} alt={title || "Banner Preview"} fallbackSize="md" />
-                    <button
-                      type="button"
-                      onClick={() => setImageUrl("")}
-                      className="absolute top-2 right-2 rounded-full bg-black/70 p-1.5 text-white hover:bg-rose-600 transition-colors shadow-md"
-                      title="Remove image"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <div className="text-center p-3 text-ink-soft/70">
-                    <ImageIcon className="h-8 w-8 mx-auto text-saffron-400 mb-1" />
-                    <span className="text-[10px]">No banner image set (using deity emoji fallback)</span>
-                  </div>
-                )}
+                {(() => {
+                  const effectiveBanner = imageUrl?.trim() || (pooja ? getPoojaBannerImage(pooja) : "");
+                  return effectiveBanner ? (
+                    <>
+                      <PoojaImage src={effectiveBanner} alt={title || "Banner Preview"} fallbackSize="md" />
+                      {imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setImageUrl("")}
+                          className="absolute top-2 right-2 rounded-full bg-black/70 p-1.5 text-white hover:bg-rose-600 transition-colors shadow-md z-10"
+                          title="Remove custom image"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center p-3 text-ink-soft/70">
+                      <ImageIcon className="h-8 w-8 mx-auto text-saffron-400 mb-1" />
+                      <span className="text-[10px]">No banner image set (using deity emoji fallback)</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Upload & URL Controls */}

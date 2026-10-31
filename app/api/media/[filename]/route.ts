@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMedia } from "@/lib/media-cache";
+import { getMediaAsync } from "@/lib/media-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function GET(
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  const media = getMedia(filename);
+  const media = await getMediaAsync(filename);
   if (!media) {
     return new NextResponse("Not Found", { status: 404 });
   }
@@ -28,7 +28,7 @@ export async function GET(
     });
   }
 
-  return new NextResponse(media.buffer as any, {
+  return new NextResponse(new Uint8Array(media.buffer), {
     status: 200,
     headers: {
       "Content-Type": media.contentType,

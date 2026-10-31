@@ -183,8 +183,11 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const cleanImageUrl = registerDataUrl(p.imageUrl) || p.imageUrl;
+
       return {
         ...p,
+        imageUrl: cleanImageUrl,
         type: sanitizedType,
         templeId: resolvedTempleId || undefined,
         templeSlug: resolvedTempleSlug || undefined,
@@ -192,6 +195,15 @@ export async function POST(req: NextRequest) {
         templeSlugs: Array.isArray(p.templeSlugs) ? p.templeSlugs.filter(Boolean) : undefined,
       };
     });
+  }
+
+  // Validate and sanitize temples if provided
+  if (Array.isArray(overrides.temples)) {
+    overrides.temples = (overrides.temples as Temple[]).map((t) => ({
+      ...t,
+      image: registerDataUrl(t.image) || t.image,
+      gallery: t.gallery?.map((img) => registerDataUrl(img) || img),
+    }));
   }
 
   // Validate and sanitize blogs if provided
@@ -207,6 +219,7 @@ export async function POST(req: NextRequest) {
         .trim();
       return {
         ...b,
+        imageUrl: registerDataUrl(b.imageUrl) || b.imageUrl,
         slug: cleanSlug,
         title: cleanTitle,
         status: b.status === "draft" || b.status === "archived" ? b.status : "published",

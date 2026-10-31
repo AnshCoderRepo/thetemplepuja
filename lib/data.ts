@@ -1542,11 +1542,22 @@ export function getPoojaBannerImage(p: {
   photo?: string;
   deities?: string[];
 }): string {
-  const explicitImage = p.imageUrl || (p as { image?: string }).image || (p as { bannerImage?: string }).bannerImage || (p as { photo?: string }).photo;
-  if (explicitImage && typeof explicitImage === "string" && explicitImage.trim()) {
-    return explicitImage.trim();
+  const rawExplicit =
+    p.imageUrl ||
+    (p as { image?: string }).image ||
+    (p as { bannerImage?: string }).bannerImage ||
+    (p as { photo?: string }).photo;
+
+  if (rawExplicit && typeof rawExplicit === "string" && rawExplicit.trim()) {
+    const trimmed = rawExplicit.trim();
+    // Guard against known broken ephemeral hashes
+    if (trimmed !== "/api/media/a536f674761d88d8.jpg") {
+      return trimmed;
+    }
   }
+
   const s = `${p.slug || ""} ${p.title || ""} ${p.hindiTitle || ""} ${(p.deities || []).join(" ")}`.toLowerCase();
+
   if (
     s.includes("durga") ||
     s.includes("navratri") ||
@@ -1561,24 +1572,7 @@ export function getPoojaBannerImage(p: {
   ) {
     return "/sample-puja.jpg";
   }
-  if (
-    s.includes("diwali") ||
-    s.includes("deepawali") ||
-    s.includes("lakshmi") ||
-    s.includes("kuber") ||
-    s.includes("satyanarayan") ||
-    s.includes("katha") ||
-    s.includes("ram") ||
-    s.includes("hanuman") ||
-    s.includes("दीपावली") ||
-    s.includes("दिवाली") ||
-    s.includes("लक्ष्मी") ||
-    s.includes("कुबेर") ||
-    s.includes("सत्यनारायण") ||
-    s.includes("हनुमान")
-  ) {
-    return "/festivals/diwali.jpg";
-  }
+
   if (
     s.includes("shiva") ||
     s.includes("rudra") ||
@@ -1590,6 +1584,7 @@ export function getPoojaBannerImage(p: {
     s.includes("somnath") ||
     s.includes("someshwar") ||
     s.includes("indreshwar") ||
+    s.includes("bhairav") ||
     s.includes("शिव") ||
     s.includes("रुद्र") ||
     s.includes("महादेव") ||
@@ -1598,6 +1593,7 @@ export function getPoojaBannerImage(p: {
   ) {
     return "/festivals/shivratri.jpg";
   }
+
   if (
     s.includes("ganesha") ||
     s.includes("ganesh") ||
@@ -1606,6 +1602,49 @@ export function getPoojaBannerImage(p: {
   ) {
     return "/festivals/ganesha-altar.jpg";
   }
+
+  if (
+    s.includes("diwali") ||
+    s.includes("deepawali") ||
+    s.includes("lakshmi") ||
+    s.includes("kuber") ||
+    s.includes("satyanarayan") ||
+    s.includes("katha") ||
+    s.includes("ram") ||
+    s.includes("hanuman") ||
+    s.includes("saraswati") ||
+    s.includes("दीपावली") ||
+    s.includes("दिवाली") ||
+    s.includes("लक्ष्मी") ||
+    s.includes("कुबेर") ||
+    s.includes("सत्यनारायण") ||
+    s.includes("हनुमान") ||
+    s.includes("सरस्वती")
+  ) {
+    return "/festivals/diwali.jpg";
+  }
+
+  if (
+    s.includes("vishwakarma") ||
+    s.includes("विश्वकर्मा")
+  ) {
+    return "/hero-ganesha.jpg";
+  }
+
+  if (
+    s.includes("griha-pravesh") ||
+    s.includes("griha pravesh") ||
+    s.includes("shani-dev") ||
+    s.includes("shani dev") ||
+    s.includes("navgraha-shanti") ||
+    s.includes("navgraha shanti") ||
+    s.includes("गृह प्रवेश") ||
+    s.includes("शनि देव") ||
+    s.includes("नवग्रह शांति")
+  ) {
+    return "/sample-puja.jpg";
+  }
+
   return "";
 }
 
@@ -1928,6 +1967,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "ஸ்ரீ சத்யநாராயண கதை",
     emoji: "📿",
     gradient: "from-amber-400 to-orange-600",
+    imageUrl: "/festivals/diwali.jpg",
     price: 1101,
     duration: "2–3 hours",
     daysFromToday: 10,
@@ -1962,6 +2002,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "ஸ்ரீ ருத்ராபிஷேகம்",
     emoji: "🕉️",
     gradient: "from-indigo-500 to-purple-600",
+    imageUrl: "/festivals/shivratri.jpg",
     price: 2501,
     duration: "1.5–2 hours",
     daysFromToday: 12,
@@ -1996,6 +2037,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "கிரகப் பிரவேசம்",
     emoji: "🏠",
     gradient: "from-emerald-500 to-teal-600",
+    imageUrl: "/sample-puja.jpg",
     price: 3501,
     duration: "2–3 hours",
     daysFromToday: 13,
@@ -2026,6 +2068,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "சனி பகவான் பூஜை",
     emoji: "🪐",
     gradient: "from-slate-600 to-gray-900",
+    imageUrl: "/sample-puja.jpg",
     price: 1001,
     duration: "1.5 hours",
     daysFromToday: 14,
@@ -2056,6 +2099,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "நவக்கிரக சாந்தி",
     emoji: "✨",
     gradient: "from-fuchsia-500 to-pink-600",
+    imageUrl: "/festivals/ganesha-altar.jpg",
     price: 5001,
     duration: "3–4 hours",
     daysFromToday: 18,
@@ -2086,6 +2130,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "ஹனுமான் பூஜை",
     emoji: "🐒",
     gradient: "from-orange-400 to-rose-500",
+    imageUrl: "/festivals/diwali.jpg",
     price: 501,
     duration: "1 hour",
     daysFromToday: 8,
@@ -2116,6 +2161,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "லட்சுமி பூஜை",
     emoji: "🪙",
     gradient: "from-yellow-400 to-amber-600",
+    imageUrl: "/festivals/diwali.jpg",
     price: 1101,
     duration: "1.5 hours",
     daysFromToday: 9,
@@ -2146,6 +2192,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "மகா மிருத்யுஞ்சய ஜெபம்",
     emoji: "🔱",
     gradient: "from-sky-500 to-blue-700",
+    imageUrl: "/festivals/shivratri.jpg",
     price: 2101,
     duration: "2 hours",
     daysFromToday: 11,
@@ -2176,6 +2223,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "சரஸ்வதி பூஜை",
     emoji: "📚",
     gradient: "from-rose-400 to-pink-600",
+    imageUrl: "/festivals/diwali.jpg",
     price: 1501,
     duration: "1.5 hours",
     daysFromToday: 15,
@@ -2237,6 +2285,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "விஸ்வகர்மா பூஜை",
     emoji: "⚒️",
     gradient: "from-amber-500 to-yellow-600",
+    imageUrl: "/hero-ganesha.jpg",
     price: 1001,
     duration: "1 hour",
     daysFromToday: 17,
@@ -2267,6 +2316,7 @@ export const poojas: Pooja[] = [
     tamilTitle: "குபேர பூஜை",
     emoji: "💎",
     gradient: "from-emerald-400 to-green-600",
+    imageUrl: "/festivals/diwali.jpg",
     price: 1101,
     duration: "1.5 hours",
     daysFromToday: 19,
