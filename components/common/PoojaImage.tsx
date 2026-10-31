@@ -26,13 +26,15 @@ export default function PoojaImage({
   priority = false,
   onAspectRatioChange,
 }: PoojaImageProps) {
-  const [hasError, setHasError] = useState(false);
   const cleanSrc = typeof src === "string" ? src.trim() : "";
+  const [currentSrc, setCurrentSrc] = useState(cleanSrc);
+  const [hasFinalError, setHasFinalError] = useState(false);
 
-  // Reset error state if the image source changes (e.g. admin uploads a new file)
+  // Sync state whenever src prop updates
   useEffect(() => {
-    setHasError(false);
-  }, [src]);
+    setCurrentSrc(cleanSrc);
+    setHasFinalError(false);
+  }, [cleanSrc]);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
@@ -41,7 +43,16 @@ export default function PoojaImage({
     }
   };
 
-  const isValid = Boolean(cleanSrc) && !hasError;
+  const handleImageError = () => {
+    if (currentSrc && currentSrc !== "/sample-puja.jpg") {
+      // Graceful tier-1 recovery: fallback to verified local sacred asset
+      setCurrentSrc("/sample-puja.jpg");
+    } else {
+      setHasFinalError(true);
+    }
+  };
+
+  const isValid = Boolean(currentSrc) && !hasFinalError;
 
   if (!isValid) {
     return (
@@ -69,13 +80,13 @@ export default function PoojaImage({
       {/* Uncropped foreground image preserving 100% of the original aspect ratio */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={cleanSrc}
+        src={currentSrc}
         alt={alt}
         loading={priority ? "eager" : "lazy"}
         decoding="async"
         className={`relative z-0 h-full w-full object-contain transition-transform duration-300 ${imgClassName}`}
         onLoad={handleImageLoad}
-        onError={() => setHasError(true)}
+        onError={handleImageError}
       />
     </div>
   );

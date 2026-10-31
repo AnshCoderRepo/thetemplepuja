@@ -3691,17 +3691,20 @@ export default function PoojasManager({
                       >
                         {/* Card Image Banner */}
                         <div className="relative aspect-16/9 w-full bg-slate-100 overflow-hidden border-b border-saffron-100/70">
-                          {pooja.imageUrl ? (
-                            <PoojaImage
-                              src={pooja.imageUrl}
-                              alt={pooja.title}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className={`h-full w-full flex items-center justify-center text-4xl bg-gradient-to-br ${pooja.gradient || "from-saffron-500 to-saffron-700"}`}>
-                              <span>{pooja.emoji || "🪔"}</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const bannerSrc = pooja.imageUrl?.trim() || getPoojaBannerImage(pooja);
+                            return bannerSrc ? (
+                              <PoojaImage
+                                src={bannerSrc}
+                                alt={pooja.title}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className={`h-full w-full flex items-center justify-center text-4xl bg-gradient-to-br ${pooja.gradient || "from-saffron-500 to-saffron-700"}`}>
+                                <span>{pooja.emoji || "🪔"}</span>
+                              </div>
+                            );
+                          })()}
 
                           {/* Overlay Gradient for readability */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
@@ -3913,20 +3916,23 @@ export default function PoojasManager({
                             }`}
                           >
                             <td className="px-4 py-3.5 text-center">
-                              {pooja.imageUrl ? (
-                                <div className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-saffron-200/90 shadow-2xs bg-white">
-                                  <PoojaImage
-                                    src={pooja.imageUrl}
-                                    alt={pooja.title}
-                                    fallbackSize="sm"
-                                    showBrandText={false}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-100 text-lg shadow-sm">
-                                  {pooja.emoji}
-                                </span>
-                              )}
+                              {(() => {
+                                const rowSrc = pooja.imageUrl?.trim() || getPoojaBannerImage(pooja);
+                                return rowSrc ? (
+                                  <div className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-saffron-200/90 shadow-2xs bg-white">
+                                    <PoojaImage
+                                      src={rowSrc}
+                                      alt={pooja.title}
+                                      fallbackSize="sm"
+                                      showBrandText={false}
+                                    />
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-saffron-100 text-lg shadow-sm">
+                                    {pooja.emoji}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-3.5 max-w-xs">
                               <div className="flex items-center gap-1.5">

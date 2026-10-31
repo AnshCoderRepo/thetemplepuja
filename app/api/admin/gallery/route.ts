@@ -15,6 +15,7 @@ import {
 } from "@/lib/gallery-types";
 import { verifyYouTubeDuration } from "@/lib/youtube";
 import { broadcastRealtime } from "@/lib/realtime";
+import { registerDataUrl } from "@/lib/media-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -125,8 +126,10 @@ export async function POST(req: Request) {
         }
       }
 
-      if (!images.includes(trimmed)) {
-        images.push(trimmed);
+      // Automatically persist and optimize base64 images to permanent storage
+      const resolvedImg = registerDataUrl(trimmed) || trimmed;
+      if (!images.includes(resolvedImg)) {
+        images.push(resolvedImg);
       }
     }
 
@@ -159,7 +162,8 @@ export async function POST(req: Request) {
       );
     }
 
-    let thumbnailUrl = (body.thumbnailUrl || "").trim();
+    let rawThumb = (body.thumbnailUrl || "").trim();
+    let thumbnailUrl = registerDataUrl(rawThumb) || rawThumb;
     let videoDurationSeconds = body.videoDurationSeconds
       ? Number(body.videoDurationSeconds)
       : undefined;

@@ -19,14 +19,29 @@ export default function TempleImage({
   imgClassName = "",
   onClick,
 }: TempleImageProps) {
-  const [hasError, setHasError] = useState(false);
+  const cleanSrc = typeof src === "string" ? src.trim() : "";
+  const [currentSrc, setCurrentSrc] = useState(cleanSrc);
+  const [hasFinalError, setHasFinalError] = useState(false);
 
   useEffect(() => {
-    setHasError(false);
-  }, [src]);
+    setCurrentSrc(cleanSrc);
+    setHasFinalError(false);
+  }, [cleanSrc]);
 
-  const cleanSrc = typeof src === "string" ? src.trim() : "";
-  const isValid = Boolean(cleanSrc) && !hasError;
+  const handleImageError = () => {
+    if (
+      currentSrc &&
+      currentSrc !== "/sample-puja.jpg" &&
+      !currentSrc.includes("images.unsplash.com")
+    ) {
+      // Tier-1 recovery: fallback to verified sacred temple visual
+      setCurrentSrc("https://images.unsplash.com/photo-1561361058-c24cecae35ca?auto=format&fit=crop&w=800&q=80");
+    } else {
+      setHasFinalError(true);
+    }
+  };
+
+  const isValid = Boolean(currentSrc) && !hasFinalError;
 
   if (!isValid) {
     return (
@@ -55,7 +70,7 @@ export default function TempleImage({
       {/* Ambient blurred backdrop to softly fill letterbox without clipping or distortion */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={cleanSrc}
+        src={currentSrc}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
@@ -64,10 +79,10 @@ export default function TempleImage({
       {/* Uncropped foreground image preserving 100% of the original aspect ratio */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={cleanSrc}
+        src={currentSrc}
         alt={alt}
         className={`relative z-0 h-full w-full object-cover transition-transform duration-300 ${imgClassName}`}
-        onError={() => setHasError(true)}
+        onError={handleImageError}
       />
     </div>
   );

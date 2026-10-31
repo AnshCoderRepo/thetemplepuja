@@ -789,3 +789,76 @@ export async function findCapiEvent(eventId: string): Promise<CapiEventDoc | nul
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Persistent Media Storage Collection (survives cold starts & serverless)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface MediaDoc extends Document {
+  _id: string; // filename, e.g. "927567ace0ed1530.jpg"
+  filename: string;
+  contentType: string;
+  data: Buffer;
+  size: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function mediaCol(): Promise<Collection<MediaDoc>> {
+  const db = await getDb();
+  return db.collection<MediaDoc>("media");
+}
+
+export async function saveMediaDoc(
+  filename: string,
+  contentType: string,
+  buffer: Buffer
+): Promise<void> {
+  try {
+    const col = await mediaCol();
+    await col.updateOne(
+      { _id: filename },
+      {
+        $set: {
+          filename,
+          contentType,
+          data: buffer,
+          size: buffer.length,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error(`[mongo-store] Failed to persist media ${filename}:`, err);
+  }
+}
+
+export async function getMediaDoc(
+  filename: string
+): Promise<{ buffer: Buffer; contentType: string } | null> {
+  try {
+    const col = await mediaCol();
+    const doc = await col.findOne({ _id: filename });
+    if (!doc || !doc.data) return null;
+    const rawData = doc.data as unknown;
+    let buffer: Buffer;
+    if (Buffer.isBuffer(rawData)) {
+      buffer = rawData;
+    } else if (rawData && typeof rawData === "object" && "buffer" in (rawData as Record<string, unknown>)) {
+      buffer = Buffer.from((rawData as { buffer: ArrayBuffer }).buffer);
+    } else {
+      buffer = Buffer.from(rawData as any);
+    }
+    return {
+      buffer,
+      contentType: doc.contentType || "image/jpeg",
+    };
+  } catch (err) {
+    console.error(`[mongo-store] Failed to fetch media ${filename}:`, err);
+    return null;
+  }
+}
+
