@@ -102,10 +102,26 @@ export async function POST(req: NextRequest) {
         booking.templeName = assignedTemple.name;
       }
     }
+    // Validate package tier if puja has multi-tier packages configured
+    if (pooja.packages && pooja.packages.length > 0) {
+      const cleanTier = (booking.packageTier || "").trim().toLowerCase();
+      const validPkg = pooja.packages.find((pkg) => {
+        const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const pkgName = pkg.name.toLowerCase().trim();
+        return pkgId === cleanTier || pkgName === cleanTier || (pkg.id && pkg.id.toLowerCase() === cleanTier);
+      });
+      if (cleanTier && !validPkg && cleanTier !== "single" && cleanTier !== "standard") {
+        return NextResponse.json(
+          { error: `Package tier "${booking.packageTier}" is not available for this puja.` },
+          { status: 400 }
+        );
+      }
+    }
+
     if (Array.isArray(booking.addons) && booking.addons.length > 0) {
       const dbAddons = await getAllAddons();
-      const assignedIds = new Set(pooja.assignedAddonIds || []);
-      const hasExplicitAssignments = Array.isArray(pooja.assignedAddonIds);
+      const assignedIds = new Set((pooja.assignedAddonIds || []).map(String));
+      const pSlug = (pooja.slug || "").toLowerCase().trim();
 
       for (const item of booking.addons) {
         if (!item || !item.id) continue;
@@ -122,7 +138,15 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
-        if (hasExplicitAssignments && !assignedIds.has(match._id) && !assignedIds.has(match.id)) {
+        const addonSlugs = Array.isArray(match.assignedPoojaSlugs)
+          ? match.assignedPoojaSlugs.map((s) => s.toLowerCase().trim())
+          : [];
+        const isAssigned =
+          assignedIds.has(String(match._id)) ||
+          assignedIds.has(String(match.id)) ||
+          (pSlug && addonSlugs.includes(pSlug));
+
+        if (!isAssigned) {
           return NextResponse.json(
             { error: `Add-on "${match.name}" is not assigned to this puja.` },
             { status: 400 }

@@ -1367,20 +1367,25 @@ export const defaultAddons: Addon[] = defaultChadhavaOfferings.map(chadhavaToDef
 
 export function getAssignedAddonsForPooja(pooja?: Pooja | null, allAddons?: Addon[]): Addon[] {
   if (!pooja) return [];
-  const pool = allAddons && allAddons.length > 0 ? allAddons : defaultAddons;
-  const assignedIds = new Set(pooja.assignedAddonIds || []);
+  const pool = allAddons !== undefined ? allAddons : defaultAddons;
+  const assignedIds = new Set((pooja.assignedAddonIds || []).map(String));
   const hasExplicitAssignedList = Array.isArray(pooja.assignedAddonIds);
+  const pSlug = (pooja.slug || "").toLowerCase().trim();
 
   return pool.filter((a) => {
     if (a.active === false) return false;
 
     // Check if explicitly assigned to this pooja by ID
-    if (assignedIds.has(a._id) || assignedIds.has(a.id)) {
+    const aId = a._id ? String(a._id) : a.id ? String(a.id) : "";
+    if (aId && (assignedIds.has(aId) || (a.id && assignedIds.has(String(a.id))))) {
       return true;
     }
 
     // Check if addon explicitly assigns this pooja slug
-    if (Array.isArray(a.assignedPoojaSlugs) && a.assignedPoojaSlugs.includes(pooja.slug)) {
+    if (
+      Array.isArray(a.assignedPoojaSlugs) &&
+      a.assignedPoojaSlugs.some((s) => s.toLowerCase().trim() === pSlug)
+    ) {
       return true;
     }
 
@@ -1936,9 +1941,9 @@ export const DEMO_POOJA: Pooja = {
   live: true,
   assignedAddonIds: ["kumkum", "special-prasad", "panchamrit-abhishek"],
   packages: [
-    { name: "Single Devotee", price: 1, description: "1 Devotee Name & Gotra Sankalp (₹1)" },
-    { name: "Couple / Dampati", price: 1, description: "Husband & Wife Joint Sankalp (₹1)" },
-    { name: "Family / Kul Sankalp", price: 1, description: "Complete Family Sankalp (₹1)" },
+    { id: "single", name: "Single Devotee", price: 1, description: "1 Devotee Name & Gotra Sankalp (₹1)" },
+    { id: "couple", name: "Couple / Dampati", price: 1, description: "Husband & Wife Joint Sankalp (₹1)" },
+    { id: "family", name: "Family / Kul Sankalp", price: 1, description: "Complete Family Sankalp (₹1)" },
   ],
   badge: "DEMO",
   showBadge: true,

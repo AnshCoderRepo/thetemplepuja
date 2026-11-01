@@ -193,12 +193,19 @@ export async function POST(req: NextRequest) {
     overrides.poojas = (overrides.poojas as Pooja[]).map((p) => {
       const isHome = p.type === "home";
       const sanitizedType: "temple" | "home" = isHome ? "home" : "temple";
+      const sanitizedPackages = Array.isArray(p.packages)
+        ? p.packages.map((pkg) => ({
+            ...pkg,
+            id: pkg.id || pkg.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          }))
+        : undefined;
 
       if (isHome) {
         // Home Puja: In-person doorstep visit, MUST NOT have temple associations
         return {
           ...p,
           type: sanitizedType,
+          packages: sanitizedPackages,
           templeId: undefined,
           templeSlug: undefined,
           templeName: undefined,
@@ -239,6 +246,7 @@ export async function POST(req: NextRequest) {
         ...p,
         imageUrl: cleanImageUrl,
         type: sanitizedType,
+        packages: sanitizedPackages,
         templeId: resolvedTempleId || undefined,
         templeSlug: resolvedTempleSlug || undefined,
         templeName: resolvedTempleName || undefined,

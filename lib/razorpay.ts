@@ -101,13 +101,53 @@ export function computeOrderAmount(input: {
   couponProblem: string | null;
 } {
   let basePrice = input.pooja.price;
-  if (basePrice > 1) {
-    if (input.packageTier === "couple") {
-      const raw = Math.round(basePrice * 1.8);
-      basePrice = Math.round(raw / 100) * 100 + 1;
-    } else if (input.packageTier === "family") {
-      const raw = Math.round(basePrice * 2.5);
-      basePrice = Math.round(raw / 100) * 100 + 1;
+  const poojaPackages = input.pooja.packages;
+  const hasCustomPackages = Array.isArray(poojaPackages) && poojaPackages.length > 0;
+
+  if (hasCustomPackages) {
+    const cleanTier = (input.packageTier || "").trim().toLowerCase();
+    const matchedPkg = poojaPackages.find((pkg) => {
+      const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const pkgName = pkg.name.toLowerCase().trim();
+      if (pkgId === cleanTier || pkgName === cleanTier || (pkg.id && pkg.id.toLowerCase() === cleanTier)) {
+        return true;
+      }
+      if (cleanTier === "single" && (pkgId.includes("single") || pkgName.includes("single") || pkgName.includes("individual"))) {
+        return true;
+      }
+      if (cleanTier === "couple" && (pkgId.includes("couple") || pkgName.includes("couple") || pkgName.includes("dampati"))) {
+        return true;
+      }
+      if (cleanTier === "family" && (pkgId.includes("family") || pkgName.includes("family") || pkgName.includes("kul"))) {
+        return true;
+      }
+      return false;
+    });
+
+    if (matchedPkg) {
+      basePrice = matchedPkg.price;
+    } else if (cleanTier && cleanTier !== "single" && cleanTier !== "standard") {
+      return {
+        amount: 0,
+        subtotal: 0,
+        addonTotal: 0,
+        addons: [],
+        validatedAddons: [],
+        discount: 0,
+        couponProblem: `Package tier "${input.packageTier}" is not available for this puja.`,
+      };
+    } else {
+      basePrice = poojaPackages[0].price;
+    }
+  } else {
+    if (basePrice > 1) {
+      if (input.packageTier === "couple") {
+        const raw = Math.round(basePrice * 1.8);
+        basePrice = Math.round(raw / 100) * 100 + 1;
+      } else if (input.packageTier === "family") {
+        const raw = Math.round(basePrice * 2.5);
+        basePrice = Math.round(raw / 100) * 100 + 1;
+      }
     }
   }
 
@@ -118,8 +158,9 @@ export function computeOrderAmount(input: {
     : (defaultAddons as (Addon | ChadhavaOffering)[]);
 
   const assignedAddonIds = input.pooja.assignedAddonIds;
-  const hasAssignedList = Array.isArray(assignedAddonIds);
-  const assignedIdSet = hasAssignedList ? new Set(assignedAddonIds) : null;
+  const hasExplicitAssignedList = Array.isArray(assignedAddonIds);
+  const assignedIdSet = hasExplicitAssignedList ? new Set(assignedAddonIds.map(String)) : null;
+  const pSlug = (input.pooja.slug || "").toLowerCase().trim();
   const seenAddonIds = new Set<string>();
 
   if (input.addons && Array.isArray(input.addons)) {
@@ -154,8 +195,19 @@ export function computeOrderAmount(input: {
         };
       }
 
-      if (assignedIdSet !== null) {
-        const isAssigned = assignedIdSet.has(found.id) || assignedIdSet.has((found as Addon)._id);
+      const foundId = found.id ? String(found.id) : "";
+      const foundMongoId = (found as Addon)._id ? String((found as Addon)._id) : "";
+      const addonSlugs = Array.isArray((found as Addon).assignedPoojaSlugs)
+        ? (found as Addon).assignedPoojaSlugs!.map((s) => s.toLowerCase().trim())
+        : [];
+
+      if (hasExplicitAssignedList) {
+        const isAssigned =
+          assignedIdSet!.has(cleanId) ||
+          (foundId && assignedIdSet!.has(foundId)) ||
+          (foundMongoId && assignedIdSet!.has(foundMongoId)) ||
+          (pSlug && addonSlugs.includes(pSlug));
+
         if (!isAssigned) {
           return {
             amount: 0,
@@ -167,6 +219,16 @@ export function computeOrderAmount(input: {
             couponProblem: `Add-on "${found.name}" is not assigned to this puja.`,
           };
         }
+      } else if (addonSlugs.length > 0 && pSlug && !addonSlugs.includes(pSlug)) {
+        return {
+          amount: 0,
+          subtotal: 0,
+          addonTotal: 0,
+          addons: [],
+          validatedAddons: [],
+          discount: 0,
+          couponProblem: `Add-on "${found.name}" is not assigned to this puja.`,
+        };
       }
 
       const qty = Math.min(Math.max(1, Math.floor(item.quantity)), 20); // reasonable cap
