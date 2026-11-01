@@ -28,13 +28,13 @@ import {
   isPoojaActive,
   getLocalizedPoojaTitle,
   getLocalizedPoojaDescription,
-  getLocalizedPoojaNativeBadge,
   getLocalizedPoojaBestMuhurat,
   getLocalizedPoojaBenefits,
   getPoojaBannerImage,
   getPoojaSchedule,
   getTempleForPooja,
   getLocalizedTempleName,
+  isTempleActive,
   isPoojaLiveStreamAvailable,
 } from "@/lib/data";
 import { formatINR } from "@/lib/format";
@@ -149,11 +149,28 @@ function ServiceInner({ service }: { service: string }) {
     );
   }
 
-  const locBadge = getLocalizedPoojaNativeBadge(pooja, locale);
+  const customBadgeText =
+    pooja.showBadge !== false &&
+    Boolean(pooja.badge && pooja.badge.trim()) &&
+    pooja.badge!.trim().toLowerCase() !== locTitle.trim().toLowerCase() &&
+    pooja.badge!.trim().toLowerCase() !== pooja.title.trim().toLowerCase()
+      ? pooja.badge!.trim()
+      : null;
+
+  const headerBadge =
+    customBadgeText ||
+    (pooja.category && pooja.category.trim().toLowerCase() !== locTitle.trim().toLowerCase()
+      ? pooja.category.trim()
+      : pooja.type === "home"
+      ? (locale === "hi" ? "गृह पूजा" : "Home Puja")
+      : (locale === "hi" ? "वैदिक पूजा" : "Vedic Puja"));
+
   const locDesc = getLocalizedPoojaDescription(pooja, locale);
   const locMuhurat = getLocalizedPoojaBestMuhurat(pooja, locale);
   const locBenefits = getLocalizedPoojaBenefits(pooja, locale);
-  const temple = getTempleForPooja(pooja, temples);
+  const isHome = pooja.type === "home";
+  const activeTemples = temples.filter(isTempleActive);
+  const temple = isHome ? null : getTempleForPooja(pooja, activeTemples);
   const bannerImage = getPoojaBannerImage(pooja);
 
   const handleBookNowClick = () => {
@@ -320,10 +337,14 @@ function ServiceInner({ service }: { service: string }) {
 
               {/* Top Badges on Banner */}
               <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2 z-10">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white backdrop-blur border border-white/20">
-                  <Sparkles className="h-3 w-3 text-saffron-400" />
-                  {locBadge}
-                </span>
+                {customBadgeText ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white backdrop-blur border border-white/20">
+                    <Sparkles className="h-3 w-3 text-saffron-400" />
+                    <span>{customBadgeText}</span>
+                  </span>
+                ) : (
+                  <div />
+                )}
 
                 <div className="flex items-center gap-2">
                   <button
@@ -432,7 +453,7 @@ function ServiceInner({ service }: { service: string }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-saffron-50 border border-saffron-200 px-2.5 py-0.5 text-xs font-bold text-saffron-800">
                       <Sparkles className="h-3 w-3 text-saffron-600" />
-                      {locBadge}
+                      {headerBadge}
                     </span>
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
                       <ShieldCheck className="h-3.5 w-3.5" />

@@ -56,7 +56,7 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
     <>
       {/* Main Navbar */}
       <nav className="container-px flex items-center justify-between gap-3 py-2 sm:py-2.5 md:py-3">
-        {/* Existing Logo */}
+        {/* Brand Logo Banner */}
         <Link
           href="/"
           className="group flex items-center shrink-0 min-w-0"
@@ -64,11 +64,11 @@ export default function Navbar({ hasSolidBackground = true }: NavbarProps) {
         >
           <div className="relative flex items-center shrink-0">
             <Image
-              src="/logo.jpeg"
+              src="/logo.png"
               alt={SITE_CONFIG.brandName}
-              width={240}
-              height={240}
-              className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-18 lg:w-18 xl:h-20 xl:w-20 rounded-2xl bg-white object-contain p-1.5 sm:p-2 shadow-card border border-saffron-200/90 transition-transform duration-300 group-hover:scale-105 shrink-0 select-none"
+              width={260}
+              height={82}
+              className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto max-w-[210px] sm:max-w-[260px] md:max-w-[300px] object-contain rounded-xl bg-white/95 px-2 py-1 shadow-card border border-saffron-200/90 transition-transform duration-300 group-hover:scale-105 shrink-0 select-none"
               priority
             />
           </div>

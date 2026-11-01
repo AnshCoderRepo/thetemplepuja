@@ -86,6 +86,7 @@ export default function Footer() {
 
   const navLinks = [
     { label: t("nav.home"), href: "/#home" },
+    { label: "About Temple Puja", href: "/about" },
     { label: t("nav.bookPooja"), href: "/#poojas" },
     { label: t("nav.temples"), href: "/temples" },
     { label: "Our Gallery", href: "/our-gallery" },
@@ -111,24 +112,16 @@ export default function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand & Socials */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-3 group">
-              <span className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-white p-1.5 shadow-soft shrink-0 border border-saffron-300/40">
+            <Link href="/" className="inline-block group" aria-label={SITE_CONFIG.brandName}>
+              <span className="inline-flex h-12 sm:h-14 w-auto items-center justify-center rounded-2xl bg-white px-3 py-1.5 shadow-soft border border-saffron-300/40 transition-transform duration-300 group-hover:scale-105">
                 <Image
-                  src="/logo.jpeg"
+                  src="/logo.png"
                   alt={SITE_CONFIG.brandName}
-                  width={80}
-                  height={80}
-                  className="h-full w-full object-contain"
+                  width={200}
+                  height={64}
+                  className="h-9 sm:h-11 w-auto object-contain"
                 />
               </span>
-              <div className="flex flex-col">
-                <span className="font-display text-lg sm:text-xl font-bold tracking-tight text-white group-hover:text-saffron-300 transition-colors">
-                  {SITE_CONFIG.brandName}
-                </span>
-                <span className="text-[10px] font-semibold text-saffron-400 tracking-wider uppercase">
-                  {t("header.tagline")}
-                </span>
-              </div>
             </Link>
             <p className="text-xs leading-relaxed text-cream/70">
               {aboutText}
@@ -242,6 +235,11 @@ export default function Footer() {
               <li>
                 <Link href="/privacy-policy" className="hover:text-saffron-400 transition-colors">
                   Privacy &amp; Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/about" className="hover:text-saffron-400 transition-colors font-medium text-cream/90 hover:underline">
+                  About Temple Puja
                 </Link>
               </li>
               <li className="pt-2 border-t border-cream/10">
@@ -370,6 +368,10 @@ export default function Footer() {
             <span className="opacity-30">•</span>
             <Link href="/privacy-policy" className="hover:text-saffron-400 transition-colors">
               Privacy &amp; Policy
+            </Link>
+            <span className="opacity-30">•</span>
+            <Link href="/about" className="hover:text-saffron-400 transition-colors font-medium">
+              About Temple Puja
             </Link>
           </div>
         </div>

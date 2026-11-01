@@ -48,26 +48,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // 1. Validate Name
-    if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 100) {
-      return NextResponse.json(
-        { error: "Please enter your name (2 to 100 characters)." },
-        { status: 400 }
-      );
-    }
+    // 1. Devotee Name (default gracefully to "Devotee" if omitted)
+    const rawName = typeof name === "string" ? name.trim() : "";
+    const finalName = rawName.length >= 2 ? rawName.slice(0, 100) : "Devotee";
 
-    // 2. Validate Contact (Phone or Email)
-    if (typeof contact !== "string" || contact.trim().length < 5 || contact.trim().length > 120) {
-      return NextResponse.json(
-        { error: "Please provide valid contact information (mobile number or email)." },
-        { status: 400 }
-      );
-    }
+    // 2. Devotee Contact (default gracefully to "Devotee (Direct Website Message)" if omitted)
+    const rawContact = typeof contact === "string" ? contact.trim() : "";
+    const finalContact =
+      rawContact.length >= 5 ? rawContact.slice(0, 120) : "Devotee (Direct Website Message)";
 
     // 3. Validate Message
-    if (typeof message !== "string" || message.trim().length < 10 || message.trim().length > 2500) {
+    if (typeof message !== "string" || message.trim().length < 5 || message.trim().length > 2500) {
       return NextResponse.json(
-        { error: "Please enter your message (minimum 10 characters, maximum 2,500 characters)." },
+        { error: "Please enter your message (minimum 5 characters, maximum 2,500 characters)." },
         { status: 400 }
       );
     }
@@ -76,12 +69,12 @@ export async function POST(req: NextRequest) {
     const cleanSubject =
       typeof subject === "string" && subject.trim()
         ? subject.trim().slice(0, 150)
-        : undefined;
+        : "A Message to Our CEO";
 
     // 5. Persist securely
     const saved = await saveCeoMessage({
-      name: name.trim(),
-      contact: contact.trim(),
+      name: finalName,
+      contact: finalContact,
       subject: cleanSubject,
       message: message.trim(),
     });

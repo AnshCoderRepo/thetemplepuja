@@ -142,8 +142,9 @@ export default function TemplesManager({
     setError("");
     try {
       const c = await fetchCatalog();
-      if (Array.isArray(c.temples)) {
-        setList(c.temples);
+      const templeList = Array.isArray(c.allTemples) ? c.allTemples : c.temples;
+      if (Array.isArray(templeList)) {
+        setList(templeList);
       }
       if (Array.isArray(c.poojas)) {
         setPoojas(c.poojas);
@@ -161,7 +162,8 @@ export default function TemplesManager({
     let live = true;
     fetchCatalog().then((c) => {
       if (live) {
-        if (Array.isArray(c.temples)) setList(c.temples);
+        const templeList = Array.isArray(c.allTemples) ? c.allTemples : c.temples;
+        if (Array.isArray(templeList)) setList(templeList);
         if (Array.isArray(c.poojas)) setPoojas(c.poojas);
       }
     });

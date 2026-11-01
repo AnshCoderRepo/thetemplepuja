@@ -60,6 +60,10 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
   const videos = getGalleryItemVideos(item);
   const hasVideo = videos.length > 0;
   const hasYouTube = videos.some((v) => v.isYouTube) || hasYouTubeVideo(item);
+  const displayCategory =
+    item.category && item.category.trim().toLowerCase() !== item.title.trim().toLowerCase()
+      ? item.category.trim()
+      : "Sacred Darshan";
 
   const handleCardClick = () => {
     // If the card has photos, open on photos; if video only, open on video
@@ -232,7 +236,7 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
           {/* Category Pill */}
           <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2.5 py-1 text-[10px] sm:text-[11px] font-bold text-white shadow-xs border border-white/20">
             <Sparkles className="h-3 w-3 text-saffron-400 shrink-0" />
-            <span className="truncate max-w-[110px] sm:max-w-[150px]">{item.category}</span>
+            <span className="truncate max-w-[110px] sm:max-w-[150px]">{displayCategory}</span>
           </span>
 
           <div className="flex items-center gap-1.5 pointer-events-auto">

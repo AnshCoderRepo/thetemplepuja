@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronRight,
@@ -26,6 +26,7 @@ import {
   getLocalizedPoojaTitle,
   getPoojaBannerImage,
   getTempleForPooja,
+  isTempleActive,
   DEMO_POOJA,
   isDemoSlug,
   type Addon,
@@ -286,7 +287,9 @@ export default function BookingFlow({
         pooja ??
         catalogPoojas[0];
 
-  const temple = getTempleForPooja(selectedPooja, temples);
+  const activeTemples = useMemo(() => temples.filter(isTempleActive), [temples]);
+
+  const temple = selectedPooja?.type === "home" ? null : getTempleForPooja(selectedPooja, activeTemples);
 
   // Calculate pricing
   const rawBasePrice = selectedPooja?.price ?? 1101;
@@ -407,7 +410,7 @@ export default function BookingFlow({
     }
 
     const isHome = selectedPooja.type === "home";
-    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, activeTemples);
     const draftStatus = currentStep === 4 ? "pending_payment" : "checkout_incomplete";
 
     saveIncompleteBooking({
@@ -665,7 +668,7 @@ export default function BookingFlow({
     const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
     const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
     const isHome = selectedPooja?.type === "home";
-    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, activeTemples);
 
     // Unique booking ID created upfront so pending -> failed -> confirmed lifecycle is linked
     const bId = activeBookingId || ("BK-" + Math.random().toString(36).substring(2, 8).toUpperCase());
@@ -984,7 +987,7 @@ export default function BookingFlow({
     const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
     const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
     const isHome = selectedPooja?.type === "home";
-    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, activeTemples);
 
     const upiBookingRecord: BookingRecord = {
       bookingId: bId,
@@ -1104,7 +1107,7 @@ export default function BookingFlow({
     const finalDate = initialDate || selectedPooja?.startDate || new Date().toISOString().slice(0, 10);
     const finalTime = initialTime || selectedPooja?.eventTime || selectedPooja?.bestMuhurat || "06:30 PM IST";
     const isHome = selectedPooja?.type === "home";
-    const temple = isHome ? null : getTempleForPooja(selectedPooja, temples);
+    const temple = isHome ? null : getTempleForPooja(selectedPooja, activeTemples);
 
     const devoteesList: DevoteeMember[] =
       selectedTier === "single"

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getResolvedCatalog } from "@/lib/server-store";
+import { isTempleActive } from "@/lib/data";
 import { SITE_URL } from "@/lib/seo";
 import TemplesListingClient from "./TemplesListingClient";
 
@@ -24,5 +25,6 @@ export const metadata: Metadata = {
 
 export default async function TemplesPage() {
   const catalog = await getResolvedCatalog();
-  return <TemplesListingClient initialTemples={catalog.temples} />;
+  const activeTemples = catalog.temples.filter(isTempleActive);
+  return <TemplesListingClient initialTemples={activeTemples} />;
 }

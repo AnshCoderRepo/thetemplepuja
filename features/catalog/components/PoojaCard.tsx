@@ -38,8 +38,11 @@ export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardP
   const poojaTitle = getLocalizedPoojaTitle(p, locale);
   const nativeBadge = getLocalizedPoojaNativeBadge(p, locale);
   const temples = propTemples || [];
-  const assignedTemple = resolvePoojaTemple(p, temples);
-  const templeName = assignedTemple
+  const isHome = p.type === "home";
+  const assignedTemple = isHome ? null : resolvePoojaTemple(p, temples);
+  const templeName = isHome
+    ? null
+    : assignedTemple
     ? getLocalizedTempleName(assignedTemple, locale) || assignedTemple.name
     : p.templeName || null;
 

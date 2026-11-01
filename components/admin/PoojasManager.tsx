@@ -49,6 +49,7 @@ import {
   isPoojaInHeroCard,
   isPoojaInCatalog,
   resolvePoojaTemple,
+  isTempleActive,
   getPoojaSchedule,
   getPoojaBannerImage,
   type Addon,
@@ -503,6 +504,11 @@ export default function PoojasManager({
                             ({temple.hindiName})
                           </span>
                         )}
+                        {!isTempleActive(temple) && (
+                          <span className="ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                            Inactive
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-ink-soft truncate pl-5">
                         📍 {temple.city}, {temple.state} • {temple.deity}
@@ -592,7 +598,8 @@ export default function PoojasManager({
         const hasDemo = catalogPoojas.some((p) => isDemoSlug(p.slug));
         const resolvedList = hasDemo ? catalogPoojas : [DEMO_POOJA, ...catalogPoojas];
         setList(resolvedList);
-        if (c.temples) setTemples(c.temples);
+        const templePool = Array.isArray(c.allTemples) ? c.allTemples : c.temples;
+        if (templePool) setTemples(templePool);
       }
     });
     if (token) {
@@ -1112,10 +1119,11 @@ export default function PoojasManager({
     setSourcePoojaTitle(p.title);
     setSlugManuallyEdited(true);
 
-    const assignedTemple = resolvePoojaTemple(duplicated, temples);
-    const resolvedTempleId = duplicated.templeId || (assignedTemple ? (assignedTemple._id ? String(assignedTemple._id) : (assignedTemple.id || assignedTemple.slug)) : "");
-    const resolvedTempleSlug = duplicated.templeSlug || (assignedTemple ? assignedTemple.slug : (duplicated.templeSlugs?.[0] ?? ""));
-    const resolvedTempleName = duplicated.templeName || (assignedTemple ? assignedTemple.name : "");
+    const isHome = duplicated.type === "home";
+    const assignedTemple = isHome ? null : resolvePoojaTemple(duplicated, temples);
+    const resolvedTempleId = isHome ? "" : (duplicated.templeId || (assignedTemple ? (assignedTemple._id ? String(assignedTemple._id) : (assignedTemple.id || assignedTemple.slug)) : ""));
+    const resolvedTempleSlug = isHome ? "" : (duplicated.templeSlug || (assignedTemple ? assignedTemple.slug : (duplicated.templeSlugs?.[0] ?? "")));
+    const resolvedTempleName = isHome ? "" : (duplicated.templeName || (assignedTemple ? assignedTemple.name : ""));
 
     setDraft({
       slug: duplicated.slug,
@@ -1148,10 +1156,10 @@ export default function PoojasManager({
       capacity: duplicated.capacity !== undefined ? String(duplicated.capacity) : "",
       live: duplicated.live ?? false,
       deities: duplicated.deities ? [...duplicated.deities] : ["Lord Shiva"],
-      templeId: resolvedTempleId,
-      templeSlug: resolvedTempleSlug,
-      templeName: resolvedTempleName,
-      templeSlugs: duplicated.templeSlugs && duplicated.templeSlugs.length > 0 ? [...duplicated.templeSlugs] : (resolvedTempleSlug ? [resolvedTempleSlug] : []),
+      templeId: isHome ? "" : resolvedTempleId,
+      templeSlug: isHome ? "" : resolvedTempleSlug,
+      templeName: isHome ? "" : resolvedTempleName,
+      templeSlugs: isHome ? [] : (duplicated.templeSlugs && duplicated.templeSlugs.length > 0 ? [...duplicated.templeSlugs] : (resolvedTempleSlug ? [resolvedTempleSlug] : [])),
       assignedAddonIds: duplicated.assignedAddonIds ? [...duplicated.assignedAddonIds] : [],
       chadhavaOptions: duplicated.chadhavaOptions ? [...duplicated.chadhavaOptions] : [],
       packages: duplicated.packages && duplicated.packages.length > 0
@@ -1185,7 +1193,8 @@ export default function PoojasManager({
         const resolvedList = hasDemo ? catalogPoojas : [DEMO_POOJA, ...catalogPoojas];
         setList(resolvedList);
       }
-      if (c.temples) setTemples(c.temples);
+      const templePool = Array.isArray(c.allTemples) ? c.allTemples : c.temples;
+      if (templePool) setTemples(templePool);
       onRefresh?.();
       showNotification("Puja Catalog refreshed with latest server data.");
     } catch (err) {
@@ -1385,7 +1394,12 @@ export default function PoojasManager({
       templeId: draft.type === "home" ? undefined : (draft.templeId.trim() || undefined),
       templeSlug: draft.type === "home" ? undefined : (draft.templeSlug.trim() || undefined),
       templeName: draft.type === "home" ? undefined : (draft.templeName.trim() || undefined),
-      templeSlugs: draft.type === "home" ? [] : draft.templeSlugs.filter(Boolean),
+      templeSlugs:
+        draft.type === "home"
+          ? []
+          : draft.templeSlug.trim()
+          ? [draft.templeSlug.trim()]
+          : draft.templeSlugs.filter(Boolean),
       assignedAddonIds: draft.assignedAddonIds,
       chadhavaOptions: draft.chadhavaOptions,
       packages: draft.packages.length > 0 ? draft.packages : undefined,

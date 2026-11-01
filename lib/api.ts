@@ -59,6 +59,7 @@ export interface ResolvedCatalog {
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
+  allTemples?: Temple[];
   blogs?: BlogPost[];
   testimonials?: Testimonial[];
   chatbotKnowledge?: ChatbotKnowledgeEntry[];
@@ -144,6 +145,7 @@ export function fetchCatalog(): Promise<ResolvedCatalog> {
             coupons: body.coupons,
             poojaDates: body.poojaDates ?? [],
             temples: body.temples ?? getCatalogTemples(),
+            allTemples: body.allTemples ?? body.temples ?? getCatalogTemples(),
             blogs: body.blogs ?? getCatalogBlogs(),
             testimonials: body.testimonials ?? getCatalogTestimonials(),
             faqs: body.faqs ?? getCatalogFaqs(),
