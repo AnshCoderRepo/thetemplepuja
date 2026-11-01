@@ -39,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "orders", label: "All Orders & Payments", icon: ShoppingBag, group: "Orders & Sevas" },
   { id: "refunds", label: "Refund Approvals", icon: RotateCcw, group: "Orders & Sevas" },
   { id: "devotees", label: "Devotee Profiles", icon: Users, group: "Community" },
-  { id: "testimonials", label: "Devotee Reviews", icon: MessageSquareQuote, group: "Community" },
+  { id: "testimonials", label: "User Feedback & Reviews", icon: MessageSquareQuote, group: "Community" },
   { id: "coupons", label: "Coupons", icon: Gift, group: "Settings" },
   { id: "account", label: "Admin Account & Settings", icon: KeyRound, group: "Settings" },
 ];

@@ -90,9 +90,11 @@ export default function AdminPageClient({ initialSection }: AdminPageClientProps
     };
     window.addEventListener("devotee-updated", onLiveUpdate);
     window.addEventListener("catalog-updated", onLiveUpdate);
+    window.addEventListener("feedback-updated", onLiveUpdate);
     return () => {
       window.removeEventListener("devotee-updated", onLiveUpdate);
       window.removeEventListener("catalog-updated", onLiveUpdate);
+      window.removeEventListener("feedback-updated", onLiveUpdate);
     };
   }, [session, token]);
 

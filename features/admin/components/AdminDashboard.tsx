@@ -22,6 +22,7 @@ import ChatbotManager from "@/components/admin/ChatbotManager";
 import GalleryManager from "@/components/admin/GalleryManager";
 import CustomerProfileModal, { type ProfileTab } from "@/components/admin/CustomerProfileModal";
 import RefundRequestsManager from "@/components/admin/RefundRequestsManager";
+import FeedbackManager from "@/components/admin/FeedbackManager";
 import TestimonialsManager from "@/components/admin/TestimonialsManager";
 import FaqManager from "@/components/admin/FaqManager";
 import CmsManager from "@/components/admin/CmsManager";
@@ -213,7 +214,7 @@ export default function AdminDashboard({
           )}
 
           {tab === "testimonials" && (
-            <TestimonialsManager
+            <FeedbackManager
               token={token || ""}
               onAuthError={onAuthError}
               onRefresh={onRefresh}

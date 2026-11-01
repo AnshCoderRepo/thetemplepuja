@@ -922,6 +922,82 @@ export async function updateCeoMessageStatusRemote(
   }
 }
 
+// ===================== DEVOTEE FEEDBACK & REVIEWS =====================
+
+import type { FeedbackItem, PublicFeedbackItem, FeedbackCounts } from "./feedback-store";
+
+export async function submitDevoteeFeedbackRemote(feedback: {
+  name: string;
+  phone?: string;
+  email?: string;
+  message: string;
+  rating: number;
+  honeypot?: string;
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(feedback),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: json.error || "Failed to submit feedback." };
+    }
+    return { success: true, message: json.message };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Network error.";
+    return { success: false, error: msg };
+  }
+}
+
+export async function fetchPublicFeedbackRemote(options?: {
+  featured?: boolean;
+  limit?: number;
+}): Promise<{ success: boolean; feedback: PublicFeedbackItem[]; error?: string }> {
+  try {
+    const url = new URL("/api/feedback", typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+    if (options?.featured) url.searchParams.set("featured", "true");
+    if (options?.limit) url.searchParams.set("limit", String(options.limit));
+
+    const res = await fetch(url.toString());
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) {
+      return { success: false, feedback: [], error: json.error };
+    }
+    return { success: true, feedback: json.feedback || [] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Network error.";
+    return { success: false, feedback: [], error: msg };
+  }
+}
+
+export async function fetchAdminFeedbackRemote(
+  token: string,
+  params?: { status?: string; search?: string }
+): Promise<{ success: boolean; data?: { items: FeedbackItem[]; counts: FeedbackCounts }; error?: string }> {
+  try {
+    const url = new URL("/api/admin/feedback", typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+    if (params?.status) url.searchParams.set("status", params.status);
+    if (params?.search) url.searchParams.set("search", params.search);
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-admin-token": token,
+      },
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to load feedback." };
+    }
+    return { success: true, data: json.data };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Network error.";
+    return { success: false, error: msg };
+  }
+}
+
 // ===================== APPROVAL-BASED REFUNDS =====================
 
 import type { RefundRequest, AdminRole } from "./refund-types";

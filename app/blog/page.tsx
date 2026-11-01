@@ -156,10 +156,10 @@ export default async function BlogListingPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/#message-ceo"
+                href="/#feedback"
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md hover:bg-white/20 transition-all"
               >
-                <span>A Message to Our CEO</span>
+                <span>Share Your Feedback</span>
               </Link>
             </div>
           </div>

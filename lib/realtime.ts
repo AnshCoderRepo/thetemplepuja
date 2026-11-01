@@ -3,7 +3,7 @@
 // bookings, media) to be instantly pushed to all connected user browsers via SSE.
 
 export interface RealtimeEvent {
-  type: "catalog_updated" | "devotee_updated" | "init" | "ping";
+  type: "catalog_updated" | "devotee_updated" | "feedback_updated" | "init" | "ping";
   version: number;
   section?: string;
   target?: string;

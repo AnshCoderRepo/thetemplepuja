@@ -15,8 +15,8 @@ const Testimonials = dynamic(
 const FAQ = dynamic(
   () => import("@/features/home").then((m) => m.FAQ)
 );
-const MessageCeoSection = dynamic(
-  () => import("@/components/home/MessageCeoSection")
+const ShareFeedbackSection = dynamic(
+  () => import("@/components/home/ShareFeedbackSection")
 );
 import { faqs } from "@/lib/data";
 import { faqPageLd, organizationLd, websiteLd, SITE_URL } from "@/lib/seo";
@@ -69,8 +69,8 @@ export default function Home() {
         <Testimonials />
         <FAQ />
 
-        {/* Message the CEO Section (Client Feedback Phase 10) */}
-        <MessageCeoSection />
+        {/* Share Your Feedback Section */}
+        <ShareFeedbackSection />
       </main>
       <Footer />
     </>
