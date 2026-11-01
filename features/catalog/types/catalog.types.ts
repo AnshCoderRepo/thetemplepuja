@@ -16,6 +16,7 @@ export interface ResolvedCatalog {
   coupons: Record<string, Coupon>;
   poojaDates: PoojaDate[];
   temples: Temple[];
+  allTemples?: Temple[];
   platformSettings?: PlatformSettings;
   testimonials?: Testimonial[];
 }

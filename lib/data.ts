@@ -2615,11 +2615,6 @@ export function resolvePoojaTemple(
     if (found) return found;
   }
 
-  // If templeId is explicitly set to empty or "none", it was intentionally unassigned
-  if (pooja.templeId === "" || pooja.templeId === "none") {
-    return null;
-  }
-
   // 2. Check explicit templeSlug
   if (pooja.templeSlug) {
     const found = pool.find((t) => t.slug === pooja.templeSlug);
@@ -2639,14 +2634,49 @@ export function resolvePoojaTemple(
     if (found) return found;
   }
 
-  // If pooja was saved with an empty templeSlugs array and templeId wasn't specified,
+  // 4. Check templeName against pool
+  if (pooja.templeName && pooja.templeName.trim()) {
+    const nameLower = pooja.templeName.trim().toLowerCase();
+    const found = pool.find(
+      (t) =>
+        t.name.toLowerCase() === nameLower ||
+        (t.hindiName && t.hindiName.toLowerCase() === nameLower)
+    );
+    if (found) return found;
+  }
+
+  // If templeId is explicitly set to empty or "none", and no templeSlug/templeName, it was intentionally unassigned
+  if ((pooja.templeId === "" || pooja.templeId === "none") && !pooja.templeSlug && !pooja.templeName) {
+    return null;
+  }
+
+  // 5. If pooja has a templeName or templeSlug but the temple was not found in pool (e.g. custom temple in DB),
+  // synthesize a valid Temple record so the selected temple name is preserved instead of falling back to a default!
+  if (pooja.templeName && pooja.templeName.trim()) {
+    const s =
+      pooja.templeSlug ||
+      pooja.templeSlugs?.[0] ||
+      pooja.templeName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return {
+      slug: s,
+      name: pooja.templeName.trim(),
+      deity: pooja.deities?.[0] || "Sacred Deity",
+      city: "Sacred Kshetra",
+      state: "India",
+      description: "",
+      image: "",
+      active: true,
+    };
+  }
+
+  // If pooja was saved with an empty templeSlugs array and neither templeId nor templeSlug nor templeName was specified,
   // do not associate any temple.
   if (Array.isArray(pooja.templeSlugs) && pooja.templeSlugs.length === 0) {
     return null;
   }
 
-  // 4. Reverse lookup from temple.poojaSlugs (only for legacy seed poojas where neither templeId nor templeSlugs was set)
-  if (pooja.slug) {
+  // 6. Reverse lookup from temple.poojaSlugs ONLY for legacy seed poojas where no explicit temple was set
+  if (pooja.slug && !pooja.templeId && !pooja.templeSlug && !pooja.templeName) {
     const match = pool.find((t) => t.poojaSlugs?.includes(pooja.slug));
     if (match) return match;
   }
@@ -2666,9 +2696,9 @@ export function getTempleForPooja(
   const resolved = resolvePoojaTemple(pooja, pool);
   if (resolved) return resolved;
 
-  // Fallback to default temple only for Temple/Online Pujas
-  const fallback = pool.find((t) => t.slug === "kashi-vishwanath") || pool[0] || defaultTemples[1];
-  return fallback;
+  // IMPORTANT: Do NOT fall back to Kashi Vishwanath or arbitrary default temple!
+  // If the admin did not associate a temple or it was not resolved, return null.
+  return null;
 }
 
 /** Get localized temple name based on active locale (supports English, Hindi, Telugu, Tamil) */

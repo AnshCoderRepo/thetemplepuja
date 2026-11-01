@@ -196,5 +196,47 @@ describe("Puja Card Full Banner Display & Direct Booking Navigation", () => {
       const customBadge = getTopBadgeText({ ...poojaWithCustomBadge, hindiTitle: "काशी विश्वनाथ" }, "en");
       expect(customBadge).toBe("Abhishek");
     });
+
+    it("prevents duplicate Puja title in gallery banner overlay and displays title only once in heading", () => {
+      const ramaEkadashiPooja: Pooja = {
+        slug: "rama-ekadashi-special-vishnu-tulsi-archan",
+        title: "Rama Ekadashi Special Vishnu Tulsi Archan & Maha Hawan",
+        hindiTitle: "रमा एकादशी विशेष विष्णु तुलसी अर्चन एवं महा हवन",
+        price: 151,
+        benefits: ["Blessings of Lord Vishnu"],
+        bestMuhurat: "Ekadashi Muhurat",
+        duration: "2 hours",
+        description: "Special Vishnu Tulsi Archan",
+        emoji: "🪔",
+        gradient: "from-amber-500 to-orange-600",
+        type: "temple",
+        badge: undefined,
+      };
+
+      const resolveTopBadgeText = (p: Pooja, locTitle: string) => {
+        const isCustomBadgeValid =
+          p.showBadge !== false &&
+          Boolean(p.badge && p.badge.trim()) &&
+          p.badge!.trim().toLowerCase() !== locTitle.trim().toLowerCase() &&
+          p.badge!.trim().toLowerCase() !== p.title.trim().toLowerCase();
+
+        return isCustomBadgeValid ? p.badge!.trim() : null;
+      };
+
+      // When no custom marketing badge is set, top overlay badge must be null (NEVER duplicate the puja title)
+      const topBadgeWithoutCustom = resolveTopBadgeText(ramaEkadashiPooja, ramaEkadashiPooja.title);
+      expect(topBadgeWithoutCustom).toBeNull();
+
+      // If an explicit marketing badge like "Festival Special" is provided, it displays that badge
+      const poojaWithMarketingBadge = { ...ramaEkadashiPooja, badge: "Festival Special" };
+      const topBadgeWithMarketing = resolveTopBadgeText(poojaWithMarketingBadge, poojaWithMarketingBadge.title);
+      expect(topBadgeWithMarketing).toBe("Festival Special");
+      expect(topBadgeWithMarketing).not.toBe(poojaWithMarketingBadge.title);
+
+      // If someone accidentally entered the puja title as the badge, it is suppressed
+      const poojaWithDuplicateBadge = { ...ramaEkadashiPooja, badge: ramaEkadashiPooja.title };
+      const topBadgeDuplicate = resolveTopBadgeText(poojaWithDuplicateBadge, poojaWithDuplicateBadge.title);
+      expect(topBadgeDuplicate).toBeNull();
+    });
   });
 });

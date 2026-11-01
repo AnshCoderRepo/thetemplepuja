@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { withEventBookedSeats, type Pooja, type Temple } from "@/lib/data";
+import { withEventBookedSeats, isTempleActive, type Pooja, type Temple } from "@/lib/data";
 import {
   clearCatalogOverrides,
   getAllUsers,
@@ -38,19 +38,37 @@ function bearerToken(req: NextRequest): string | null {
 
 import { registerDataUrl } from "@/lib/media-cache";
 
-let cachedCatalogPayload: any = null;
-let cachedCatalogTimestamp = 0;
+let cachedPublicPayload: any = null;
+let cachedPublicTimestamp = 0;
+let cachedAdminPayload: any = null;
+let cachedAdminTimestamp = 0;
 const CATALOG_CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
 function invalidateCatalogApiCache(): void {
-  cachedCatalogPayload = null;
-  cachedCatalogTimestamp = 0;
+  cachedPublicPayload = null;
+  cachedPublicTimestamp = 0;
+  cachedAdminPayload = null;
+  cachedAdminTimestamp = 0;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = bearerToken(req);
+  const isAdmin = token ? await isValidSessionToken(token) : false;
+  const url = new URL(req.url);
+  const includeInactive =
+    isAdmin || url.searchParams.get("admin") === "1" || url.searchParams.get("all") === "1";
+
   const now = Date.now();
-  if (cachedCatalogPayload && now - cachedCatalogTimestamp < CATALOG_CACHE_TTL_MS) {
-    return NextResponse.json(cachedCatalogPayload, {
+  if (includeInactive && cachedAdminPayload && now - cachedAdminTimestamp < CATALOG_CACHE_TTL_MS) {
+    return NextResponse.json(cachedAdminPayload, {
+      headers: {
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      },
+    });
+  }
+
+  if (!includeInactive && cachedPublicPayload && now - cachedPublicTimestamp < CATALOG_CACHE_TTL_MS) {
+    return NextResponse.json(cachedPublicPayload, {
       headers: {
         "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
       },
@@ -65,11 +83,17 @@ export async function GET() {
   const bookings = users.flatMap((u) => u.bookings);
 
   // Normalize base64 image strings to fast, cached binary URLs
-  const temples = catalog.temples.map((t) => ({
+  const allTemples = catalog.temples.map((t) => ({
     ...t,
     image: registerDataUrl(t.image) || t.image,
     gallery: t.gallery?.map((img) => registerDataUrl(img) || img),
   }));
+
+  const activeTemplesList = allTemples.filter(isTempleActive);
+
+  // Public visitors only receive active temples.
+  // Admins receive all temples (active + inactive) so they can view and manage inactive temples.
+  const publicTemples = activeTemplesList;
 
   const poojas = catalog.poojas.map((p) => ({
     ...p,
@@ -95,18 +119,38 @@ export async function GET() {
       }
     : undefined;
 
-  const payload = {
+  const publicPayload = {
     ...catalog,
     siteContent: siteContent || catalog.siteContent,
-    temples,
+    temples: publicTemples,
+    allTemples,
     poojas,
     events: withEventBookedSeats(catalog.events, bookings),
   };
 
-  cachedCatalogPayload = payload;
-  cachedCatalogTimestamp = now;
+  const adminPayload = {
+    ...catalog,
+    siteContent: siteContent || catalog.siteContent,
+    temples: allTemples,
+    allTemples,
+    poojas,
+    events: withEventBookedSeats(catalog.events, bookings),
+  };
 
-  return NextResponse.json(payload, {
+  cachedPublicPayload = publicPayload;
+  cachedPublicTimestamp = now;
+  cachedAdminPayload = adminPayload;
+  cachedAdminTimestamp = now;
+
+  if (includeInactive) {
+    return NextResponse.json(adminPayload, {
+      headers: {
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      },
+    });
+  }
+
+  return NextResponse.json(publicPayload, {
     headers: {
       "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
     },
@@ -167,20 +211,26 @@ export async function POST(req: NextRequest) {
       let resolvedTempleSlug = p.templeSlug ? String(p.templeSlug).trim() : undefined;
       let resolvedTempleName = p.templeName ? String(p.templeName).trim() : undefined;
 
-      if (resolvedTempleId) {
-        const matched = currentTemples.find((t) => {
-          const tid = t._id ? String(t._id) : "";
-          return (
-            (tid && tid === resolvedTempleId) ||
-            (t.id && String(t.id) === resolvedTempleId) ||
-            t.slug === resolvedTempleId
-          );
-        });
-        if (matched) {
-          resolvedTempleId = matched._id ? String(matched._id) : (matched.id || matched.slug);
-          resolvedTempleSlug = matched.slug;
-          resolvedTempleName = matched.name;
-        }
+      const matched = currentTemples.find((t) => {
+        const tid = t._id ? String(t._id) : "";
+        return (
+          (resolvedTempleId &&
+            ((tid && tid === resolvedTempleId) ||
+              (t.id && String(t.id) === resolvedTempleId) ||
+              t.slug === resolvedTempleId)) ||
+          (resolvedTempleSlug && t.slug === resolvedTempleSlug) ||
+          (Array.isArray(p.templeSlugs) &&
+            p.templeSlugs.some((ts) => ts === t.slug || (tid && ts === tid))) ||
+          (resolvedTempleName &&
+            (t.name.toLowerCase() === resolvedTempleName.toLowerCase() ||
+              (t.hindiName && t.hindiName.toLowerCase() === resolvedTempleName.toLowerCase())))
+        );
+      });
+
+      if (matched) {
+        resolvedTempleId = matched._id ? String(matched._id) : (matched.id || matched.slug);
+        resolvedTempleSlug = matched.slug;
+        resolvedTempleName = matched.name;
       }
 
       const cleanImageUrl = registerDataUrl(p.imageUrl) || p.imageUrl;
@@ -192,7 +242,11 @@ export async function POST(req: NextRequest) {
         templeId: resolvedTempleId || undefined,
         templeSlug: resolvedTempleSlug || undefined,
         templeName: resolvedTempleName || undefined,
-        templeSlugs: Array.isArray(p.templeSlugs) ? p.templeSlugs.filter(Boolean) : undefined,
+        templeSlugs: resolvedTempleSlug
+          ? [resolvedTempleSlug]
+          : Array.isArray(p.templeSlugs) && p.templeSlugs.length > 0
+          ? p.templeSlugs.filter(Boolean)
+          : undefined,
       };
     });
   }
@@ -201,6 +255,7 @@ export async function POST(req: NextRequest) {
   if (Array.isArray(overrides.temples)) {
     overrides.temples = (overrides.temples as Temple[]).map((t) => ({
       ...t,
+      active: typeof t.active === "boolean" ? t.active : isTempleActive(t),
       image: registerDataUrl(t.image) || t.image,
       gallery: t.gallery?.map((img) => registerDataUrl(img) || img),
     }));
@@ -264,8 +319,10 @@ export async function POST(req: NextRequest) {
   try {
     revalidatePath("/", "layout");
     revalidatePath("/book");
+    revalidatePath("/book/[service]", "page");
     revalidatePath("/blog");
     revalidatePath("/temples");
+    revalidatePath("/temples/[slug]", "page");
   } catch {
     // Ignore during test/standalone execution
   }

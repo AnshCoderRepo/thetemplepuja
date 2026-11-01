@@ -317,5 +317,82 @@ describe("Temple Management & Public Temple Information", () => {
       const unassigned = resolvePoojaTemple(unassignedPooja, mockTemples);
       expect(unassigned).toBeNull();
     });
+
+    it("never defaults to Kashi Vishwanath if a puja has no temple assigned", () => {
+      const pujaWithoutTemple: Pooja = {
+        slug: "unassigned-puja",
+        title: "Unassigned Puja",
+        hindiTitle: "सामान्य पूजा",
+        price: 1101,
+        benefits: ["Blessings"],
+        bestMuhurat: "Anytime",
+        duration: "1 hour",
+        description: "General puja",
+        emoji: "🪔",
+        gradient: "from-amber-500 to-orange-600",
+        templeId: undefined,
+        templeSlug: undefined,
+        templeSlugs: [],
+      };
+
+      const resolved = getTempleForPooja(pujaWithoutTemple, mockTemples);
+      expect(resolved).toBeNull();
+      expect(resolved?.slug).not.toBe("kashi-vishwanath");
+    });
+
+    it("correctly preserves and displays custom temple when admin selects it", () => {
+      const triyugiPooja: Pooja = {
+        slug: "rama-ekadashi-vishnu-tulsi-archan",
+        title: "Rama Ekadashi Special Vishnu Tulsi Archan & Maha Hawan",
+        hindiTitle: "रमा एकादशी विशेष विष्णु तुलसी अर्चन एवं महा हवन",
+        price: 151,
+        benefits: ["Blessings of Lord Vishnu"],
+        bestMuhurat: "Ekadashi Muhurat",
+        duration: "2 hours",
+        description: "Special Vishnu Tulsi Archan",
+        emoji: "🪔",
+        gradient: "from-amber-500 to-orange-600",
+        type: "temple",
+        templeSlug: "triyuginarayan",
+        templeName: "Triyugi Narayan Tirth",
+      };
+
+      const resolved = getTempleForPooja(triyugiPooja, mockTemples);
+      expect(resolved).not.toBeNull();
+      expect(resolved?.name).toBe("Triyugi Narayan Tirth");
+      expect(resolved?.slug).toBe("triyuginarayan");
+      expect(resolved?.slug).not.toBe("kashi-vishwanath");
+    });
+
+    it("excludes inactive temples from public listing while keeping them available for admin", () => {
+      const activeTemple: Temple = {
+        slug: "active-shrine",
+        name: "Active Shrine",
+        city: "Varanasi",
+        state: "UP",
+        deity: "Shiva",
+        description: "Active holy shrine",
+        active: true,
+      };
+
+      const inactiveTemple: Temple = {
+        slug: "inactive-shrine",
+        name: "Inactive Shrine",
+        city: "Haridwar",
+        state: "Uttarakhand",
+        deity: "Ganga",
+        description: "Temporarily inactive shrine",
+        active: false,
+      };
+
+      const allList = [activeTemple, inactiveTemple];
+      const publicFiltered = activeTemples(allList);
+
+      expect(publicFiltered.length).toBe(1);
+      expect(publicFiltered[0].slug).toBe("active-shrine");
+      expect(isTempleActive(activeTemple)).toBe(true);
+      expect(isTempleActive(inactiveTemple)).toBe(false);
+      expect(allList.length).toBe(2); // Admin list preserves both
+    });
   });
 });

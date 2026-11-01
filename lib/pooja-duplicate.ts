@@ -107,7 +107,17 @@ export function duplicatePooja(
     gradient: source.gradient ?? "from-saffron-500 to-saffron-700",
     imageUrl: source.imageUrl, // Safely reuse image URL reference
     deities: source.deities ? [...source.deities] : ["Lord Shiva"],
-    templeSlugs: source.templeSlugs ? [...source.templeSlugs] : [],
+    templeId: source.type === "home" ? undefined : source.templeId,
+    templeSlug: source.type === "home" ? undefined : source.templeSlug,
+    templeName: source.type === "home" ? undefined : source.templeName,
+    templeSlugs:
+      source.type === "home"
+        ? []
+        : source.templeSlugs
+        ? [...source.templeSlugs]
+        : source.templeSlug
+        ? [source.templeSlug]
+        : [],
     chadhavaOptions: source.chadhavaOptions ? [...source.chadhavaOptions] : [],
     assignedAddonIds: source.assignedAddonIds ? [...source.assignedAddonIds] : [],
     packages: source.packages

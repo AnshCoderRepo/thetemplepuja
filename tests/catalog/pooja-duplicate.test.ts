@@ -163,5 +163,39 @@ describe("Pooja Catalog Duplication Service", () => {
       expect(duplicated.slug).toBe("special-dhanteras");
       expect(duplicated.active).toBe(true);
     });
+
+    it("copies temple associations (templeId, templeSlug, templeName) for temple pujas", () => {
+      const pujaWithTemple: Pooja = {
+        ...samplePooja,
+        templeId: "temple_triyugi_123",
+        templeSlug: "triyuginarayan",
+        templeName: "Triyugi Narayan Tirth",
+        templeSlugs: ["triyuginarayan"],
+      };
+
+      const duplicated = duplicatePooja(pujaWithTemple, existingCatalog);
+      expect(duplicated.templeId).toBe("temple_triyugi_123");
+      expect(duplicated.templeSlug).toBe("triyuginarayan");
+      expect(duplicated.templeName).toBe("Triyugi Narayan Tirth");
+      expect(duplicated.templeSlugs).toEqual(["triyuginarayan"]);
+    });
+
+    it("clears temple associations when duplicating a home puja", () => {
+      const homePooja: Pooja = {
+        ...samplePooja,
+        type: "home",
+        templeId: "some_legacy_temple_id",
+        templeSlug: "some_legacy_temple_slug",
+        templeName: "Legacy Temple",
+        templeSlugs: ["legacy_temple"],
+      };
+
+      const duplicated = duplicatePooja(homePooja, existingCatalog);
+      expect(duplicated.type).toBe("home");
+      expect(duplicated.templeId).toBeUndefined();
+      expect(duplicated.templeSlug).toBeUndefined();
+      expect(duplicated.templeName).toBeUndefined();
+      expect(duplicated.templeSlugs).toEqual([]);
+    });
   });
 });
