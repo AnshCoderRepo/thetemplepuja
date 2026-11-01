@@ -297,10 +297,10 @@ export default function AboutPage() {
 
             <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
               <Link
-                href="/#message-ceo"
+                href="/#feedback"
                 className="w-full sm:w-auto text-center rounded-2xl bg-white text-saffron-800 hover:bg-amber-50 font-bold px-6 py-3 text-xs sm:text-sm shadow-soft transition-all hover:scale-105"
               >
-                A Message to Our CEO
+                Share Your Feedback
               </Link>
               <a
                 href={`tel:${SITE_CONFIG.contact.phoneRaw}`}

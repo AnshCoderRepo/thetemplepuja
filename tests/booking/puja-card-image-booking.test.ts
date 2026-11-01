@@ -213,12 +213,40 @@ describe("Puja Card Full Banner Display & Direct Booking Navigation", () => {
         badge: undefined,
       };
 
+      const normalizeForCollisionCheck = (str?: string) =>
+        (str || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\u0900-\u097F\u0C00-\u0C7F\u0B80-\u0BFF]/g, "")
+          .trim();
+
+      const isDuplicateOfTitle = (candidate: string | undefined, p: Pooja, locTitle: string): boolean => {
+        if (!candidate || !candidate.trim()) return true;
+        const normCandidate = normalizeForCollisionCheck(candidate);
+        if (!normCandidate) return true;
+
+        const titles = [
+          p.title,
+          p.hindiTitle,
+          p.teluguTitle,
+          p.tamilTitle,
+          locTitle,
+        ].filter((t): t is string => Boolean(t && t.trim()));
+
+        return titles.some((t) => {
+          const normTitle = normalizeForCollisionCheck(t);
+          return (
+            normCandidate === normTitle ||
+            normCandidate.includes(normTitle) ||
+            normTitle.includes(normCandidate)
+          );
+        });
+      };
+
       const resolveTopBadgeText = (p: Pooja, locTitle: string) => {
         const isCustomBadgeValid =
           p.showBadge !== false &&
           Boolean(p.badge && p.badge.trim()) &&
-          p.badge!.trim().toLowerCase() !== locTitle.trim().toLowerCase() &&
-          p.badge!.trim().toLowerCase() !== p.title.trim().toLowerCase();
+          !isDuplicateOfTitle(p.badge, p, locTitle);
 
         return isCustomBadgeValid ? p.badge!.trim() : null;
       };
@@ -233,10 +261,20 @@ describe("Puja Card Full Banner Display & Direct Booking Navigation", () => {
       expect(topBadgeWithMarketing).toBe("Festival Special");
       expect(topBadgeWithMarketing).not.toBe(poojaWithMarketingBadge.title);
 
-      // If someone accidentally entered the puja title as the badge, it is suppressed
+      // If someone accidentally entered the English puja title as the badge, it is suppressed
       const poojaWithDuplicateBadge = { ...ramaEkadashiPooja, badge: ramaEkadashiPooja.title };
       const topBadgeDuplicate = resolveTopBadgeText(poojaWithDuplicateBadge, poojaWithDuplicateBadge.title);
       expect(topBadgeDuplicate).toBeNull();
+
+      // If someone entered the Hindi title as the badge while active locale is English
+      const poojaWithHindiBadge = { ...ramaEkadashiPooja, badge: ramaEkadashiPooja.hindiTitle };
+      const topBadgeHindiDuplicate = resolveTopBadgeText(poojaWithHindiBadge, ramaEkadashiPooja.title);
+      expect(topBadgeHindiDuplicate).toBeNull();
+
+      // If someone entered a slightly altered or partial title with punctuation
+      const poojaWithAlteredBadge = { ...ramaEkadashiPooja, badge: "Rama Ekadashi Special Vishnu Tulsi Archan..." };
+      const topBadgeAlteredDuplicate = resolveTopBadgeText(poojaWithAlteredBadge, ramaEkadashiPooja.title);
+      expect(topBadgeAlteredDuplicate).toBeNull();
     });
   });
 });

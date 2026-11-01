@@ -133,6 +133,10 @@ export function startRealtimeSync(): () => void {
             handleCatalogUpdate(data.version, data.section);
           } else if (data.type === "devotee_updated") {
             handleDevoteeUpdate(data.target, data.version);
+          } else if (data.type === "feedback_updated") {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("feedback-updated"));
+            }
           }
         } catch {
           // ignore malformed message or comment

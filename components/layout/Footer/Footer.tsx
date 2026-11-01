@@ -91,7 +91,7 @@ export default function Footer() {
     { label: t("nav.temples"), href: "/temples" },
     { label: "Our Gallery", href: "/our-gallery" },
     { label: "Spiritual Blog", href: "/blog" },
-    { label: "Message CEO", href: "/#message-ceo" },
+    { label: "Share Feedback", href: "/#feedback" },
     { label: t("nav.whyUs"), href: "/#why-us" },
     { label: t("nav.reviews"), href: "/#testimonials" },
     { label: t("nav.faq"), href: "/#faq" },

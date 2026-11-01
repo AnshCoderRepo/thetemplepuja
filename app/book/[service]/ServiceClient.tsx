@@ -149,11 +149,40 @@ function ServiceInner({ service }: { service: string }) {
     );
   }
 
+  // Robust comparison helper to detect if a badge duplicates the Puja name
+  const normalizeForCollisionCheck = (str?: string) =>
+    (str || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\u0900-\u097F\u0C00-\u0C7F\u0B80-\u0BFF]/g, "")
+      .trim();
+
+  const isDuplicateOfTitle = (candidate?: string): boolean => {
+    if (!candidate || !candidate.trim()) return true;
+    const normCandidate = normalizeForCollisionCheck(candidate);
+    if (!normCandidate) return true;
+
+    const titles = [
+      pooja.title,
+      pooja.hindiTitle,
+      pooja.teluguTitle,
+      pooja.tamilTitle,
+      locTitle,
+    ].filter((t): t is string => Boolean(t && t.trim()));
+
+    return titles.some((t) => {
+      const normTitle = normalizeForCollisionCheck(t);
+      return (
+        normCandidate === normTitle ||
+        normCandidate.includes(normTitle) ||
+        normTitle.includes(normCandidate)
+      );
+    });
+  };
+
   const customBadgeText =
     pooja.showBadge !== false &&
     Boolean(pooja.badge && pooja.badge.trim()) &&
-    pooja.badge!.trim().toLowerCase() !== locTitle.trim().toLowerCase() &&
-    pooja.badge!.trim().toLowerCase() !== pooja.title.trim().toLowerCase()
+    !isDuplicateOfTitle(pooja.badge)
       ? pooja.badge!.trim()
       : null;
 
