@@ -60,8 +60,26 @@ export default function GalleryCard({ item, onOpen, priority = false }: GalleryC
   const videos = getGalleryItemVideos(item);
   const hasVideo = videos.length > 0;
   const hasYouTube = videos.some((v) => v.isYouTube) || hasYouTubeVideo(item);
+  const normalizeForCollisionCheck = (str?: string) =>
+    (str || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\u0900-\u097F\u0C00-\u0C7F\u0B80-\u0BFF]/g, "")
+      .trim();
+
+  const isCategoryDuplicateOfTitle = (category?: string, title?: string) => {
+    if (!category || !category.trim() || !title || !title.trim()) return false;
+    const normCategory = normalizeForCollisionCheck(category);
+    const normTitle = normalizeForCollisionCheck(title);
+    if (!normCategory || !normTitle) return false;
+    return (
+      normCategory === normTitle ||
+      normCategory.includes(normTitle) ||
+      normTitle.includes(normCategory)
+    );
+  };
+
   const displayCategory =
-    item.category && item.category.trim().toLowerCase() !== item.title.trim().toLowerCase()
+    item.category && !isCategoryDuplicateOfTitle(item.category, item.title)
       ? item.category.trim()
       : "Sacred Darshan";
 

@@ -13,6 +13,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  FileSpreadsheet,
   Filter,
   Flame,
   Globe,
@@ -62,6 +63,7 @@ import { formatINR } from "@/lib/format";
 import { PoojaImage, PoojaImageFallback } from "@/components/common";
 import ConfirmDialog from "./ConfirmDialog";
 import ServiceCardEditModal from "./ServiceCardEditModal";
+import { BulkPoojaModal } from "./bulk";
 import {
   DateInput,
   dateToDaysFromToday,
@@ -269,6 +271,11 @@ export default function PoojasManager({
   // View Mode: Cards Grid vs Table & Dedicated Card Edit Modal State
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [editingCardPooja, setEditingCardPooja] = useState<Pooja | null>(null);
+
+  // Bulk Puja Creation Modal & Dropdown state
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkModalMode, setBulkModalMode] = useState<"form" | "excel">("form");
+  const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
   
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -3395,6 +3402,75 @@ export default function PoojasManager({
                 <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
                 <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
               </button>
+
+              {/* Create Multiple Pujas Dropdown Button */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setBulkDropdownOpen(!bulkDropdownOpen)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-saffron-500 bg-amber-50/70 hover:bg-amber-100/80 px-4 py-2 text-sm font-bold text-saffron-900 shadow-sm transition-all"
+                >
+                  <Sparkles className="h-4 w-4 text-saffron-600" />
+                  <span>Create Multiple Pujas</span>
+                  <ChevronDown className={`h-3.5 w-3.5 text-saffron-700 transition-transform ${bulkDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {bulkDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setBulkDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white p-2 shadow-xl border border-saffron-200 z-40 animate-fadeIn">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkDropdownOpen(false);
+                          setBulkModalMode("form");
+                          setBulkModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-3 p-2.5 rounded-xl text-left hover:bg-saffron-50 transition-colors group"
+                      >
+                        <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-saffron-100 text-saffron-700 shrink-0 group-hover:bg-saffron-600 group-hover:text-white transition-colors">
+                          <Layers className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-saffron-900">
+                            Bulk Create (Dynamic Form)
+                          </div>
+                          <div className="text-[11px] text-slate-500 leading-tight mt-0.5">
+                            Add multiple Puja entries dynamically on the same page.
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkDropdownOpen(false);
+                          setBulkModalMode("excel");
+                          setBulkModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-3 p-2.5 rounded-xl text-left hover:bg-saffron-50 transition-colors group mt-1"
+                      >
+                        <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-100 text-emerald-700 shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                          <FileSpreadsheet className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-emerald-900">
+                            Import from Excel (.xlsx)
+                          </div>
+                          <div className="text-[11px] text-slate-500 leading-tight mt-0.5">
+                            Upload spreadsheet with multiple Puja records & validation.
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Single Puja Creation Wizard Button (Preserved) */}
               <button
                 type="button"
                 onClick={startAdd}
@@ -4140,6 +4216,20 @@ export default function PoojasManager({
         danger={true}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Bulk Puja Creation Modal */}
+      <BulkPoojaModal
+        isOpen={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        token={token}
+        temples={temples}
+        categories={dynamicCategories}
+        initialMode={bulkModalMode}
+        onSuccess={() => {
+          handleRefresh();
+          setSuccess("Bulk Puja operation completed successfully.");
+        }}
       />
     </div>
   );

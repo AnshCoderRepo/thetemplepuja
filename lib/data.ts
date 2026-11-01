@@ -1017,9 +1017,15 @@ export const socialLinks = [
 // ===================== POOJA CATALOG =====================
 
 export interface PoojaPackage {
+  id?: string;
   name: string;
   price: number;
+  originalPrice?: number;
   description?: string;
+  hindiName?: string;
+  hindiDescription?: string;
+  benefits?: string[];
+  isPopular?: boolean;
 }
 
 export interface Addon {
@@ -1030,6 +1036,7 @@ export interface Addon {
   teluguName?: string;
   tamilName?: string;
   description: string;
+  fullDescription?: string;
   hindiDescription?: string;
   teluguDescription?: string;
   tamilDescription?: string;
@@ -1086,6 +1093,7 @@ export interface ChadhavaOffering {
   teluguName?: string;
   tamilName?: string;
   description: string;
+  fullDescription?: string;
   hindiDescription?: string;
   teluguDescription?: string;
   tamilDescription?: string;
@@ -1424,6 +1432,7 @@ export interface Pooja {
   emoji: string;
   gradient: string;
   price: number;
+  originalPrice?: number;
   duration: string;
   hindiDuration?: string;
   teluguDuration?: string;
@@ -1433,6 +1442,7 @@ export interface Pooja {
   teluguBestMuhurat?: string;
   tamilBestMuhurat?: string;
   description: string;
+  fullDescription?: string;
   hindiDescription?: string;
   teluguDescription?: string;
   tamilDescription?: string;
@@ -2558,6 +2568,7 @@ export interface Temple {
   pincode?: string;
   mapUrl?: string;
   description: string;
+  fullDescription?: string;
   hindiDescription?: string;
   teluguDescription?: string;
   tamilDescription?: string;
