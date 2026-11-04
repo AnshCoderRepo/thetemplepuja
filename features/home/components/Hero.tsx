@@ -561,7 +561,10 @@ export default function Hero() {
                   </div>
                 </div>
 
-                <h3 className="mt-1.5 font-display text-sm font-bold text-white line-clamp-1 group-hover:text-amber-200 transition-colors">
+                <h3
+                  title={getLocalizedPoojaTitle(currentHeroCardPooja, locale)}
+                  className="mt-1.5 font-display text-sm font-bold text-white line-clamp-2 min-h-[2.5rem] group-hover:text-amber-200 transition-colors break-words"
+                >
                   {getLocalizedPoojaTitle(currentHeroCardPooja, locale)}
                 </h3>
 

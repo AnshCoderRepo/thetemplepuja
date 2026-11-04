@@ -10,6 +10,7 @@ interface BookingPackagesProps {
   basePrice: number;
   selectedTier: PackageTier;
   onSelectTier: (tier: PackageTier) => void;
+  packages?: PoojaPackageOption[];
 }
 
 export const POOJA_PACKAGES: PoojaPackageOption[] = [
@@ -45,7 +46,16 @@ export const POOJA_PACKAGES: PoojaPackageOption[] = [
   },
 ];
 
-export function calculatePackagePrice(basePrice: number, tier: PackageTier): number {
+export function calculatePackagePrice(basePrice: number, tier: PackageTier, customPackages?: PoojaPackageOption[]): number {
+  if (customPackages && customPackages.length > 0) {
+    const matched = customPackages.find((p) => p.id === tier || (p.title && p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === tier));
+    if (matched) {
+      if (typeof matched.priceMultiplier === "number") {
+        return Math.round(basePrice * matched.priceMultiplier);
+      }
+      return basePrice;
+    }
+  }
   if (basePrice <= 1) return basePrice;
   const pkg = POOJA_PACKAGES.find((p) => p.id === tier);
   if (!pkg) return basePrice;
@@ -58,8 +68,10 @@ export default function BookingPackages({
   basePrice,
   selectedTier,
   onSelectTier,
+  packages,
 }: BookingPackagesProps) {
   const { locale } = useI18n();
+  const availablePackages = packages && packages.length > 0 ? packages : POOJA_PACKAGES;
 
   const getPackageDetails = (id: PackageTier) => {
     if (locale === "hi") {
@@ -111,9 +123,9 @@ export default function BookingPackages({
       </div>
 
       <div className="grid gap-2.5 sm:grid-cols-3">
-        {POOJA_PACKAGES.map((pkg) => {
+        {availablePackages.map((pkg) => {
           const isSelected = selectedTier === pkg.id;
-          const pkgPrice = calculatePackagePrice(basePrice, pkg.id);
+          const pkgPrice = calculatePackagePrice(basePrice, pkg.id, availablePackages);
           const details = getPackageDetails(pkg.id);
 
           return (

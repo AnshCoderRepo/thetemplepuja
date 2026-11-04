@@ -1,7 +1,7 @@
 import type { BookingAddonItem, BookingInput, BookingRecord, RescheduleInput, UserProfile } from "@/lib/storage";
 import type { AppliedCoupon } from "@/features/payments/types/payment.types";
 
-export type PackageTier = "single" | "couple" | "family";
+export type PackageTier = "single" | "couple" | "family" | "standard" | "basic" | "premium" | string;
 
 export interface PoojaPackageOption {
   id: PackageTier;

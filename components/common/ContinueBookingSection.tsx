@@ -278,7 +278,10 @@ export default function ContinueBookingSection({
               {/* Card Body */}
               <div className="p-3 sm:p-3.5 flex flex-col justify-between flex-1 gap-2.5">
                 <div>
-                  <h3 className="font-display text-xs sm:text-sm font-bold text-ink line-clamp-1 group-hover:text-saffron-700 transition-colors">
+                  <h3
+                    title={draft.poojaTitle}
+                    className="font-display text-xs sm:text-sm font-bold text-ink line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] group-hover:text-saffron-700 transition-colors break-words"
+                  >
                     {draft.poojaTitle}
                   </h3>
 

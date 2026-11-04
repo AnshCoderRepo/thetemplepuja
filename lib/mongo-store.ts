@@ -5,6 +5,8 @@ import type {
   AdminCreds,
   CatalogOverrides,
   PersistenceStore,
+  PujaSessionVideo,
+  StandalonePackage,
 } from "./persistence";
 import { defaultAddons, type Addon, type Coupon, type FestivalEvent, type Pooja, type PoojaDate, type Temple, type UpcomingEventSpec } from "./data";
 import type { BlogPost } from "./blog-data";
@@ -494,7 +496,129 @@ export const mongoStore: PersistenceStore = {
     const res = await col.deleteOne({ $or: [{ _id: id }, { id }] });
     return res.deletedCount > 0;
   },
+
+  async getPujaVideos(): Promise<PujaSessionVideo[]> {
+    const col = await pujaVideosCol();
+    const docs = await col.find({}).sort({ createdAt: -1 }).toArray();
+    return docs.map(toPujaVideoDoc);
+  },
+
+  async findPujaVideoById(id: string): Promise<PujaSessionVideo | undefined> {
+    const col = await pujaVideosCol();
+    const doc = await col.findOne({ $or: [{ _id: id }, { id }] });
+    return doc ? toPujaVideoDoc(doc) : undefined;
+  },
+
+  async savePujaVideo(video: PujaSessionVideo): Promise<void> {
+    const col = await pujaVideosCol();
+    const id = String(video._id || video.id);
+    const doc: PujaSessionVideo = {
+      ...video,
+      _id: id,
+      id,
+      updatedAt: new Date().toISOString(),
+    };
+    if (!doc.createdAt) doc.createdAt = new Date().toISOString();
+    await col.updateOne({ $or: [{ _id: id }, { id }] }, { $set: doc }, { upsert: true });
+  },
+
+  async deletePujaVideo(id: string): Promise<boolean> {
+    const col = await pujaVideosCol();
+    const res = await col.deleteOne({ $or: [{ _id: id }, { id }] });
+    return res.deletedCount > 0;
+  },
+
+  async getStandalonePackages(): Promise<StandalonePackage[]> {
+    const col = await packagesCol();
+    const docs = await col.find({}).sort({ createdAt: -1 }).toArray();
+    return docs.map(toStandalonePackageDoc);
+  },
+
+  async findStandalonePackageById(id: string): Promise<StandalonePackage | undefined> {
+    const col = await packagesCol();
+    const doc = await col.findOne({ $or: [{ _id: id }, { id }] });
+    return doc ? toStandalonePackageDoc(doc) : undefined;
+  },
+
+  async saveStandalonePackage(pkg: StandalonePackage): Promise<void> {
+    const col = await packagesCol();
+    const id = String(pkg._id || pkg.id);
+    const doc: StandalonePackage = {
+      ...pkg,
+      _id: id,
+      id,
+      updatedAt: new Date().toISOString(),
+    };
+    if (!doc.createdAt) doc.createdAt = new Date().toISOString();
+    await col.updateOne({ $or: [{ _id: id }, { id }] }, { $set: doc }, { upsert: true });
+  },
+
+  async deleteStandalonePackage(id: string): Promise<boolean> {
+    const col = await packagesCol();
+    const res = await col.deleteOne({ $or: [{ _id: id }, { id }] });
+    return res.deletedCount > 0;
+  },
 };
+
+export async function pujaVideosCol(): Promise<Collection<any>> {
+  const db = await getDb();
+  const col = db.collection<any>("puja_videos");
+  try {
+    await col.createIndex({ id: 1 });
+    await col.createIndex({ poojaSlug: 1 });
+    await col.createIndex({ date: 1 });
+    await col.createIndex({ active: 1 });
+  } catch {}
+  return col;
+}
+
+function toPujaVideoDoc(doc: any): PujaSessionVideo {
+  const idStr = String(doc._id || doc.id);
+  return {
+    _id: idStr,
+    id: idStr,
+    poojaSlug: String(doc.poojaSlug || ""),
+    poojaTitle: String(doc.poojaTitle || ""),
+    date: String(doc.date || ""),
+    videoUrl: String(doc.videoUrl || ""),
+    title: String(doc.title || ""),
+    description: doc.description ? String(doc.description) : undefined,
+    active: doc.active !== false,
+    createdAt: doc.createdAt || new Date().toISOString(),
+    updatedAt: doc.updatedAt,
+  };
+}
+
+export async function packagesCol(): Promise<Collection<any>> {
+  const db = await getDb();
+  const col = db.collection<any>("packages");
+  try {
+    await col.createIndex({ id: 1 });
+    await col.createIndex({ status: 1 });
+  } catch {}
+  return col;
+}
+
+function toStandalonePackageDoc(doc: any): StandalonePackage {
+  const idStr = String(doc._id || doc.id);
+  return {
+    _id: idStr,
+    id: idStr,
+    name: String(doc.name || ""),
+    hindiName: doc.hindiName ? String(doc.hindiName) : undefined,
+    price: typeof doc.price === "number" ? doc.price : Number(doc.price) || 0,
+    originalPrice: doc.originalPrice ? Number(doc.originalPrice) : undefined,
+    description: doc.description ? String(doc.description) : undefined,
+    hindiDescription: doc.hindiDescription ? String(doc.hindiDescription) : undefined,
+    features: Array.isArray(doc.features) ? doc.features.map(String) : [],
+    devoteeLimit: typeof doc.devoteeLimit === "number" ? doc.devoteeLimit : undefined,
+    badge: doc.badge ? String(doc.badge) : undefined,
+    status: doc.status === "draft" ? "draft" : "active",
+    attachedPoojaSlugs: Array.isArray(doc.attachedPoojaSlugs) ? doc.attachedPoojaSlugs.map(String) : [],
+    createdAt: doc.createdAt || new Date().toISOString(),
+    updatedAt: doc.updatedAt,
+  };
+}
 
 export async function galleryCol(): Promise<Collection<any>> {
   const db = await getDb();

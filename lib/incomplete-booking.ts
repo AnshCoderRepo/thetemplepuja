@@ -4,6 +4,7 @@ import { getDevoteePhone, getUsers } from "./storage";
 import { getPoojaBannerImage } from "./data";
 import { submitBooking } from "@/features/bookings/api/bookingApi";
 import { isValidIndianPhone } from "./validation";
+import type { PackageTier } from "@/features/bookings/types/booking.types";
 
 export interface IncompleteBooking {
   bookingId: string;
@@ -16,7 +17,7 @@ export interface IncompleteBooking {
   templeSlug?: string;
   templeName?: string;
   address?: string;
-  packageTier: "single" | "couple" | "family";
+  packageTier: PackageTier;
   amount: number;
   discount?: number;
   couponCode?: string | null;

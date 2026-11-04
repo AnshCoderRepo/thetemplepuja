@@ -23,7 +23,12 @@ export async function GET(req: NextRequest) {
       const catalog = await getResolvedCatalog();
       const pooja = isDemoSlug(normalizedSlug)
         ? DEMO_POOJA
-        : catalog.poojas.find((p) => p.slug === normalizedSlug);
+        : catalog.poojas.find(
+            (p) =>
+              p.slug.toLowerCase().trim() === normalizedSlug ||
+              (p.id && String(p.id).toLowerCase().trim() === normalizedSlug) ||
+              (p._id && String(p._id).toLowerCase().trim() === normalizedSlug)
+          );
 
       if (!pooja) {
         return NextResponse.json({ ok: false, error: "Puja not found", addons: [] }, { status: 404 });
@@ -33,6 +38,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         poojaSlug: pooja.slug,
+        poojaId: pooja.id || pooja._id,
         poojaTitle: pooja.title,
         addons: assignedAddons,
       });

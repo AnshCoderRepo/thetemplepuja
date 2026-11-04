@@ -27,7 +27,12 @@ import {
 import type { GalleryItem } from "./gallery-types";
 import { DEFAULT_SITE_CONTENT, type SiteContent } from "./cms-types";
 import { BLOG_POSTS as staticBlogPosts, type BlogPost } from "./blog-data";
-import { createMemoryStore, type PersistenceStore } from "./persistence";
+import {
+  createMemoryStore,
+  type PersistenceStore,
+  type PujaSessionVideo,
+  type StandalonePackage,
+} from "./persistence";
 import { mongoStore, resetMongoConnection } from "./mongo-store";
 import { createJsonStore } from "./json-store";
 import { DEMO_USERS } from "./demo-users";
@@ -1228,5 +1233,68 @@ export async function updateCeoMessageStatus(
 
   return Boolean(inMem);
 }
+
+// ===================== PUJA SESSION VIDEOS =====================
+
+/**
+ * Retrieve session video recordings for a puja and/or ceremony date.
+ */
+export async function getPujaSessionVideos(
+  poojaSlug?: string,
+  date?: string
+): Promise<PujaSessionVideo[]> {
+  return withFallback(async (s) => {
+    const list = await s.getPujaVideos();
+    return list.filter((v) => {
+      if (poojaSlug && v.poojaSlug.trim().toLowerCase() !== poojaSlug.trim().toLowerCase()) {
+        return false;
+      }
+      if (date && v.date.trim().toLowerCase() !== date.trim().toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+  });
+}
+
+export async function findPujaSessionVideoById(id: string): Promise<PujaSessionVideo | undefined> {
+  return withFallback((s) => s.findPujaVideoById(id));
+}
+
+export async function savePujaSessionVideo(video: PujaSessionVideo): Promise<void> {
+  return withFallback((s) => s.savePujaVideo(video));
+}
+
+export async function deletePujaSessionVideo(id: string): Promise<boolean> {
+  return withFallback((s) => s.deletePujaVideo(id));
+}
+
+// ===================== STANDALONE DRAFT & REUSABLE PACKAGES =====================
+
+/**
+ * Retrieve standalone packages (optionally filtered by draft or active status).
+ */
+export async function getStandalonePackages(
+  status?: "draft" | "active"
+): Promise<StandalonePackage[]> {
+  return withFallback(async (s) => {
+    const list = await s.getStandalonePackages();
+    if (!status) return list;
+    return list.filter((p) => p.status === status);
+  });
+}
+
+export async function findStandalonePackageById(id: string): Promise<StandalonePackage | undefined> {
+  return withFallback((s) => s.findStandalonePackageById(id));
+}
+
+export async function saveStandalonePackage(pkg: StandalonePackage): Promise<void> {
+  return withFallback((s) => s.saveStandalonePackage(pkg));
+}
+
+export async function deleteStandalonePackage(id: string): Promise<boolean> {
+  return withFallback((s) => s.deleteStandalonePackage(id));
+}
+
 
 

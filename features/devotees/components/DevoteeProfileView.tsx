@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Play, Video } from "lucide-react";
+import { CalendarDays, CheckCircle, Play, Star, Video } from "lucide-react";
 import { cancelBookingRemote, rescheduleBookingRemote } from "@/features/bookings";
 import { fetchUserByPhone } from "../api/devoteeApi";
 import { getDevoteePhone, type BookingRecord, type UserProfile } from "@/lib/storage";
@@ -36,12 +36,78 @@ export default function DevoteeProfileView() {
   const [reschedTime, setReschedTime] = useState("");
   const [reschedMsg, setReschedMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Feature E: Ceremony Session Videos & Devotee Feedback
+  const [sessionVideos, setSessionVideos] = useState<any[]>([]);
+  const [feedbackForms, setFeedbackForms] = useState<
+    Record<string, { rating: number; message: string; loading?: boolean; submitted?: boolean; error?: string }>
+  >({});
+
+  const loadSessionVideos = async () => {
+    try {
+      const res = await fetch("/api/devotee/videos");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.videos)) {
+          setSessionVideos(data.videos);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleFeedbackSubmit = async (videoId: string, poojaSlug: string, poojaTitle: string, bookingId?: string) => {
+    const current = feedbackForms[videoId] || { rating: 5, message: "" };
+    const rating = current.rating || 5;
+    const message = current.message?.trim() || `Blessed ritual experience for ${poojaTitle}.`;
+
+    setFeedbackForms((prev) => ({
+      ...prev,
+      [videoId]: { ...current, rating, loading: true, error: undefined },
+    }));
+
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: profile?.name || "Devotee",
+          phone: profile?.phone || "",
+          poojaSlug,
+          poojaTitle,
+          rating,
+          message,
+          bookingId,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setFeedbackForms((prev) => ({
+          ...prev,
+          [videoId]: { ...current, rating, loading: false, submitted: true },
+        }));
+      } else {
+        setFeedbackForms((prev) => ({
+          ...prev,
+          [videoId]: { ...current, rating, loading: false, error: data.error || "Failed to submit review." },
+        }));
+      }
+    } catch {
+      setFeedbackForms((prev) => ({
+        ...prev,
+        [videoId]: { ...current, rating, loading: false, error: "Network error submitting feedback." },
+      }));
+    }
+  };
+
   const refresh = async (phone: string) => {
     setCancelMsg(null);
     setReschedMsg(null);
     const found = await fetchUserByPhone(phone);
     setProfile(found ?? null);
     setNotFound(!found);
+    void loadSessionVideos();
   };
 
   useEffect(() => {
@@ -144,52 +210,177 @@ export default function DevoteeProfileView() {
             className="mt-6"
           />
 
-          {profile.videos && profile.videos.length > 0 && (
+          {/* Sacred Ceremony Session Videos (Feature E: with rating and review feedback) */}
+          {(sessionVideos.length > 0 || (profile.videos && profile.videos.length > 0)) && (
             <div className="mt-8 rounded-3xl border border-saffron-100 bg-white p-6 shadow-card space-y-4">
               <h3 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
                 <Video className="h-5 w-5 text-saffron-600" />
-                Your Sacred Puja Video Recordings ({profile.videos.length})
+                Your Sacred Puja Video Recordings ({sessionVideos.length + (profile.videos?.length || 0)})
               </h3>
               <p className="text-xs text-ink-soft">
                 Watch the authentic Vedic rituals and sankalp performed on your behalf by our certified pandits.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {profile.videos.map((vid) => (
-                  <div
-                    key={vid.id}
-                    className="flex flex-col justify-between rounded-2xl border border-saffron-100 bg-cream/50 p-4 space-y-3"
-                  >
-                    <div>
-                      <h4 className="font-bold text-ink text-sm flex items-center gap-1.5">
-                        📹 {vid.title}
-                      </h4>
-                      {vid.poojaTitle && (
-                        <p className="text-saffron-700 text-xs font-semibold mt-0.5">
-                          🪔 {vid.poojaTitle}
-                        </p>
-                      )}
-                      {vid.description && (
-                        <p className="text-xs text-ink-soft mt-1 leading-relaxed bg-white/80 p-2 rounded-xl">
-                          {vid.description}
-                        </p>
-                      )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 1. Ceremony Session Videos matching Confirmed Bookings */}
+                {sessionVideos.map((vid) => {
+                  const form = feedbackForms[vid.id] || { rating: 5, message: "" };
+                  return (
+                    <div
+                      key={vid.id}
+                      className="flex flex-col justify-between rounded-2xl border border-saffron-200 bg-amber-50/30 p-4 space-y-3.5 shadow-2xs"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-bold text-ink text-sm flex items-center gap-1.5">
+                            📹 {vid.title}
+                          </h4>
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 shrink-0">
+                            📅 {vid.date}
+                          </span>
+                        </div>
+                        {vid.poojaTitle && (
+                          <p className="text-saffron-700 text-xs font-semibold mt-1">
+                            🪔 {vid.poojaTitle}
+                          </p>
+                        )}
+                        {vid.description && (
+                          <p className="text-xs text-ink-soft mt-1 leading-relaxed bg-white/80 p-2.5 rounded-xl border border-saffron-100/60">
+                            {vid.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-saffron-200/60 pt-2 text-[11px]">
+                        <span className="text-ink-soft font-medium">
+                          {vid.matchedBookingId ? `Ref: ${vid.matchedBookingId}` : "Ceremony Session"}
+                        </span>
+                        <a
+                          href={vid.videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-soft hover:bg-saffron-600 transition-colors"
+                        >
+                          <Play className="h-3 w-3 fill-current" />
+                          Watch Video
+                        </a>
+                      </div>
+
+                      {/* Interactive Feedback / Review Section */}
+                      <div className="border-t border-saffron-200/60 pt-3">
+                        {form.submitted ? (
+                          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-2.5 text-center text-xs font-bold text-emerald-800 flex items-center justify-center gap-1.5">
+                            <CheckCircle className="h-4 w-4 text-emerald-600" />
+                            <span>Thank you for sharing your blessed review! ({form.rating} ★)</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 rounded-xl bg-white/90 p-3 border border-saffron-100">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-ink">Rate this Ceremony:</span>
+                              <div className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() =>
+                                      setFeedbackForms((prev) => ({
+                                        ...prev,
+                                        [vid.id]: { ...form, rating: star },
+                                      }))
+                                    }
+                                    className="p-0.5 focus:outline-none cursor-pointer"
+                                  >
+                                    <Star
+                                      className={`h-4 w-4 ${
+                                        star <= (form.rating || 5)
+                                          ? "text-amber-400 fill-amber-400"
+                                          : "text-slate-200"
+                                      }`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <input
+                              type="text"
+                              placeholder="Share your divine experience or blessing..."
+                              value={form.message || ""}
+                              onChange={(e) =>
+                                setFeedbackForms((prev) => ({
+                                  ...prev,
+                                  [vid.id]: { ...form, message: e.target.value },
+                                }))
+                              }
+                              className="w-full rounded-lg border border-saffron-100 bg-cream/30 px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-soft/50 focus:border-saffron-400 focus:bg-white outline-none"
+                            />
+
+                            {form.error && (
+                              <p className="text-[10px] text-red-600 font-medium">⚠️ {form.error}</p>
+                            )}
+
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                disabled={form.loading}
+                                onClick={() =>
+                                  handleFeedbackSubmit(
+                                    vid.id,
+                                    vid.poojaSlug,
+                                    vid.poojaTitle,
+                                    vid.matchedBookingId
+                                  )
+                                }
+                                className="rounded-lg bg-saffron-600 hover:bg-saffron-700 text-white font-bold text-[11px] px-3 py-1 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {form.loading ? "Submitting..." : "Submit Feedback"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between border-t border-saffron-100/60 pt-2 text-[11px]">
-                      <span className="text-ink-soft">
-                        {vid.bookingId ? `Ref: ${vid.bookingId}` : "General Ritual"}
-                      </span>
-                      <a
-                        href={vid.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-soft hover:bg-saffron-600 transition-colors"
-                      >
-                        <Play className="h-3 w-3 fill-current" />
-                        Watch Video
-                      </a>
+                  );
+                })}
+
+                {/* 2. Legacy Individual Media Records */}
+                {profile.videos &&
+                  profile.videos.map((vid) => (
+                    <div
+                      key={vid.id}
+                      className="flex flex-col justify-between rounded-2xl border border-saffron-100 bg-cream/50 p-4 space-y-3"
+                    >
+                      <div>
+                        <h4 className="font-bold text-ink text-sm flex items-center gap-1.5">
+                          📹 {vid.title}
+                        </h4>
+                        {vid.poojaTitle && (
+                          <p className="text-saffron-700 text-xs font-semibold mt-0.5">
+                            🪔 {vid.poojaTitle}
+                          </p>
+                        )}
+                        {vid.description && (
+                          <p className="text-xs text-ink-soft mt-1 leading-relaxed bg-white/80 p-2 rounded-xl">
+                            {vid.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between border-t border-saffron-100/60 pt-2 text-[11px]">
+                        <span className="text-ink-soft">
+                          {vid.bookingId ? `Ref: ${vid.bookingId}` : "General Ritual"}
+                        </span>
+                        <a
+                          href={vid.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-saffron-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-soft hover:bg-saffron-600 transition-colors"
+                        >
+                          <Play className="h-3 w-3 fill-current" />
+                          Watch Video
+                        </a>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}

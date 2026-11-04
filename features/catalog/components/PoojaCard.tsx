@@ -171,11 +171,16 @@ export default function PoojaCard({ pooja: p, temples: propTemples }: PoojaCardP
 
       <div className="flex flex-1 flex-col justify-between p-5">
         <div>
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-base font-bold text-ink group-hover:text-saffron-800 transition-colors leading-snug line-clamp-1">
-              {poojaTitle}
-            </h3>
-            <span className="font-display text-sm font-extrabold text-saffron-600 shrink-0">
+          <div className="flex items-start justify-between gap-2.5 sm:gap-3">
+            <div className="flex-1 min-w-0">
+              <h3
+                title={poojaTitle}
+                className="font-display text-sm sm:text-base font-bold text-ink group-hover:text-saffron-800 transition-colors leading-snug line-clamp-2 min-h-[2.5rem] sm:min-h-[2.75rem] break-words"
+              >
+                {poojaTitle}
+              </h3>
+            </div>
+            <span className="font-display text-sm font-extrabold text-saffron-600 shrink-0 pt-0.5 whitespace-nowrap">
               {formatINR(p.price)}
             </span>
           </div>

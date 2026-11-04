@@ -8,6 +8,7 @@ import AdminHeader from "./AdminHeader";
 import AdminDevoteesTab from "./AdminDevoteesTab";
 
 import PoojasManager from "@/components/admin/PoojasManager";
+import PackagesManager from "@/components/admin/PackagesManager";
 import AddonsManager from "@/components/admin/AddonsManager";
 import EventsManager from "@/components/admin/EventsManager";
 import TemplesManager from "@/components/admin/TemplesManager";
@@ -118,6 +119,14 @@ export default function AdminDashboard({
 
           {tab === "poojas" && (
             <PoojasManager
+              token={token || ""}
+              onAuthError={onAuthError}
+              onRefresh={onRefresh}
+            />
+          )}
+
+          {tab === "packages" && (
+            <PackagesManager
               token={token || ""}
               onAuthError={onAuthError}
               onRefresh={onRefresh}

@@ -6,9 +6,9 @@
 import type { BookingRecord, UserProfile } from "./storage";
 
 /**
- * Standard 14 export columns in exact required order.
+ * Legacy 14 export columns preserved for backward compatibility.
  */
-export const BOOKING_EXPORT_HEADERS = [
+export const LEGACY_BOOKING_EXPORT_HEADERS = [
   "User Name",
   "User Phone",
   "Booking Date",
@@ -23,6 +23,20 @@ export const BOOKING_EXPORT_HEADERS = [
   "Gotra",
   "User Address",
   "Quantity",
+] as const;
+
+/**
+ * Enhanced export columns: 14 legacy columns + 7 package and add-on breakdown columns.
+ */
+export const BOOKING_EXPORT_HEADERS = [
+  ...LEGACY_BOOKING_EXPORT_HEADERS,
+  "Package Name",
+  "Selected Add-on Names",
+  "Add-on Quantities",
+  "Add-on Individual Prices",
+  "Total Add-on Amount",
+  "Chadhava Names & Quantities",
+  "Total Chadhava Amount",
 ] as const;
 
 /**
@@ -177,14 +191,22 @@ export function formatBookingDateTime(dateStr?: string): string {
   }
 }
 
+export interface BookingExportOptions {
+  /** When true, outputs only the legacy 14 columns. Defaults to false (enhanced 21 columns). */
+  legacyColumnsOnly?: boolean;
+}
+
 /**
- * Generates CSV content conforming to the exact 14 columns requested.
+ * Generates CSV content conforming to the export columns requested.
  * Prepends UTF-8 Byte Order Mark (\uFEFF) for proper Excel Unicode / Hindi display.
+ * Appends 7 new columns (Package & Addon details) while strictly preserving the first 14 columns.
  */
 export function generateBookingsExportCsv(
-  records: { booking: BookingRecord; user: UserProfile }[]
+  records: { booking: BookingRecord; user: UserProfile }[],
+  options?: BookingExportOptions
 ): string {
-  const headerRow = BOOKING_EXPORT_HEADERS.map((h) => sanitizeCsvCell(h)).join(",");
+  const headers = options?.legacyColumnsOnly ? LEGACY_BOOKING_EXPORT_HEADERS : BOOKING_EXPORT_HEADERS;
+  const headerRow = headers.map((h) => sanitizeCsvCell(h)).join(",");
 
   const dataRows = records.map(({ booking, user }) => {
     const devoteeInfo = getBookingDevoteeDisplay(booking, user);
@@ -231,7 +253,7 @@ export function generateBookingsExportCsv(
     // 14. Quantity (puja items / orders purchased, not family count)
     const quantity = booking.quantity && booking.quantity > 0 ? booking.quantity : 1;
 
-    const rowCells = [
+    const rowCells: (string | number)[] = [
       userName,
       userPhone,
       bookingDate,
@@ -247,6 +269,68 @@ export function generateBookingsExportCsv(
       userAddress,
       quantity,
     ];
+
+    if (!options?.legacyColumnsOnly) {
+      // 15. Package Name
+      const rawTier = (booking.packageTier || "").toLowerCase().trim();
+      let packageName = "";
+      if (rawTier === "single") {
+        packageName = "Single Devotee";
+      } else if (rawTier === "couple") {
+        packageName = "Couple Plan";
+      } else if (rawTier === "family") {
+        packageName = "Family Plan";
+      } else if (booking.packageTier && booking.packageTier.trim()) {
+        packageName = booking.packageTier.trim();
+      } else {
+        packageName = "Standard";
+      }
+
+      // Addons & Chadhavas breakdown
+      const allItems = Array.isArray(booking.addons) ? booking.addons : [];
+      const regularAddons = allItems.filter(
+        (a) => a.itemType !== "chadhava" && a.category?.toLowerCase() !== "chadhava"
+      );
+      const chadhavaItems = allItems.filter(
+        (a) => a.itemType === "chadhava" || a.category?.toLowerCase() === "chadhava"
+      );
+
+      // 16. Selected Add-on Names
+      const addonNames = regularAddons.map((a) => a.name).join(", ");
+
+      // 17. Add-on Quantities
+      const addonQuantities = regularAddons.map((a) => String(a.quantity || 1)).join(", ");
+
+      // 18. Add-on Individual Prices
+      const addonIndividualPrices = regularAddons.map((a) => String(a.price || 0)).join(", ");
+
+      // 19. Total Add-on Amount
+      const totalAddonAmount = regularAddons.reduce(
+        (sum, a) => sum + (Number(a.price) || 0) * (Number(a.quantity) || 1),
+        0
+      );
+
+      // 20. Chadhava Names & Quantities
+      const chadhavaNamesAndQuantities = chadhavaItems
+        .map((c) => `${c.name} (${c.quantity || 1})`)
+        .join(", ");
+
+      // 21. Total Chadhava Amount
+      const totalChadhavaAmount = chadhavaItems.reduce(
+        (sum, c) => sum + (Number(c.price) || 0) * (Number(c.quantity) || 1),
+        0
+      );
+
+      rowCells.push(
+        packageName,
+        addonNames,
+        addonQuantities,
+        addonIndividualPrices,
+        totalAddonAmount,
+        chadhavaNamesAndQuantities,
+        totalChadhavaAmount
+      );
+    }
 
     return rowCells.map(sanitizeCsvCell).join(",");
   });

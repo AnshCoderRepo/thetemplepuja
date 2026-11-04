@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   findUserByPhone,
   generateRandomPassword,
+  getStandalonePackages,
   hashPassword,
   upsertUserBooking,
 } from "@/lib/server-store";
@@ -102,10 +103,39 @@ export async function POST(req: NextRequest) {
         booking.templeName = assignedTemple.name;
       }
     }
+    // Validate package tier if puja has packages configured or active standalone packages attached
+    const cleanTier = (booking.packageTier || "").trim().toLowerCase();
+    if (cleanTier && cleanTier !== "single" && cleanTier !== "standard") {
+      const embeddedPackages = pooja.packages || [];
+      const standaloneActive = await getStandalonePackages("active");
+      const attachedActive = standaloneActive.filter((sp) =>
+        sp.attachedPoojaSlugs?.some((s) => s.toLowerCase().trim() === (pooja.slug || "").toLowerCase().trim())
+      );
+
+      const allValidPackages = [
+        ...embeddedPackages,
+        ...attachedActive.map((sp) => ({ id: sp.id, name: sp.name, price: sp.price })),
+      ];
+
+      if (allValidPackages.length > 0) {
+        const validPkg = allValidPackages.find((pkg) => {
+          const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          const pkgName = pkg.name.toLowerCase().trim();
+          return pkgId === cleanTier || pkgName === cleanTier || (pkg.id && pkg.id.toLowerCase() === cleanTier);
+        });
+        if (!validPkg) {
+          return NextResponse.json(
+            { error: `Package tier "${booking.packageTier}" is not available for this puja.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     if (Array.isArray(booking.addons) && booking.addons.length > 0) {
       const dbAddons = await getAllAddons();
-      const assignedIds = new Set(pooja.assignedAddonIds || []);
-      const hasExplicitAssignments = Array.isArray(pooja.assignedAddonIds);
+      const assignedIds = new Set((pooja.assignedAddonIds || []).map(String));
+      const pSlug = (pooja.slug || "").toLowerCase().trim();
 
       for (const item of booking.addons) {
         if (!item || !item.id) continue;
@@ -122,7 +152,15 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
-        if (hasExplicitAssignments && !assignedIds.has(match._id) && !assignedIds.has(match.id)) {
+        const addonSlugs = Array.isArray(match.assignedPoojaSlugs)
+          ? match.assignedPoojaSlugs.map((s) => s.toLowerCase().trim())
+          : [];
+        const isAssigned =
+          assignedIds.has(String(match._id)) ||
+          assignedIds.has(String(match.id)) ||
+          (pSlug && addonSlugs.includes(pSlug));
+
+        if (!isAssigned) {
           return NextResponse.json(
             { error: `Add-on "${match.name}" is not assigned to this puja.` },
             { status: 400 }

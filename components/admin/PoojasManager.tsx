@@ -203,8 +203,8 @@ const emptyDraft: PoojaDraft = {
   chadhavaOptions: ["Contribute to Bhojan for 11 Brahmins"],
   assignedAddonIds: [],
   packages: [
-    { name: "Individual Sankalp", price: 1101, description: "1 Devotee name in Sankalp" },
-    { name: "Family Havan Seva", price: 2101, description: "Full family gotra & name sankalp + blessed prasad" },
+    { id: "individual-sankalp", name: "Individual Sankalp", price: 1101, description: "1 Devotee name in Sankalp" },
+    { id: "family-havan-seva", name: "Family Havan Seva", price: 2101, description: "Full family gotra & name sankalp + blessed prasad" },
   ],
   active: true,
   showInHero: false,
@@ -1094,10 +1094,11 @@ export default function PoojasManager({
       assignedAddonIds: p.assignedAddonIds ? [...p.assignedAddonIds] : [],
       chadhavaOptions: p.chadhavaOptions ? [...p.chadhavaOptions] : [],
       packages: p.packages && p.packages.length > 0
-        ? p.packages.map((pkg) => ({ ...pkg }))
-        : [
-            { name: "Individual Sankalp", price: p.price, description: "1 Devotee name in Sankalp" },
-          ],
+        ? p.packages.map((pkg) => ({
+            ...pkg,
+            id: pkg.id || slugify(pkg.name) || `pkg-${Math.random().toString(36).slice(2, 7)}`,
+          }))
+        : [],
       active: isPoojaActive(p),
       showInHero:
         p.showInHero !== undefined
@@ -1170,10 +1171,11 @@ export default function PoojasManager({
       assignedAddonIds: duplicated.assignedAddonIds ? [...duplicated.assignedAddonIds] : [],
       chadhavaOptions: duplicated.chadhavaOptions ? [...duplicated.chadhavaOptions] : [],
       packages: duplicated.packages && duplicated.packages.length > 0
-        ? duplicated.packages.map((pkg) => ({ ...pkg }))
-        : [
-            { name: "Individual Sankalp", price: duplicated.price, description: "1 Devotee name in Sankalp" },
-          ],
+        ? duplicated.packages.map((pkg) => ({
+            ...pkg,
+            id: pkg.id || slugify(pkg.name) || `pkg-${Math.random().toString(36).slice(2, 7)}`,
+          }))
+        : [],
       active: false, // SAFE DEFAULT: Hidden / Draft by default
       showInHero: Boolean(duplicated.showInHero),
       showInHeroCard: Boolean(duplicated.showInHeroCard),
@@ -1409,7 +1411,13 @@ export default function PoojasManager({
           : draft.templeSlugs.filter(Boolean),
       assignedAddonIds: draft.assignedAddonIds,
       chadhavaOptions: draft.chadhavaOptions,
-      packages: draft.packages.length > 0 ? draft.packages : undefined,
+      packages:
+        draft.packages.length > 0
+          ? draft.packages.map((pkg) => ({
+              ...pkg,
+              id: pkg.id || slugify(pkg.name) || `pkg-${Math.random().toString(36).slice(2, 7)}`,
+            }))
+          : [],
       active: draft.active,
       showInHero: draft.showInHero,
       showInHeroCard: draft.showInHeroCard,
@@ -3102,7 +3110,13 @@ export default function PoojasManager({
                           type="button"
                           onClick={() => {
                             if (!newPackage.name.trim()) return;
-                            setDraft({ ...draft, packages: [...draft.packages, newPackage] });
+                            const pkgId = slugify(newPackage.name.trim()) || `pkg-${Date.now()}`;
+                            const pkgWithId = {
+                              ...newPackage,
+                              id: newPackage.id || pkgId,
+                              name: newPackage.name.trim(),
+                            };
+                            setDraft({ ...draft, packages: [...draft.packages, pkgWithId] });
                             setNewPackage({ name: "", price: 501, description: "" });
                           }}
                           className="rounded-lg bg-saffron-500 py-1.5 text-xs font-bold text-white hover:bg-saffron-600"
@@ -3112,6 +3126,14 @@ export default function PoojasManager({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {draft.packages.length === 0 && (
+                          <div className="col-span-full rounded-2xl border-2 border-dashed border-saffron-200/80 bg-saffron-50/30 p-5 text-center space-y-1">
+                            <p className="text-xs font-bold text-ink">No Custom Packages Configured</p>
+                            <p className="text-[11px] text-ink-soft">
+                              Devotees will book this puja with the single standard Dakshina ({formatINR(Number(draft.price) || 0)}). Use the fields above if you want to add multi-tier packages (e.g. Basic, Premium, Family).
+                            </p>
+                          </div>
+                        )}
                         {draft.packages.map((pkg, idx) => (
                           <div
                             key={idx}
@@ -3856,7 +3878,10 @@ export default function PoojasManager({
                               <span className="font-semibold text-saffron-700">{pooja.category || "General"}</span>
                               <span className="text-[10px] text-ink-soft/70 truncate max-w-[140px]">/{pooja.slug}</span>
                             </div>
-                            <h3 className="font-bold text-ink text-sm leading-snug line-clamp-1">
+                            <h3
+                              title={pooja.title}
+                              className="font-bold text-ink text-sm leading-snug line-clamp-2 min-h-[2.5rem] break-words"
+                            >
                               {pooja.title}
                             </h3>
                             {pooja.hindiTitle && (

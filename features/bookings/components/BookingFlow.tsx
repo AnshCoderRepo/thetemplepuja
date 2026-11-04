@@ -15,7 +15,7 @@ import {
   Heart,
   Trash2,
 } from "lucide-react";
-import { fetchPujaAddons, fetchUserByPhone, syncUserFromServer } from "@/lib/api";
+import { fetchPujaAddons, fetchPujaPackages, fetchUserByPhone, syncUserFromServer } from "@/lib/api";
 import { SITE_CONFIG } from "@/lib/config";
 import {
   defaultAddons,
@@ -124,6 +124,107 @@ export default function BookingFlow({
   const [selectedTier, setSelectedTier] = useState<PackageTier>(
     effectiveResume?.packageTier || "single"
   );
+
+  const selectedPooja =
+    isDemoSlug(prayerSlug)
+      ? DEMO_POOJA
+      : catalogPoojas.find((p) => p.slug === prayerSlug) ??
+        pooja ??
+        catalogPoojas[0];
+
+  // Dynamic packages fetched from API (managed by Admin)
+  const [dynamicPackages, setDynamicPackages] = useState<any[]>([]);
+  const [loadingPackages, setLoadingPackages] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    const poojaSlug = selectedPooja?.slug || prayerSlug;
+    if (poojaSlug) {
+      setLoadingPackages(true);
+      fetchPujaPackages(poojaSlug)
+        .then((res) => {
+          if (!live) return;
+          if (res.ok && Array.isArray(res.packages)) {
+            setDynamicPackages(res.packages);
+          } else {
+            setDynamicPackages([]);
+          }
+        })
+        .catch(() => {
+          if (live) setDynamicPackages([]);
+        })
+        .finally(() => {
+          if (live) setLoadingPackages(false);
+        });
+    } else {
+      setDynamicPackages([]);
+    }
+    return () => {
+      live = false;
+    };
+  }, [selectedPooja?.slug, prayerSlug]);
+
+  // Multi-tier packages configured specifically for this puja (dynamic standalone packages take precedence or merge with puja-embedded packages)
+  const configuredPackages = useMemo(() => {
+    if (dynamicPackages.length > 0) {
+      return dynamicPackages;
+    }
+    return selectedPooja?.packages && selectedPooja.packages.length > 0
+      ? selectedPooja.packages
+      : [];
+  }, [dynamicPackages, selectedPooja?.packages]);
+
+  // Active package details
+  const currentPkg = useMemo(() => {
+    if (configuredPackages.length > 0) {
+      const cleanTier = String(selectedTier || "").toLowerCase().trim();
+      return (
+        configuredPackages.find((pkg) => {
+          const pkgId = (pkg.id || pkg.name || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-");
+          return (
+            pkgId === cleanTier ||
+            pkg.name.toLowerCase().trim() === cleanTier ||
+            (pkg.id && pkg.id.toLowerCase() === cleanTier)
+          );
+        }) || configuredPackages[0]
+      );
+    }
+    return null;
+  }, [configuredPackages, selectedTier]);
+
+  const isCoupleTier = useMemo(() => {
+    if (currentPkg?.devoteeLimit === 2) return true;
+    if (currentPkg?.devoteeLimit && currentPkg.devoteeLimit > 2) return false;
+    const tier = String(selectedTier || "").toLowerCase();
+    const pkgName = String(currentPkg?.name || "").toLowerCase();
+    return (
+      tier === "couple" ||
+      tier.includes("couple") ||
+      tier.includes("dampati") ||
+      pkgName.includes("couple") ||
+      pkgName.includes("dampati")
+    );
+  }, [selectedTier, currentPkg]);
+
+  const isFamilyTier = useMemo(() => {
+    if (currentPkg?.devoteeLimit && currentPkg.devoteeLimit > 2) return true;
+    if (currentPkg?.devoteeLimit === 2 || currentPkg?.devoteeLimit === 1) return false;
+    const tier = String(selectedTier || "").toLowerCase();
+    const pkgName = String(currentPkg?.name || "").toLowerCase();
+    return (
+      tier === "family" ||
+      tier.includes("family") ||
+      tier.includes("parivar") ||
+      tier.includes("kul") ||
+      pkgName.includes("family") ||
+      pkgName.includes("parivar") ||
+      pkgName.includes("kul")
+    );
+  }, [selectedTier, currentPkg]);
+
+  const isSingleOrGeneralTier = !isCoupleTier && !isFamilyTier;
   const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>(
     effectiveResume?.addons || {}
   );
@@ -280,29 +381,39 @@ export default function BookingFlow({
     }
   }, [pooja?.slug, initialPoojaSlug]);
 
-  const selectedPooja =
-    isDemoSlug(prayerSlug)
-      ? DEMO_POOJA
-      : catalogPoojas.find((p) => p.slug === prayerSlug) ??
-        pooja ??
-        catalogPoojas[0];
-
   const activeTemples = useMemo(() => temples.filter(isTempleActive), [temples]);
 
   const temple = selectedPooja?.type === "home" ? null : getTempleForPooja(selectedPooja, activeTemples);
 
-  // Calculate pricing
-  const rawBasePrice = selectedPooja?.price ?? 1101;
-  const singlePrice = rawBasePrice;
-  const couplePrice = calculatePackagePrice(rawBasePrice, "couple");
-  const familyPrice = calculatePackagePrice(rawBasePrice, "family");
+  // Sync selectedTier with puja's packages
+  useEffect(() => {
+    if (configuredPackages.length > 0) {
+      const current = String(selectedTier || "").toLowerCase().trim();
+      const matched = configuredPackages.find((pkg) => {
+        const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        return pkgId === current || pkg.name.toLowerCase().trim() === current || (pkg.id && pkg.id.toLowerCase() === current);
+      });
+      if (!matched) {
+        const defaultId = configuredPackages[0].id || configuredPackages[0].name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        setSelectedTier(defaultId as PackageTier);
+      }
+    } else {
+      setSelectedTier("standard" as PackageTier);
+    }
+  }, [configuredPackages]);
 
-  const packagePrice =
-    selectedTier === "couple"
-      ? couplePrice
-      : selectedTier === "family"
-      ? familyPrice
-      : singlePrice;
+  // Calculate pricing
+  const packagePrice = useMemo(() => {
+    if (configuredPackages.length > 0) {
+      const cleanTier = String(selectedTier || "").toLowerCase().trim();
+      const matched = configuredPackages.find((pkg) => {
+        const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        return pkgId === cleanTier || pkg.name.toLowerCase().trim() === cleanTier || (pkg.id && pkg.id.toLowerCase() === cleanTier);
+      });
+      return matched ? matched.price : configuredPackages[0].price;
+    }
+    return selectedPooja?.price ?? 1101;
+  }, [configuredPackages, selectedTier, selectedPooja?.price]);
 
   // Chadhava items
   const handleUpdateAddonQty = (id: string, delta: number) => {
@@ -319,37 +430,36 @@ export default function BookingFlow({
   };
 
   // Active add-ons strictly assigned to this exact puja
-  const [assignedAddons, setAssignedAddons] = useState<Addon[]>(() =>
-    getAssignedAddonsForPooja(selectedPooja, defaultAddons)
-  );
+  const [assignedAddons, setAssignedAddons] = useState<Addon[]>([]);
   const [loadingAddons, setLoadingAddons] = useState(false);
 
   useEffect(() => {
     let live = true;
-    if (selectedPooja?.slug) {
+    const poojaSlug = selectedPooja?.slug || prayerSlug;
+    if (poojaSlug) {
       setLoadingAddons(true);
-      fetchPujaAddons(selectedPooja.slug)
+      fetchPujaAddons(poojaSlug)
         .then((res) => {
           if (!live) return;
-          if (res.ok && res.addons) {
+          if (res.ok && Array.isArray(res.addons)) {
             setAssignedAddons(res.addons);
           } else {
-            setAssignedAddons(getAssignedAddonsForPooja(selectedPooja, defaultAddons));
+            setAssignedAddons([]);
           }
         })
         .catch(() => {
-          if (live) setAssignedAddons(getAssignedAddonsForPooja(selectedPooja, defaultAddons));
+          if (live) setAssignedAddons([]);
         })
         .finally(() => {
           if (live) setLoadingAddons(false);
         });
     } else {
-      setAssignedAddons(getAssignedAddonsForPooja(selectedPooja, defaultAddons));
+      setAssignedAddons([]);
     }
     return () => {
       live = false;
     };
-  }, [selectedPooja?.slug, selectedPooja?.assignedAddonIds]);
+  }, [selectedPooja?.slug, prayerSlug, selectedPooja?.assignedAddonIds]);
 
   // Clean up any selections that do not belong to the selected puja
   useEffect(() => {
@@ -432,9 +542,9 @@ export default function BookingFlow({
       primaryName: name.trim() || undefined,
       gotra: gotra.trim() || undefined,
       phone: phone.trim() || undefined,
-      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
-      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
-      familyMembers: selectedTier === "family" ? familyMembers : undefined,
+      partnerName: isCoupleTier ? partnerName.trim() : undefined,
+      partnerGotra: isCoupleTier ? partnerGotra.trim() : undefined,
+      familyMembers: isFamilyTier ? familyMembers : undefined,
       addons: selectedAddons,
       addonItems,
       step: currentStep,
@@ -455,9 +565,9 @@ export default function BookingFlow({
       primaryName: name.trim(),
       gotra: gotra.trim(),
       phone: phone.trim(),
-      partnerName: selectedTier === "couple" ? partnerName.trim() : "",
-      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : "",
-      familyMembers: selectedTier === "family" ? familyMembers : [],
+      partnerName: isCoupleTier ? partnerName.trim() : "",
+      partnerGotra: isCoupleTier ? partnerGotra.trim() : "",
+      familyMembers: isFamilyTier ? familyMembers : [],
       amount: finalTotal,
       discount,
       couponCode: appliedCoupon?.code ?? couponCode.trim(),
@@ -578,7 +688,7 @@ export default function BookingFlow({
   const handleProceedToPayment = async () => {
     setFormError("");
 
-    if (selectedTier === "single") {
+    if (isSingleOrGeneralTier) {
       if (!name.trim()) {
         setFormError("Please enter the devotee full name.");
         return;
@@ -587,7 +697,7 @@ export default function BookingFlow({
         setFormError("Please enter Gotra or click 'Unknown? Use Kashyap'.");
         return;
       }
-    } else if (selectedTier === "couple") {
+    } else if (isCoupleTier) {
       if (!name.trim()) {
         setFormError("Please enter the first devotee's full name.");
         return;
@@ -604,7 +714,7 @@ export default function BookingFlow({
         setFormError("Please enter the second devotee's Gotra (or select Kashyap).");
         return;
       }
-    } else if (selectedTier === "family") {
+    } else if (isFamilyTier) {
       if (familyMembers.length === 0) {
         setFormError("Please add at least one family member.");
         return;
@@ -637,25 +747,25 @@ export default function BookingFlow({
     const cleanPhone = phone.replace(/\D/g, "").slice(-10);
     const userEmail = `${cleanPhone}@templepujasewa.com`;
     const primaryName =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? name.trim()
-        : selectedTier === "couple"
+        : isCoupleTier
         ? `${name.trim()} & ${partnerName.trim()}`
         : `${familyMembers[0]?.name.trim() || "Devotee"} & Family (${familyMembers.length} Members)`;
 
     const primaryGotra =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? gotra.trim() || "Kashyap"
-        : selectedTier === "couple"
+        : isCoupleTier
         ? gotra.trim() === partnerGotra.trim()
           ? gotra.trim()
           : `${gotra.trim()} / ${partnerGotra.trim()}`
         : familyMembers[0]?.gotra.trim() || "Kashyap";
 
     const devoteesList: DevoteeMember[] =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? [{ name: name.trim(), gotra: gotra.trim() || "Kashyap" }]
-        : selectedTier === "couple"
+        : isCoupleTier
         ? [
             { name: name.trim(), gotra: gotra.trim() || "Kashyap" },
             { name: partnerName.trim(), gotra: partnerGotra.trim() || "Kashyap" },
@@ -690,10 +800,10 @@ export default function BookingFlow({
       reason: "General Well-being & Divine Blessings",
       packageTier: selectedTier,
       gotra: primaryGotra,
-      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
-      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      partnerName: isCoupleTier ? partnerName.trim() : undefined,
+      partnerGotra: isCoupleTier ? partnerGotra.trim() : undefined,
       devotees: devoteesList,
-      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      familyMembers: isFamilyTier ? devoteesList : undefined,
       amount: finalTotal,
       discount,
       couponCode: appliedCoupon?.code ?? null,
@@ -956,25 +1066,25 @@ export default function BookingFlow({
     const cleanPhone = phone.replace(/\D/g, "").slice(-10);
     const userEmail = `${cleanPhone}@templepujasewa.com`;
     const primaryName =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? name.trim()
-        : selectedTier === "couple"
+        : isCoupleTier
         ? `${name.trim()} & ${partnerName.trim()}`
         : `${familyMembers[0]?.name.trim() || "Devotee"} & Family (${familyMembers.length} Members)`;
 
     const primaryGotra =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? gotra.trim() || "Kashyap"
-        : selectedTier === "couple"
+        : isCoupleTier
         ? gotra.trim() === partnerGotra.trim()
           ? gotra.trim()
           : `${gotra.trim()} / ${partnerGotra.trim()}`
         : familyMembers[0]?.gotra.trim() || "Kashyap";
 
     const devoteesList: DevoteeMember[] =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? [{ name: name.trim(), gotra: gotra.trim() || "Kashyap" }]
-        : selectedTier === "couple"
+        : isCoupleTier
         ? [
             { name: name.trim(), gotra: gotra.trim() || "Kashyap" },
             { name: partnerName.trim(), gotra: partnerGotra.trim() || "Kashyap" },
@@ -1004,10 +1114,10 @@ export default function BookingFlow({
       reason: "General Well-being & Divine Blessings",
       packageTier: selectedTier,
       gotra: primaryGotra,
-      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
-      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      partnerName: isCoupleTier ? partnerName.trim() : undefined,
+      partnerGotra: isCoupleTier ? partnerGotra.trim() : undefined,
       devotees: devoteesList,
-      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      familyMembers: isFamilyTier ? devoteesList : undefined,
       amount: finalTotal,
       discount,
       couponCode: appliedCoupon?.code ?? null,
@@ -1064,10 +1174,10 @@ export default function BookingFlow({
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
       reason: "General Well-being & Divine Blessings",
       packageTier: selectedTier,
-      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
-      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      partnerName: isCoupleTier ? partnerName.trim() : undefined,
+      partnerGotra: isCoupleTier ? partnerGotra.trim() : undefined,
       devotees: devoteesList,
-      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      familyMembers: isFamilyTier ? devoteesList : undefined,
       credentials: {
         username: cleanPhone,
         password: finalPassword,
@@ -1110,9 +1220,9 @@ export default function BookingFlow({
     const temple = isHome ? null : getTempleForPooja(selectedPooja, activeTemples);
 
     const devoteesList: DevoteeMember[] =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? [{ name: name.trim(), gotra: gotra.trim() || "Kashyap" }]
-        : selectedTier === "couple"
+        : isCoupleTier
         ? [
             { name: name.trim(), gotra: gotra.trim() || "Kashyap" },
             { name: partnerName.trim(), gotra: partnerGotra.trim() || "Kashyap" },
@@ -1123,16 +1233,16 @@ export default function BookingFlow({
           }));
 
     const primaryName =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? name.trim()
-        : selectedTier === "couple"
+        : isCoupleTier
         ? `${name.trim()} & ${partnerName.trim()}`
         : `${familyMembers[0]?.name.trim() || "Devotee"} & Family (${familyMembers.length} Members)`;
 
     const primaryGotra =
-      selectedTier === "single"
+      isSingleOrGeneralTier
         ? gotra.trim() || "Kashyap"
-        : selectedTier === "couple"
+        : isCoupleTier
         ? gotra.trim() === partnerGotra.trim()
           ? gotra.trim()
           : `${gotra.trim()} / ${partnerGotra.trim()}`
@@ -1153,10 +1263,10 @@ export default function BookingFlow({
       reason: "General Well-being & Divine Blessings",
       packageTier: selectedTier,
       gotra: primaryGotra,
-      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
-      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      partnerName: isCoupleTier ? partnerName.trim() : undefined,
+      partnerGotra: isCoupleTier ? partnerGotra.trim() : undefined,
       devotees: devoteesList,
-      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      familyMembers: isFamilyTier ? devoteesList : undefined,
       amount: paidTotal,
       discount: summary?.discount ?? 0,
       couponCode: summary?.coupon?.code ?? null,
@@ -1212,10 +1322,10 @@ export default function BookingFlow({
       poojaTitle: selectedPooja?.title || "Sacred Pooja",
       reason: "General Well-being & Divine Blessings",
       packageTier: selectedTier,
-      partnerName: selectedTier === "couple" ? partnerName.trim() : undefined,
-      partnerGotra: selectedTier === "couple" ? partnerGotra.trim() : undefined,
+      partnerName: isCoupleTier ? partnerName.trim() : undefined,
+      partnerGotra: isCoupleTier ? partnerGotra.trim() : undefined,
       devotees: devoteesList,
-      familyMembers: selectedTier === "family" ? devoteesList : undefined,
+      familyMembers: isFamilyTier ? devoteesList : undefined,
       credentials: {
         username: cleanPhone,
         password: finalPassword,
@@ -1253,27 +1363,51 @@ export default function BookingFlow({
     );
   }
 
-  // 3 Options definition
-  const packageOptions: { id: PackageTier; label: string; price: number; icon: React.ReactNode }[] = [
-    {
-      id: "single",
-      label: "Single",
-      price: singlePrice,
-      icon: <User className="h-4 w-4 text-saffron-600" />,
-    },
-    {
-      id: "couple",
-      label: "Couple",
-      price: couplePrice,
-      icon: <HeartHandshake className="h-4 w-4 text-saffron-600" />,
-    },
-    {
-      id: "family",
-      label: "Family",
-      price: familyPrice,
-      icon: <Users className="h-4 w-4 text-saffron-600" />,
-    },
-  ];
+  // Dynamic Puja-wise packages definition
+  const packageOptions: {
+    id: PackageTier;
+    label: string;
+    description?: string;
+    price: number;
+    originalPrice?: number;
+    benefits?: string[];
+    isPopular?: boolean;
+    icon: React.ReactNode;
+  }[] = useMemo(() => {
+    if (configuredPackages.length > 0) {
+      return configuredPackages.map((pkg, idx) => {
+        const optId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const optLabel =
+          locale === "hi" && pkg.hindiName ? pkg.hindiName : pkg.name;
+        const optDesc =
+          locale === "hi" && pkg.hindiDescription ? pkg.hindiDescription : pkg.description;
+
+        const lowerName = pkg.name.toLowerCase();
+        const icon =
+          (pkg.devoteeLimit && pkg.devoteeLimit > 2) || lowerName.includes("family") || lowerName.includes("parivar")
+            ? <Users className="h-4 w-4 text-saffron-600" />
+            : pkg.devoteeLimit === 2 || lowerName.includes("couple") || lowerName.includes("dampati")
+            ? <HeartHandshake className="h-4 w-4 text-saffron-600" />
+            : idx === 1
+            ? <HeartHandshake className="h-4 w-4 text-saffron-600" />
+            : idx >= 2
+            ? <Users className="h-4 w-4 text-saffron-600" />
+            : <User className="h-4 w-4 text-saffron-600" />;
+
+        return {
+          id: optId as PackageTier,
+          label: optLabel,
+          description: optDesc,
+          price: pkg.price,
+          originalPrice: pkg.originalPrice,
+          benefits: pkg.features || pkg.benefits,
+          isPopular: pkg.badge === "Popular" || pkg.isPopular,
+          icon,
+        };
+      });
+    }
+    return [];
+  }, [configuredPackages, locale]);
 
   return (
     <div className="flex flex-col h-full min-h-0 w-full overflow-hidden">
@@ -1410,68 +1544,111 @@ export default function BookingFlow({
               Select Pooja Option
             </h3>
             <p className="text-xs text-ink-soft">
-              Choose your sankalp option with consecrated offerings.
+              {packageOptions.length > 0
+                ? "Choose your sankalp package configured for this ceremony."
+                : "Standard Vedic ritual ceremony included."}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2.5">
-            {packageOptions.map((opt) => {
-              const isSelected = selectedTier === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  id={`booking-package-${opt.id}`}
-                  onClick={() => {
-                    setSelectedTier(opt.id);
-                    trackCustomEvent("SelectPackage", {
-                      pooja_slug: prayerSlug,
-                      package_tier: opt.id,
-                      package_name: opt.label,
-                      price: opt.price,
-                    });
-                  }}
-                  className={`group flex items-center justify-between rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer touch-manipulation ${
-                    isSelected
-                      ? "border-saffron-500 bg-saffron-50/70 shadow-sm ring-2 ring-saffron-400/40"
-                      : "border-saffron-200/80 bg-white hover:border-saffron-300 hover:bg-saffron-50/20"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
-                        isSelected
-                          ? "bg-saffron-500 text-white shadow-xs"
-                          : "bg-saffron-100/70 text-saffron-700"
-                      }`}
-                    >
-                      {opt.icon}
-                    </span>
-                    <div>
-                      <span className="font-display text-sm font-bold text-ink block">
-                        {opt.label}
+          {packageOptions.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2.5">
+              {packageOptions.map((opt) => {
+                const isSelected = selectedTier === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    id={`booking-package-${opt.id}`}
+                    onClick={() => {
+                      setSelectedTier(opt.id);
+                      trackCustomEvent("SelectPackage", {
+                        pooja_slug: prayerSlug,
+                        package_tier: opt.id,
+                        package_name: opt.label,
+                        price: opt.price,
+                      });
+                    }}
+                    className={`group flex items-center justify-between rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer touch-manipulation ${
+                      isSelected
+                        ? "border-saffron-500 bg-saffron-50/70 shadow-sm ring-2 ring-saffron-400/40"
+                        : "border-saffron-200/80 bg-white hover:border-saffron-300 hover:bg-saffron-50/20"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+                          isSelected
+                            ? "bg-saffron-500 text-white shadow-xs"
+                            : "bg-saffron-100/70 text-saffron-700"
+                        }`}
+                      >
+                        {opt.icon}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-display text-sm font-bold text-ink block">
+                            {opt.label}
+                          </span>
+                          {opt.isPopular && (
+                            <span className="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-extrabold uppercase">
+                              Popular
+                            </span>
+                          )}
+                        </div>
+                        {opt.description && (
+                          <p className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">
+                            {opt.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="font-display text-base font-extrabold text-saffron-700 block">
+                          {formatINR(opt.price)}
+                        </span>
+                        {opt.originalPrice && opt.originalPrice > opt.price && (
+                          <span className="text-[10px] text-ink-soft line-through block">
+                            {formatINR(opt.originalPrice)}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${
+                          isSelected
+                            ? "border-saffron-600 bg-saffron-600 text-white"
+                            : "border-slate-300 bg-white"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
                       </span>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="font-display text-base font-extrabold text-saffron-700">
-                      {formatINR(opt.price)}
-                    </span>
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${
-                        isSelected
-                          ? "border-saffron-600 bg-saffron-600 text-white"
-                          : "border-slate-300 bg-white"
-                      }`}
-                    >
-                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-saffron-200/90 bg-gradient-to-br from-amber-50/60 via-white to-saffron-50/40 p-5 text-center space-y-3">
+              <span className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-saffron-100 text-2xl border border-saffron-200 shadow-2xs">
+                {selectedPooja?.emoji || "🪔"}
+              </span>
+              <div>
+                <h4 className="font-display text-sm sm:text-base font-bold text-ink">
+                  {selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Ceremony"}
+                </h4>
+                <p className="text-xs text-ink-soft mt-1 max-w-sm mx-auto">
+                  Standard complete Vedic ritual. All essential vidhi, archana, and divine sankalp are included under this seva.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-xl bg-white border border-saffron-200 px-3.5 py-1.5 shadow-xs">
+                <span className="text-xs font-semibold text-ink-soft">Dakshina:</span>
+                <span className="font-display text-base font-extrabold text-saffron-700">
+                  {formatINR(selectedPooja?.price ?? 1101)}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1543,9 +1720,17 @@ export default function BookingFlow({
                             {addonDesc}
                           </p>
                         )}
-                        <span className="font-display text-xs sm:text-sm font-extrabold text-saffron-700 block mt-0.5">
-                          {formatINR(addon.price)}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="font-display text-xs sm:text-sm font-extrabold text-saffron-700">
+                            {formatINR(addon.price)}
+                            <span className="text-[10px] font-normal text-ink-soft ml-1">/ offering</span>
+                          </span>
+                          {qty > 0 && (
+                            <span className="inline-flex items-center rounded-md bg-saffron-100/90 px-1.5 py-0.5 text-[10px] font-bold text-saffron-900 border border-saffron-200">
+                              Subtotal: {formatINR(addon.price * qty)} ({qty} × {formatINR(addon.price)})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -1600,18 +1785,18 @@ export default function BookingFlow({
 
           <div>
             <h3 className="font-display text-base sm:text-lg font-bold text-ink">
-              {selectedTier === "single"
-                ? "Devotee Details (Single Sankalp)"
-                : selectedTier === "couple"
+              {isCoupleTier
                 ? "Couple Devotee Details (2 Devotees)"
-                : "Family Devotee Details (Unlimited Members)"}
+                : isFamilyTier
+                ? "Family Devotee Details (Unlimited Members)"
+                : "Devotee Details (Vedic Sankalp)"}
             </h3>
             <p className="text-xs text-ink-soft">
-              {selectedTier === "single"
-                ? "Enter devotee name and gotra for the sacred Vedic Sankalp."
-                : selectedTier === "couple"
+              {isCoupleTier
                 ? "Enter names and gotras for both partners to be chanted during the Sankalp."
-                : "Add names and gotras for all family members. You can add as many people as you want!"}
+                : isFamilyTier
+                ? "Add names and gotras for all family members. You can add as many people as you want!"
+                : "Enter devotee name and gotra for the sacred Vedic Sankalp."}
             </p>
           </div>
 
@@ -1647,8 +1832,8 @@ export default function BookingFlow({
             </div>
           )}
 
-          {/* ── CASE 1: SINGLE DEVOTEE (1 Name & 1 Gotra) ── */}
-          {selectedTier === "single" && (
+          {/* ── CASE 1: SINGLE / GENERAL DEVOTEE (1 Name & 1 Gotra) ── */}
+          {isSingleOrGeneralTier && (
             <div className="rounded-2xl border border-saffron-200/90 bg-white p-4 sm:p-5 shadow-xs space-y-3.5">
               <div className="flex items-center gap-2 border-b border-saffron-100 pb-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-saffron-100 text-saffron-800">
@@ -1705,7 +1890,7 @@ export default function BookingFlow({
           )}
 
           {/* ── CASE 2: COUPLE (2 Names & 2 Gotras) ── */}
-          {selectedTier === "couple" && (
+          {isCoupleTier && (
             <div className="space-y-3">
               {/* Person 1 */}
               <div className="rounded-2xl border border-saffron-200/90 bg-white p-4 shadow-xs space-y-3">
@@ -1834,7 +2019,7 @@ export default function BookingFlow({
           )}
 
           {/* ── CASE 3: FAMILY (Option to select/add as many people as they want) ── */}
-          {selectedTier === "family" && (
+          {isFamilyTier && (
             <div className="space-y-3">
               <div className="flex items-center justify-between rounded-xl bg-saffron-50/80 border border-saffron-200/80 px-3.5 py-2">
                 <div className="flex items-center gap-2">
@@ -1986,6 +2171,11 @@ export default function BookingFlow({
                   setPhone(clean);
                   if (formError) setFormError("");
                 }}
+                onFocus={(e) => {
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 150);
+                }}
                 placeholder="10-digit mobile number"
                 className="w-full rounded-xl border border-saffron-200 bg-white pl-12 pr-3.5 py-2.5 text-sm text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none focus:ring-2 focus:ring-saffron-200"
               />
@@ -2047,20 +2237,32 @@ export default function BookingFlow({
             <div className="flex items-center justify-between text-xs text-ink-soft">
               <span>
                 Selected Option (
-                {selectedTier === "single"
-                  ? "Single"
-                  : selectedTier === "couple"
-                  ? "Couple"
-                  : `Family - ${familyMembers.length} Members`}
+                {currentPkg
+                  ? (isFamilyTier ? `${currentPkg.name} - ${familyMembers.length} Members` : currentPkg.name)
+                  : (isCoupleTier ? "Couple" : isFamilyTier ? `Family - ${familyMembers.length} Members` : "Individual")}
                 )
               </span>
               <span className="font-semibold text-ink">{formatINR(packagePrice)}</span>
             </div>
 
             {addonItems.length > 0 && (
-              <div className="flex items-center justify-between text-xs text-ink-soft">
-                <span>Chadhavas ({addonItems.reduce((acc, a) => acc + a.quantity, 0)} items)</span>
-                <span className="font-semibold text-ink">+{formatINR(chadhavaTotal)}</span>
+              <div className="space-y-1.5 border-t border-saffron-200/60 pt-2">
+                <div className="flex items-center justify-between text-xs font-bold text-ink">
+                  <span>Selected Sacred Offerings ({addonItems.reduce((acc, a) => acc + a.quantity, 0)} items)</span>
+                  <span className="text-saffron-700 font-extrabold">+{formatINR(chadhavaTotal)}</span>
+                </div>
+                <div className="space-y-1 pl-2 border-l-2 border-saffron-300">
+                  {addonItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between text-[11px] text-ink-soft">
+                      <span className="truncate pr-2">
+                        {item.name} <span className="text-slate-400 font-medium">({item.quantity} × {formatINR(item.price)})</span>
+                      </span>
+                      <span className="font-semibold text-ink shrink-0">
+                        {formatINR(item.price * item.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -2099,9 +2301,9 @@ export default function BookingFlow({
           amount={finalTotal}
           poojaTitle={selectedPooja ? getLocalizedPoojaTitle(selectedPooja, locale) : "Sacred Pooja"}
           devoteeName={
-            selectedTier === "single"
+            isSingleOrGeneralTier
               ? name.trim() || "Devotee"
-              : selectedTier === "couple"
+              : isCoupleTier
               ? `${name.trim() || "Devotee"} & ${partnerName.trim() || "Spouse"}`
               : `${familyMembers[0]?.name.trim() || "Devotee"} & Family`
           }
