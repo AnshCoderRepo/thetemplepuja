@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   findUserByPhone,
   generateRandomPassword,
+  getStandalonePackages,
   hashPassword,
   upsertUserBooking,
 } from "@/lib/server-store";
@@ -102,19 +103,32 @@ export async function POST(req: NextRequest) {
         booking.templeName = assignedTemple.name;
       }
     }
-    // Validate package tier if puja has multi-tier packages configured
-    if (pooja.packages && pooja.packages.length > 0) {
-      const cleanTier = (booking.packageTier || "").trim().toLowerCase();
-      const validPkg = pooja.packages.find((pkg) => {
-        const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        const pkgName = pkg.name.toLowerCase().trim();
-        return pkgId === cleanTier || pkgName === cleanTier || (pkg.id && pkg.id.toLowerCase() === cleanTier);
-      });
-      if (cleanTier && !validPkg && cleanTier !== "single" && cleanTier !== "standard") {
-        return NextResponse.json(
-          { error: `Package tier "${booking.packageTier}" is not available for this puja.` },
-          { status: 400 }
-        );
+    // Validate package tier if puja has packages configured or active standalone packages attached
+    const cleanTier = (booking.packageTier || "").trim().toLowerCase();
+    if (cleanTier && cleanTier !== "single" && cleanTier !== "standard") {
+      const embeddedPackages = pooja.packages || [];
+      const standaloneActive = await getStandalonePackages("active");
+      const attachedActive = standaloneActive.filter((sp) =>
+        sp.attachedPoojaSlugs?.some((s) => s.toLowerCase().trim() === (pooja.slug || "").toLowerCase().trim())
+      );
+
+      const allValidPackages = [
+        ...embeddedPackages,
+        ...attachedActive.map((sp) => ({ id: sp.id, name: sp.name, price: sp.price })),
+      ];
+
+      if (allValidPackages.length > 0) {
+        const validPkg = allValidPackages.find((pkg) => {
+          const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          const pkgName = pkg.name.toLowerCase().trim();
+          return pkgId === cleanTier || pkgName === cleanTier || (pkg.id && pkg.id.toLowerCase() === cleanTier);
+        });
+        if (!validPkg) {
+          return NextResponse.json(
+            { error: `Package tier "${booking.packageTier}" is not available for this puja.` },
+            { status: 400 }
+          );
+        }
       }
     }
 

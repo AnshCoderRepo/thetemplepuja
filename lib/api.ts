@@ -1325,6 +1325,86 @@ export async function fetchPujaAddons(poojaSlug?: string): Promise<{
   }
 }
 
+// ===================== PACKAGES API =====================
+
+export async function fetchPujaPackages(poojaSlug?: string): Promise<{
+  ok: boolean;
+  packages: any[];
+  error?: string;
+}> {
+  try {
+    const url = poojaSlug
+      ? `/api/packages?poojaSlug=${encodeURIComponent(poojaSlug)}`
+      : "/api/packages";
+    const res = await fetch(url, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, packages: [], error: data.error || "Failed to fetch packages" };
+    }
+    return { ok: true, packages: data.packages || [] };
+  } catch (err) {
+    return { ok: false, packages: [], error: "Network error fetching packages" };
+  }
+}
+
+export async function fetchAdminPackages(token: string): Promise<{
+  ok: boolean;
+  packages: any[];
+  availablePoojas: { slug: string; name: string }[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/admin/packages?token=${encodeURIComponent(token)}`, {
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, packages: [], availablePoojas: [], error: data.error || "Failed to fetch packages" };
+    }
+    return { ok: true, packages: data.packages || [], availablePoojas: data.availablePoojas || [] };
+  } catch (err) {
+    return { ok: false, packages: [], availablePoojas: [], error: "Network error" };
+  }
+}
+
+export async function saveAdminPackage(
+  pkg: Record<string, unknown>,
+  token: string
+): Promise<{ ok: boolean; package?: any; error?: string }> {
+  try {
+    const res = await fetch(`/api/admin/packages?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pkg),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to save package" };
+    }
+    return { ok: true, package: data.package };
+  } catch (err) {
+    return { ok: false, error: "Network error saving package" };
+  }
+}
+
+export async function deleteAdminPackage(
+  id: string,
+  token: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/admin/packages?token=${encodeURIComponent(token)}&id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Failed to delete package" };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: "Network error deleting package" };
+  }
+}
+
 // ===================== GALLERY API =====================
 
 export async function fetchPublicGallery(options?: {

@@ -31,6 +31,38 @@ export interface AdminCreds {
   passwordHash: string;
 }
 
+export interface PujaSessionVideo {
+  _id?: string;
+  id: string;
+  poojaSlug: string;
+  poojaTitle: string;
+  date: string;
+  videoUrl: string;
+  title: string;
+  description?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface StandalonePackage {
+  _id?: string;
+  id: string;
+  name: string;
+  hindiName?: string;
+  price: number;
+  originalPrice?: number;
+  description?: string;
+  hindiDescription?: string;
+  features?: string[];
+  devoteeLimit?: number;
+  badge?: string;
+  status: "draft" | "active";
+  attachedPoojaSlugs: string[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface PersistenceStore {
   getCatalogOverrides(): Promise<CatalogOverrides>;
   saveCatalogOverrides(overrides: CatalogOverrides): Promise<void>;
@@ -78,6 +110,16 @@ export interface PersistenceStore {
   findGalleryItemById(id: string): Promise<GalleryItem | undefined>;
   saveGalleryItem(item: GalleryItem): Promise<void>;
   deleteGalleryItem(id: string): Promise<boolean>;
+  /** Puja Session Ceremony Videos */
+  getPujaVideos(): Promise<PujaSessionVideo[]>;
+  findPujaVideoById(id: string): Promise<PujaSessionVideo | undefined>;
+  savePujaVideo(video: PujaSessionVideo): Promise<void>;
+  deletePujaVideo(id: string): Promise<boolean>;
+  /** Standalone Draft & Reusable Packages */
+  getStandalonePackages(): Promise<StandalonePackage[]>;
+  findStandalonePackageById(id: string): Promise<StandalonePackage | undefined>;
+  saveStandalonePackage(pkg: StandalonePackage): Promise<void>;
+  deleteStandalonePackage(id: string): Promise<boolean>;
 }
 
 /** In-memory store — data lives for the lifetime of the process only. */
@@ -89,6 +131,8 @@ export function createMemoryStore(): PersistenceStore {
   let refundRequests: RefundRequest[] = [];
   let addons: Addon[] = defaultAddons.map((a) => ({ ...a }));
   let galleryItems: GalleryItem[] = DEFAULT_GALLERY_ITEMS.map((g) => ({ ...g }));
+  let pujaVideos: PujaSessionVideo[] = [];
+  let standalonePackages: StandalonePackage[] = [];
 
   // Mirrors the MongoDB store's saveUser semantics: phone-keyed, appending
   // only bookings that aren't already on the devotee, so concurrent saves on
@@ -235,6 +279,54 @@ export function createMemoryStore(): PersistenceStore {
       const before = galleryItems.length;
       galleryItems = galleryItems.filter((g) => g._id !== id && g.id !== id);
       return galleryItems.length !== before;
+    },
+    async getPujaVideos() {
+      return [...pujaVideos].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    },
+    async findPujaVideoById(id: string) {
+      return pujaVideos.find((v) => v._id === id || v.id === id);
+    },
+    async savePujaVideo(video: PujaSessionVideo) {
+      const id = video._id || video.id;
+      const clean: PujaSessionVideo = {
+        ...video,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = pujaVideos.findIndex((v) => v._id === id || v.id === id);
+      if (idx >= 0) pujaVideos[idx] = clean;
+      else pujaVideos.push(clean);
+    },
+    async deletePujaVideo(id: string) {
+      const before = pujaVideos.length;
+      pujaVideos = pujaVideos.filter((v) => v._id !== id && v.id !== id);
+      return pujaVideos.length !== before;
+    },
+    async getStandalonePackages() {
+      return [...standalonePackages].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    },
+    async findStandalonePackageById(id: string) {
+      return standalonePackages.find((p) => p._id === id || p.id === id);
+    },
+    async saveStandalonePackage(pkg: StandalonePackage) {
+      const id = pkg._id || pkg.id;
+      const clean: StandalonePackage = {
+        ...pkg,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = standalonePackages.findIndex((p) => p._id === id || p.id === id);
+      if (idx >= 0) standalonePackages[idx] = clean;
+      else standalonePackages.push(clean);
+    },
+    async deleteStandalonePackage(id: string) {
+      const before = standalonePackages.length;
+      standalonePackages = standalonePackages.filter((p) => p._id !== id && p.id !== id);
+      return standalonePackages.length !== before;
     },
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BOOKING_EXPORT_HEADERS,
+  LEGACY_BOOKING_EXPORT_HEADERS,
   cleanCustomerName,
   formatBookingDateTime,
   generateBookingsExportCsv,
@@ -43,8 +44,8 @@ describe("Booking Export & Devotee Display", () => {
     primaryDevoteeName: "Ketan Pandey",
   };
 
-  it("exports exact 14 columns in the precise required order", () => {
-    expect(BOOKING_EXPORT_HEADERS).toEqual([
+  it("exports exact 14 columns when legacy mode is enabled", () => {
+    expect(LEGACY_BOOKING_EXPORT_HEADERS).toEqual([
       "User Name",
       "User Phone",
       "Booking Date",
@@ -60,7 +61,21 @@ describe("Booking Export & Devotee Display", () => {
       "User Address",
       "Quantity",
     ]);
-    expect(BOOKING_EXPORT_HEADERS.length).toBe(14);
+    expect(LEGACY_BOOKING_EXPORT_HEADERS.length).toBe(14);
+  });
+
+  it("exports enhanced 21 columns including package and addon breakdown by default", () => {
+    expect(BOOKING_EXPORT_HEADERS.length).toBe(21);
+    expect(BOOKING_EXPORT_HEADERS.slice(0, 14)).toEqual(LEGACY_BOOKING_EXPORT_HEADERS);
+    expect(BOOKING_EXPORT_HEADERS.slice(14)).toEqual([
+      "Package Name",
+      "Selected Add-on Names",
+      "Add-on Quantities",
+      "Add-on Individual Prices",
+      "Total Add-on Amount",
+      "Chadhava Names & Quantities",
+      "Total Chadhava Amount",
+    ]);
   });
 
   it("formats single devotee without family suffix in table", () => {
@@ -164,7 +179,7 @@ describe("Booking Export & Devotee Display", () => {
     expect(sanitizeCsvCell(undefined)).toBe('""');
   });
 
-  it("generates complete 14-column CSV with UTF-8 BOM for Excel Hindi support", () => {
+  it("generates complete 21-column CSV with UTF-8 BOM for Excel Hindi support and itemized breakdowns", () => {
     const hindiUser: UserProfile = {
       ...mockUser,
       name: "रमेश कुमार",
@@ -180,6 +195,11 @@ describe("Booking Export & Devotee Display", () => {
       amount: 11000,
       currency: "INR",
       quantity: 1,
+      packageTier: "couple",
+      addons: [
+        { id: "prasad", name: "Maha Prasad Box", price: 501, quantity: 2, itemType: "addon" },
+        { id: "sindoor", name: "Kumkum & Sindoor", price: 151, quantity: 3, itemType: "chadhava" },
+      ],
     };
 
     const csv = generateBookingsExportCsv([{ booking: hindiBooking, user: hindiUser }]);
@@ -192,9 +212,16 @@ describe("Booking Export & Devotee Display", () => {
     expect(lines.length).toBe(2);
 
     const headerParts = lines[0].split(",");
-    expect(headerParts.length).toBe(14);
+    expect(headerParts.length).toBe(21);
     expect(headerParts[0]).toBe('"User Name"');
     expect(headerParts[13]).toBe('"Quantity"');
+    expect(headerParts[14]).toBe('"Package Name"');
+    expect(headerParts[15]).toBe('"Selected Add-on Names"');
+    expect(headerParts[16]).toBe('"Add-on Quantities"');
+    expect(headerParts[17]).toBe('"Add-on Individual Prices"');
+    expect(headerParts[18]).toBe('"Total Add-on Amount"');
+    expect(headerParts[19]).toBe('"Chadhava Names & Quantities"');
+    expect(headerParts[20]).toBe('"Total Chadhava Amount"');
 
     // Data line check
     const dataRow = lines[1];
@@ -204,6 +231,24 @@ describe("Booking Export & Devotee Display", () => {
     expect(dataRow).toContain('"11000"');
     expect(dataRow).toContain('"INR"');
     expect(dataRow).toContain('"1"');
+    expect(dataRow).toContain('"Couple Plan"');
+    expect(dataRow).toContain('"Maha Prasad Box"');
+    expect(dataRow).toContain('"2"');
+    expect(dataRow).toContain('"501"');
+    expect(dataRow).toContain('"1002"');
+    expect(dataRow).toContain('"Kumkum & Sindoor (3)"');
+    expect(dataRow).toContain('"453"');
+  });
+
+  it("generates legacy 14-column CSV when legacyColumnsOnly option is passed", () => {
+    const csv = generateBookingsExportCsv([{ booking: mockBooking, user: mockUser }], {
+      legacyColumnsOnly: true,
+    });
+    const lines = csv.slice(1).split("\r\n");
+    const headerParts = lines[0].split(",");
+    expect(headerParts.length).toBe(14);
+    expect(headerParts[0]).toBe('"User Name"');
+    expect(headerParts[13]).toBe('"Quantity"');
   });
 
   it("distinguishes between purchased quantity and devotee count", () => {
@@ -247,7 +292,7 @@ describe("Booking Export & Devotee Display", () => {
     };
 
     const cells = parseCsvRow(lines[1]);
-    expect(cells.length).toBe(14);
+    expect(cells.length).toBe(21);
     // Column 11: Devotee / Family Member Names
     expect(cells[10]).toBe("Devotee 1, Devotee 2, Devotee 3, Devotee 4");
     // Column 14: Quantity must be the purchased quantity 2, NOT family count 4

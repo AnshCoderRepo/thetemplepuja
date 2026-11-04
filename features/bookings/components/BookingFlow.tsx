@@ -15,7 +15,7 @@ import {
   Heart,
   Trash2,
 } from "lucide-react";
-import { fetchPujaAddons, fetchUserByPhone, syncUserFromServer } from "@/lib/api";
+import { fetchPujaAddons, fetchPujaPackages, fetchUserByPhone, syncUserFromServer } from "@/lib/api";
 import { SITE_CONFIG } from "@/lib/config";
 import {
   defaultAddons,
@@ -125,15 +125,104 @@ export default function BookingFlow({
     effectiveResume?.packageTier || "single"
   );
 
+  const selectedPooja =
+    isDemoSlug(prayerSlug)
+      ? DEMO_POOJA
+      : catalogPoojas.find((p) => p.slug === prayerSlug) ??
+        pooja ??
+        catalogPoojas[0];
+
+  // Dynamic packages fetched from API (managed by Admin)
+  const [dynamicPackages, setDynamicPackages] = useState<any[]>([]);
+  const [loadingPackages, setLoadingPackages] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    const poojaSlug = selectedPooja?.slug || prayerSlug;
+    if (poojaSlug) {
+      setLoadingPackages(true);
+      fetchPujaPackages(poojaSlug)
+        .then((res) => {
+          if (!live) return;
+          if (res.ok && Array.isArray(res.packages)) {
+            setDynamicPackages(res.packages);
+          } else {
+            setDynamicPackages([]);
+          }
+        })
+        .catch(() => {
+          if (live) setDynamicPackages([]);
+        })
+        .finally(() => {
+          if (live) setLoadingPackages(false);
+        });
+    } else {
+      setDynamicPackages([]);
+    }
+    return () => {
+      live = false;
+    };
+  }, [selectedPooja?.slug, prayerSlug]);
+
+  // Multi-tier packages configured specifically for this puja (dynamic standalone packages take precedence or merge with puja-embedded packages)
+  const configuredPackages = useMemo(() => {
+    if (dynamicPackages.length > 0) {
+      return dynamicPackages;
+    }
+    return selectedPooja?.packages && selectedPooja.packages.length > 0
+      ? selectedPooja.packages
+      : [];
+  }, [dynamicPackages, selectedPooja?.packages]);
+
+  // Active package details
+  const currentPkg = useMemo(() => {
+    if (configuredPackages.length > 0) {
+      const cleanTier = String(selectedTier || "").toLowerCase().trim();
+      return (
+        configuredPackages.find((pkg) => {
+          const pkgId = (pkg.id || pkg.name || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-");
+          return (
+            pkgId === cleanTier ||
+            pkg.name.toLowerCase().trim() === cleanTier ||
+            (pkg.id && pkg.id.toLowerCase() === cleanTier)
+          );
+        }) || configuredPackages[0]
+      );
+    }
+    return null;
+  }, [configuredPackages, selectedTier]);
+
   const isCoupleTier = useMemo(() => {
+    if (currentPkg?.devoteeLimit === 2) return true;
+    if (currentPkg?.devoteeLimit && currentPkg.devoteeLimit > 2) return false;
     const tier = String(selectedTier || "").toLowerCase();
-    return tier === "couple" || tier.includes("couple") || tier.includes("dampati");
-  }, [selectedTier]);
+    const pkgName = String(currentPkg?.name || "").toLowerCase();
+    return (
+      tier === "couple" ||
+      tier.includes("couple") ||
+      tier.includes("dampati") ||
+      pkgName.includes("couple") ||
+      pkgName.includes("dampati")
+    );
+  }, [selectedTier, currentPkg]);
 
   const isFamilyTier = useMemo(() => {
+    if (currentPkg?.devoteeLimit && currentPkg.devoteeLimit > 2) return true;
+    if (currentPkg?.devoteeLimit === 2 || currentPkg?.devoteeLimit === 1) return false;
     const tier = String(selectedTier || "").toLowerCase();
-    return tier === "family" || tier.includes("family") || tier.includes("parivar") || tier.includes("kul");
-  }, [selectedTier]);
+    const pkgName = String(currentPkg?.name || "").toLowerCase();
+    return (
+      tier === "family" ||
+      tier.includes("family") ||
+      tier.includes("parivar") ||
+      tier.includes("kul") ||
+      pkgName.includes("family") ||
+      pkgName.includes("parivar") ||
+      pkgName.includes("kul")
+    );
+  }, [selectedTier, currentPkg]);
 
   const isSingleOrGeneralTier = !isCoupleTier && !isFamilyTier;
   const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>(
@@ -292,23 +381,9 @@ export default function BookingFlow({
     }
   }, [pooja?.slug, initialPoojaSlug]);
 
-  const selectedPooja =
-    isDemoSlug(prayerSlug)
-      ? DEMO_POOJA
-      : catalogPoojas.find((p) => p.slug === prayerSlug) ??
-        pooja ??
-        catalogPoojas[0];
-
   const activeTemples = useMemo(() => temples.filter(isTempleActive), [temples]);
 
   const temple = selectedPooja?.type === "home" ? null : getTempleForPooja(selectedPooja, activeTemples);
-
-  // Multi-tier packages configured specifically for this puja
-  const configuredPackages = useMemo(() => {
-    return selectedPooja?.packages && selectedPooja.packages.length > 0
-      ? selectedPooja.packages
-      : [];
-  }, [selectedPooja?.packages]);
 
   // Sync selectedTier with puja's packages
   useEffect(() => {
@@ -339,18 +414,6 @@ export default function BookingFlow({
     }
     return selectedPooja?.price ?? 1101;
   }, [configuredPackages, selectedTier, selectedPooja?.price]);
-
-  // Active package details
-  const currentPkg = useMemo(() => {
-    if (configuredPackages.length > 0) {
-      const cleanTier = String(selectedTier || "").toLowerCase().trim();
-      return configuredPackages.find((pkg) => {
-        const pkgId = (pkg.id || pkg.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        return pkgId === cleanTier || pkg.name.toLowerCase().trim() === cleanTier || (pkg.id && pkg.id.toLowerCase() === cleanTier);
-      }) || configuredPackages[0];
-    }
-    return null;
-  }, [configuredPackages, selectedTier]);
 
   // Chadhava items
   const handleUpdateAddonQty = (id: string, delta: number) => {
@@ -1321,9 +1384,9 @@ export default function BookingFlow({
 
         const lowerName = pkg.name.toLowerCase();
         const icon =
-          lowerName.includes("family") || lowerName.includes("parivar")
+          (pkg.devoteeLimit && pkg.devoteeLimit > 2) || lowerName.includes("family") || lowerName.includes("parivar")
             ? <Users className="h-4 w-4 text-saffron-600" />
-            : lowerName.includes("couple") || lowerName.includes("dampati")
+            : pkg.devoteeLimit === 2 || lowerName.includes("couple") || lowerName.includes("dampati")
             ? <HeartHandshake className="h-4 w-4 text-saffron-600" />
             : idx === 1
             ? <HeartHandshake className="h-4 w-4 text-saffron-600" />
@@ -1337,8 +1400,8 @@ export default function BookingFlow({
           description: optDesc,
           price: pkg.price,
           originalPrice: pkg.originalPrice,
-          benefits: pkg.benefits,
-          isPopular: pkg.isPopular,
+          benefits: pkg.features || pkg.benefits,
+          isPopular: pkg.badge === "Popular" || pkg.isPopular,
           icon,
         };
       });
@@ -1657,9 +1720,17 @@ export default function BookingFlow({
                             {addonDesc}
                           </p>
                         )}
-                        <span className="font-display text-xs sm:text-sm font-extrabold text-saffron-700 block mt-0.5">
-                          {formatINR(addon.price)}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="font-display text-xs sm:text-sm font-extrabold text-saffron-700">
+                            {formatINR(addon.price)}
+                            <span className="text-[10px] font-normal text-ink-soft ml-1">/ offering</span>
+                          </span>
+                          {qty > 0 && (
+                            <span className="inline-flex items-center rounded-md bg-saffron-100/90 px-1.5 py-0.5 text-[10px] font-bold text-saffron-900 border border-saffron-200">
+                              Subtotal: {formatINR(addon.price * qty)} ({qty} × {formatINR(addon.price)})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -2100,6 +2171,11 @@ export default function BookingFlow({
                   setPhone(clean);
                   if (formError) setFormError("");
                 }}
+                onFocus={(e) => {
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 150);
+                }}
                 placeholder="10-digit mobile number"
                 className="w-full rounded-xl border border-saffron-200 bg-white pl-12 pr-3.5 py-2.5 text-sm text-ink placeholder:text-slate-400 focus:border-saffron-500 focus:outline-none focus:ring-2 focus:ring-saffron-200"
               />
@@ -2170,9 +2246,23 @@ export default function BookingFlow({
             </div>
 
             {addonItems.length > 0 && (
-              <div className="flex items-center justify-between text-xs text-ink-soft">
-                <span>Chadhavas ({addonItems.reduce((acc, a) => acc + a.quantity, 0)} items)</span>
-                <span className="font-semibold text-ink">+{formatINR(chadhavaTotal)}</span>
+              <div className="space-y-1.5 border-t border-saffron-200/60 pt-2">
+                <div className="flex items-center justify-between text-xs font-bold text-ink">
+                  <span>Selected Sacred Offerings ({addonItems.reduce((acc, a) => acc + a.quantity, 0)} items)</span>
+                  <span className="text-saffron-700 font-extrabold">+{formatINR(chadhavaTotal)}</span>
+                </div>
+                <div className="space-y-1 pl-2 border-l-2 border-saffron-300">
+                  {addonItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between text-[11px] text-ink-soft">
+                      <span className="truncate pr-2">
+                        {item.name} <span className="text-slate-400 font-medium">({item.quantity} × {formatINR(item.price)})</span>
+                      </span>
+                      <span className="font-semibold text-ink shrink-0">
+                        {formatINR(item.price * item.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

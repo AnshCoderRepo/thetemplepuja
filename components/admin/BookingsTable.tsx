@@ -255,123 +255,126 @@ export default function BookingsTable({
 
   return (
     <div className="space-y-5">
-      {/* Top Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-ink flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-emerald-600" />
-            Confirmed Puja Bookings
-          </h2>
-          <p className="text-xs text-ink-soft mt-0.5">
-            Essential overview of all verified and confirmed devotee bookings
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs font-bold text-ink-soft hover:bg-saffron-50 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
-            title="Reload latest booking data without reloading the page"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
-            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={exportCSV}
-            disabled={filtered.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 shadow-sm hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
-          >
-            <Download className="h-4 w-4 text-emerald-600" />
-            Export CSV ({filtered.length})
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-saffron-100 shadow-sm">
-        <div className="relative flex-1 min-w-[280px]">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by Booking ID, Devotee name, phone, city, or gotra..."
-            className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
-          />
-          {search && (
+      {/* Sticky Action / Header Bar (Persists on Scroll with Zero Content Overlap) */}
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3.5 bg-slate-50/95 backdrop-blur-md border-b border-saffron-200/70 shadow-2xs space-y-3.5">
+        {/* Top Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-ink flex items-center gap-2">
+              <ShieldCheck className="h-6 w-6 text-emerald-600" />
+              Confirmed Puja Bookings
+            </h2>
+            <p className="text-xs text-ink-soft mt-0.5">
+              Essential overview of all verified and confirmed devotee bookings
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setSearch(""); setPage(1); }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs font-bold text-ink-soft hover:bg-saffron-50 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+              title="Reload latest booking data without reloading the page"
             >
-              <X className="h-3.5 w-3.5" />
+              <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
             </button>
-          )}
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Status Segmented Buttons */}
-          <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs font-semibold">
             <button
               type="button"
-              onClick={() => { setStatusFilter("all"); setPage(1); }}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                statusFilter === "all"
-                  ? "bg-white text-saffron-900 shadow-xs font-bold"
-                  : "text-ink-soft hover:text-ink"
-              }`}
+              onClick={exportCSV}
+              disabled={filtered.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 shadow-sm hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
             >
-              All ({allBookings.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => { setStatusFilter("active"); setPage(1); }}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                statusFilter === "active"
-                  ? "bg-emerald-600 text-white shadow-xs font-bold"
-                  : "text-emerald-700 hover:text-emerald-800"
-              }`}
-            >
-              Active ({activeCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => { setStatusFilter("inactive"); setPage(1); }}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                statusFilter === "inactive"
-                  ? "bg-slate-700 text-white shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              Inactive ({inactiveCount})
+              <Download className="h-4 w-4 text-emerald-600" />
+              Export CSV ({filtered.length})
             </button>
           </div>
+        </div>
 
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
-            onClick={(e) => {
-              try {
-                (e.currentTarget as HTMLInputElement).showPicker?.();
-              } catch {}
-            }}
-            title="Filter by date (select from calendar)"
-            className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
-          />
+        {/* Filter Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-saffron-100 shadow-xs">
+          <div className="relative flex-1 min-w-[260px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search by Booking ID, Devotee name, phone, city, or gotra..."
+              className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setPage(1); }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
 
-          {(search || dateFilter || statusFilter !== "all") && (
-            <button
-              type="button"
-              onClick={() => { setSearch(""); setDateFilter(""); setStatusFilter("all"); setPage(1); }}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200 cursor-pointer"
-            >
-              Reset Filters ✕
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Status Segmented Buttons */}
+            <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => { setStatusFilter("all"); setPage(1); }}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-white text-saffron-900 shadow-xs font-bold"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                All ({allBookings.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStatusFilter("active"); setPage(1); }}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === "active"
+                    ? "bg-emerald-600 text-white shadow-xs font-bold"
+                    : "text-emerald-700 hover:text-emerald-800"
+                }`}
+              >
+                Active ({activeCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStatusFilter("inactive"); setPage(1); }}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === "inactive"
+                    ? "bg-slate-700 text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                Inactive ({inactiveCount})
+              </button>
+            </div>
+
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
+              onClick={(e) => {
+                try {
+                  (e.currentTarget as HTMLInputElement).showPicker?.();
+                } catch {}
+              }}
+              title="Filter by date (select from calendar)"
+              className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
+            />
+
+            {(search || dateFilter || statusFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setDateFilter(""); setStatusFilter("all"); setPage(1); }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200 cursor-pointer"
+              >
+                Reset Filters ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

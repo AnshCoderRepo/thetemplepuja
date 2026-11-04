@@ -6,6 +6,8 @@ import type {
   AdminCreds,
   CatalogOverrides,
   PersistenceStore,
+  PujaSessionVideo,
+  StandalonePackage,
 } from "./persistence";
 import type { UserProfile } from "./storage";
 import type { RefundRequest } from "./refund-types";
@@ -212,6 +214,66 @@ export function createJsonStore(): PersistenceStore {
       const next = list.filter((g) => g._id !== id && g.id !== id);
       if (next.length === list.length) return false;
       writeJson("gallery.json", next);
+      return true;
+    },
+    async getPujaVideos(): Promise<PujaSessionVideo[]> {
+      const list = readJson<PujaSessionVideo[]>("puja_videos.json", []);
+      return [...list].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    },
+    async findPujaVideoById(id: string): Promise<PujaSessionVideo | undefined> {
+      const list = await this.getPujaVideos();
+      return list.find((v) => v._id === id || v.id === id);
+    },
+    async savePujaVideo(video: PujaSessionVideo): Promise<void> {
+      const list = await this.getPujaVideos();
+      const id = video._id || video.id;
+      const clean: PujaSessionVideo = {
+        ...video,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = list.findIndex((v) => v._id === id || v.id === id);
+      if (idx >= 0) list[idx] = clean;
+      else list.push(clean);
+      writeJson("puja_videos.json", list);
+    },
+    async deletePujaVideo(id: string): Promise<boolean> {
+      const list = await this.getPujaVideos();
+      const next = list.filter((v) => v._id !== id && v.id !== id);
+      if (next.length === list.length) return false;
+      writeJson("puja_videos.json", next);
+      return true;
+    },
+    async getStandalonePackages(): Promise<StandalonePackage[]> {
+      const list = readJson<StandalonePackage[]>("packages.json", []);
+      return [...list].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    },
+    async findStandalonePackageById(id: string): Promise<StandalonePackage | undefined> {
+      const list = await this.getStandalonePackages();
+      return list.find((p) => p._id === id || p.id === id);
+    },
+    async saveStandalonePackage(pkg: StandalonePackage): Promise<void> {
+      const list = await this.getStandalonePackages();
+      const id = pkg._id || pkg.id;
+      const clean: StandalonePackage = {
+        ...pkg,
+        _id: id,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!clean.createdAt) clean.createdAt = new Date().toISOString();
+      const idx = list.findIndex((p) => p._id === id || p.id === id);
+      if (idx >= 0) list[idx] = clean;
+      else list.push(clean);
+      writeJson("packages.json", list);
+    },
+    async deleteStandalonePackage(id: string): Promise<boolean> {
+      const list = await this.getStandalonePackages();
+      const next = list.filter((p) => p._id !== id && p.id !== id);
+      if (next.length === list.length) return false;
+      writeJson("packages.json", next);
       return true;
     },
   };

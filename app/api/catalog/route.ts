@@ -5,6 +5,7 @@ import {
   clearCatalogOverrides,
   getAllUsers,
   getResolvedCatalog,
+  getStandalonePackages,
   isValidSessionToken,
   saveCatalogOverrides,
   type CatalogOverrideSection,
@@ -81,6 +82,8 @@ export async function GET(req: NextRequest) {
   // so cancellations free a seat automatically on the next fetch).
   const users = await getAllUsers();
   const bookings = users.flatMap((u) => u.bookings);
+  const allPackages = await getStandalonePackages();
+  const activePackages = allPackages.filter((p) => p.status === "active");
 
   // Normalize base64 image strings to fast, cached binary URLs
   const allTemples = catalog.temples.map((t) => ({
@@ -125,6 +128,7 @@ export async function GET(req: NextRequest) {
     temples: publicTemples,
     allTemples,
     poojas,
+    packages: activePackages,
     events: withEventBookedSeats(catalog.events, bookings),
   };
 
@@ -134,6 +138,7 @@ export async function GET(req: NextRequest) {
     temples: allTemples,
     allTemples,
     poojas,
+    packages: allPackages,
     events: withEventBookedSeats(catalog.events, bookings),
   };
 

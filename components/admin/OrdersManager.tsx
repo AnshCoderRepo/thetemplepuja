@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Calendar,
@@ -254,6 +254,105 @@ export default function OrdersManager({
     }
   };
 
+  // Dedicated Puja Session Videos (Admin uploads 1 video per Puja + ceremony date)
+  const [showSessionVideosModal, setShowSessionVideosModal] = useState(false);
+  const [sessionVideosList, setSessionVideosList] = useState<any[]>([]);
+  const [availablePoojas, setAvailablePoojas] = useState<{ slug: string; name: string }[]>([]);
+  const [sessionVideosLoading, setSessionVideosLoading] = useState(false);
+  const [sessionPoojaSlug, setSessionPoojaSlug] = useState("");
+  const [sessionDate, setSessionDate] = useState("");
+  const [sessionTitle, setSessionTitle] = useState("");
+  const [sessionVideoUrl, setSessionVideoUrl] = useState("");
+  const [sessionDesc, setSessionDesc] = useState("");
+  const [sessionSubmitting, setSessionSubmitting] = useState(false);
+  const [sessionMsg, setSessionMsg] = useState("");
+  const [sessionErr, setSessionErr] = useState("");
+
+  const loadSessionVideos = async () => {
+    if (!token) return;
+    setSessionVideosLoading(true);
+    try {
+      const res = await fetch(`/api/admin/puja-videos?token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+      if (data.success) {
+        setSessionVideosList(data.videos || []);
+        if (Array.isArray(data.availablePoojas)) {
+          setAvailablePoojas(data.availablePoojas);
+          if (!sessionPoojaSlug && data.availablePoojas.length > 0) {
+            setSessionPoojaSlug(data.availablePoojas[0].slug);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSessionVideosLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showSessionVideosModal) {
+      void loadSessionVideos();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSessionVideosModal]);
+
+  const handleSaveSessionVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !sessionPoojaSlug || !sessionDate.trim() || !sessionTitle.trim() || !sessionVideoUrl.trim()) {
+      setSessionErr("Please provide Puja, date, title, and video URL.");
+      return;
+    }
+    setSessionSubmitting(true);
+    setSessionErr("");
+    setSessionMsg("");
+    try {
+      const selectedP = availablePoojas.find((p) => p.slug === sessionPoojaSlug);
+      const res = await fetch(`/api/admin/puja-videos?token=${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          poojaSlug: sessionPoojaSlug,
+          poojaTitle: selectedP?.name || sessionPoojaSlug,
+          date: sessionDate.trim(),
+          title: sessionTitle.trim(),
+          videoUrl: sessionVideoUrl.trim(),
+          description: sessionDesc.trim() || undefined,
+          active: true,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSessionMsg("Ceremony video published successfully!");
+        setSessionTitle("");
+        setSessionVideoUrl("");
+        setSessionDesc("");
+        setSessionDate("");
+        void loadSessionVideos();
+      } else {
+        setSessionErr(data.error || "Failed to save ceremony video.");
+      }
+    } catch {
+      setSessionErr("Network error while saving ceremony video.");
+    } finally {
+      setSessionSubmitting(false);
+    }
+  };
+
+  const handleDeleteSessionVideo = async (id: string) => {
+    if (!token || !confirm("Are you sure you want to delete this session video?")) return;
+    try {
+      const res = await fetch(`/api/admin/puja-videos?token=${encodeURIComponent(token)}&id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        void loadSessionVideos();
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   // Flatten all bookings (orders) across all devotees (deduplicating identical booking records)
   const allOrders = useMemo(() => {
     const list: FlatOrder[] = [];
@@ -368,158 +467,171 @@ export default function OrdersManager({
 
   return (
     <div className="space-y-5">
-      {/* Top Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-ink flex items-center gap-2">
-            <ShoppingBag className="h-6 w-6 text-saffron-600" />
-            Orders & Transactions
-          </h2>
-          <p className="text-xs text-ink-soft mt-0.5">
-            Audit all incoming transactions across all fulfillment states
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs font-bold text-ink-soft hover:bg-saffron-50 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
-            title="Reload latest order data without reloading the page"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
-            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={exportCSV}
-            disabled={filtered.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl border border-saffron-200 bg-saffron-50 px-4 py-2 text-xs font-bold text-saffron-800 shadow-sm hover:bg-saffron-100 disabled:opacity-50 cursor-pointer"
-          >
-            <Download className="h-4 w-4 text-saffron-600" />
-            Export Orders ({filtered.length})
-          </button>
-        </div>
-      </div>
-
-      {/* Status Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-saffron-100 pb-3">
-        {(
-          [
-            { id: "all", label: "All Orders", count: allOrders.length },
-            {
-              id: "confirmed",
-              label: "🟢 Confirmed / Paid",
-              count: allOrders.filter((o) => o.booking.status === "confirmed").length,
-            },
-            {
-              id: "pending",
-              label: "⏳ Pending Payment",
-              count: allOrders.filter((o) => o.booking.status === "pending").length,
-            },
-            {
-              id: "failed",
-              label: "❌ Payment Failed",
-              count: allOrders.filter((o) => o.booking.status === "failed").length,
-            },
-            {
-              id: "rescheduled",
-              label: "🕒 Rescheduled",
-              count: allOrders.filter((o) => o.booking.status === "rescheduled").length,
-            },
-            {
-              id: "refunded",
-              label: "↩️ Refunded",
-              count: allOrders.filter((o) => o.booking.status === "refunded").length,
-            },
-            {
-              id: "cancelled",
-              label: "🚫 Cancelled",
-              count: allOrders.filter((o) => o.booking.status === "cancelled").length,
-            },
-          ] as const
-        ).map((tab) => {
-          const isSelected = statusTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setStatusTab(tab.id);
-                setPage(1);
-              }}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
-                isSelected
-                  ? "bg-saffron-500 text-white shadow-sm shadow-saffron-500/20"
-                  : "bg-white text-ink-soft hover:bg-cream/60 border border-saffron-100"
-              }`}
-            >
-              {tab.label} ({tab.count})
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search & Date Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-saffron-100 shadow-sm">
-        <div className="relative flex-1 min-w-[280px]">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search by Order ID, Booking ID, devotee, or pooja..."
-            className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
-          />
-          {search && (
+      {/* Sticky Action / Header Bar (Persists on Scroll with Zero Content Overlap) */}
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3.5 bg-slate-50/95 backdrop-blur-md border-b border-saffron-200/70 shadow-2xs space-y-3.5">
+        {/* Top Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-ink flex items-center gap-2">
+              <ShoppingBag className="h-6 w-6 text-saffron-600" />
+              Orders & Transactions
+            </h2>
+            <p className="text-xs text-ink-soft mt-0.5">
+              Audit all incoming transactions across all fulfillment states
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                setSearch("");
-                setPage(1);
-              }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-saffron-200 bg-white px-3.5 py-2 text-xs font-bold text-ink-soft hover:bg-saffron-50 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+              title="Reload latest order data without reloading the page"
             >
-              <X className="h-3.5 w-3.5" />
+              <RefreshCw className={`h-3.5 w-3.5 text-saffron-600 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
             </button>
-          )}
-        </div>
 
-        <div className="flex items-center gap-3">
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => {
-              setDateFilter(e.target.value);
-              setPage(1);
-            }}
-            onClick={(e) => {
-              try {
-                (e.currentTarget as HTMLInputElement).showPicker?.();
-              } catch {}
-            }}
-            title="Filter by date (select from calendar)"
-            className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
-          />
-
-          {(search || dateFilter || statusTab !== "all") && (
             <button
               type="button"
-              onClick={() => {
-                setSearch("");
-                setDateFilter("");
-                setStatusTab("all");
+              onClick={() => setShowSessionVideosModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-900 shadow-xs hover:bg-amber-100 cursor-pointer"
+              title="Upload & manage single ceremony videos per Puja and ceremony date"
+            >
+              <Video className="h-4 w-4 text-amber-700" />
+              <span>Puja Session Videos ({sessionVideosList.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={exportCSV}
+              disabled={filtered.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-saffron-200 bg-saffron-50 px-4 py-2 text-xs font-bold text-saffron-800 shadow-sm hover:bg-saffron-100 disabled:opacity-50 cursor-pointer"
+            >
+              <Download className="h-4 w-4 text-saffron-600" />
+              Export Orders ({filtered.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-saffron-100 pb-2.5">
+          {(
+            [
+              { id: "all", label: "All Orders", count: allOrders.length },
+              {
+                id: "confirmed",
+                label: "🟢 Confirmed / Paid",
+                count: allOrders.filter((o) => o.booking.status === "confirmed").length,
+              },
+              {
+                id: "pending",
+                label: "⏳ Pending Payment",
+                count: allOrders.filter((o) => o.booking.status === "pending").length,
+              },
+              {
+                id: "failed",
+                label: "❌ Payment Failed",
+                count: allOrders.filter((o) => o.booking.status === "failed").length,
+              },
+              {
+                id: "rescheduled",
+                label: "🕒 Rescheduled",
+                count: allOrders.filter((o) => o.booking.status === "rescheduled").length,
+              },
+              {
+                id: "refunded",
+                label: "↩️ Refunded",
+                count: allOrders.filter((o) => o.booking.status === "refunded").length,
+              },
+              {
+                id: "cancelled",
+                label: "🚫 Cancelled",
+                count: allOrders.filter((o) => o.booking.status === "cancelled").length,
+              },
+            ] as const
+          ).map((tab) => {
+            const isSelected = statusTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setStatusTab(tab.id);
+                  setPage(1);
+                }}
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                  isSelected
+                    ? "bg-saffron-500 text-white shadow-sm shadow-saffron-500/20"
+                    : "bg-white text-ink-soft hover:bg-cream/60 border border-saffron-100"
+                }`}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search & Date Filter Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-saffron-100 shadow-xs">
+          <div className="relative flex-1 min-w-[260px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
                 setPage(1);
               }}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200"
-            >
-              Reset Filters ✕
-            </button>
-          )}
+              placeholder="Search by Order ID, Booking ID, devotee, or pooja..."
+              className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value);
+                setPage(1);
+              }}
+              onClick={(e) => {
+                try {
+                  (e.currentTarget as HTMLInputElement).showPicker?.();
+                } catch {}
+              }}
+              title="Filter by date (select from calendar)"
+              className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
+            />
+
+            {(search || dateFilter || statusTab !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setDateFilter("");
+                  setStatusTab("all");
+                  setPage(1);
+                }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200 cursor-pointer"
+              >
+                Reset Filters ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1250,6 +1362,183 @@ export default function OrdersManager({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Puja Session Videos Modal (Feature E: 1 video per Puja + date for all confirmed devotees) */}
+      {showSessionVideosModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border border-saffron-200 bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-saffron-100 bg-gradient-to-r from-amber-50 to-saffron-50/50 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <Video className="h-5 w-5 text-saffron-600" />
+                <div>
+                  <h3 className="font-bold text-ink text-base">Puja Session Ceremony Videos</h3>
+                  <p className="text-[11px] text-ink-soft">
+                    Deliver 1 video per Puja & date to all confirmed devotees without mutating bookings
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSessionVideosModal(false)}
+                className="rounded-full p-1 text-ink-soft hover:bg-saffron-100/60 hover:text-ink cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Form to Add New Session Video */}
+              <form onSubmit={handleSaveSessionVideo} className="rounded-2xl border border-saffron-200 bg-amber-50/40 p-4 space-y-3.5">
+                <h4 className="font-bold text-xs text-saffron-900 uppercase tracking-wide">
+                  + Upload / Publish Ceremony Video
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-ink mb-1">Select Puja *</label>
+                    <select
+                      value={sessionPoojaSlug}
+                      onChange={(e) => setSessionPoojaSlug(e.target.value)}
+                      className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink outline-none focus:border-saffron-500 font-medium"
+                    >
+                      {availablePoojas.map((p) => (
+                        <option key={p.slug} value={p.slug}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-ink mb-1">Ceremony Date *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Thu, Nov 5 or 2026-11-06"
+                      value={sessionDate}
+                      onChange={(e) => setSessionDate(e.target.value)}
+                      className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink outline-none focus:border-saffron-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-ink mb-1">Video Title *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Sacred Maha Sankalp & Hawan Recording"
+                      value={sessionTitle}
+                      onChange={(e) => setSessionTitle(e.target.value)}
+                      className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink outline-none focus:border-saffron-500 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-ink mb-1">Video URL (YouTube/Drive/MP4) *</label>
+                    <input
+                      type="url"
+                      placeholder="https://..."
+                      value={sessionVideoUrl}
+                      onChange={(e) => setSessionVideoUrl(e.target.value)}
+                      className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink outline-none focus:border-saffron-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-ink mb-1">Blessing Notes / Description (Optional)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Ritual notes, mantras chanted, or divine blessings..."
+                    value={sessionDesc}
+                    onChange={(e) => setSessionDesc(e.target.value)}
+                    className="w-full rounded-xl border border-saffron-200 bg-white px-3 py-2 text-xs text-ink outline-none focus:border-saffron-500 resize-none font-medium"
+                  />
+                </div>
+
+                {sessionErr && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-600">
+                    ⚠️ {sessionErr}
+                  </div>
+                )}
+
+                {sessionMsg && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-semibold text-emerald-700">
+                    ✅ {sessionMsg}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={sessionSubmitting}
+                    className="rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white font-bold text-xs px-4 py-2 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {sessionSubmitting ? "Publishing..." : "Publish Ceremony Video"}
+                  </button>
+                </div>
+              </form>
+
+              {/* Existing Session Videos List */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-xs text-ink flex items-center justify-between">
+                  <span>Published Session Videos ({sessionVideosList.length})</span>
+                  {sessionVideosLoading && <span className="text-[10px] text-ink-soft">Loading...</span>}
+                </h4>
+
+                {sessionVideosList.length === 0 ? (
+                  <div className="rounded-2xl border-2 border-dashed border-saffron-200 p-6 text-center text-xs text-ink-soft bg-slate-50/50">
+                    No session videos published yet. Use the form above to add one.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {sessionVideosList.map((sv) => (
+                      <div
+                        key={sv.id}
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-saffron-100 bg-white p-3.5 shadow-2xs hover:border-saffron-300 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-ink truncate">{sv.title}</span>
+                            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 shrink-0">
+                              📅 {sv.date}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-saffron-700 font-semibold mt-0.5 truncate">
+                            🪔 {sv.poojaTitle || sv.poojaSlug}
+                          </p>
+                          {sv.description && (
+                            <p className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">{sv.description}</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a
+                            href={sv.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-saffron-50 px-2.5 py-1 text-xs font-bold text-saffron-700 hover:bg-saffron-100 transition-colors"
+                          >
+                            Watch ↗
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSessionVideo(sv.id)}
+                            className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Delete this session video"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
