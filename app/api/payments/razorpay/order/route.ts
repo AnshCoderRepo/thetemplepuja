@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
     couponCode?: unknown;
     phone?: unknown;
     addons?: unknown;
+    checkoutAmount?: unknown;
+    expectedAmount?: unknown;
   };
 
   const poojaSlug = typeof body.poojaSlug === "string" ? body.poojaSlug.trim() : "";
@@ -27,6 +29,15 @@ export async function POST(req: NextRequest) {
   const addons = Array.isArray(body.addons)
     ? (body.addons as { id: string; quantity: number }[])
     : undefined;
+
+  const rawCheckoutAmount =
+    typeof body.checkoutAmount === "number"
+      ? body.checkoutAmount
+      : typeof body.expectedAmount === "number"
+      ? body.expectedAmount
+      : typeof body.checkoutAmount === "string" && !isNaN(Number(body.checkoutAmount))
+      ? Number(body.checkoutAmount)
+      : undefined;
 
   if (!poojaSlug) {
     return NextResponse.json({ error: "Missing pooja." }, { status: 400 });
@@ -72,6 +83,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: problem }, { status: 400 });
   }
 
+  // Phase 10: Strict Amount Comparison & Mismatch Prevention
+  // Never trust frontend-submitted prices; never create order if amount does not match authoritative backend calculation.
+  if (typeof rawCheckoutAmount === "number") {
+    const checkoutPaise = Math.round(rawCheckoutAmount * 100);
+    const calculatedPaise = Math.round(amount * 100);
+    if (checkoutPaise !== calculatedPaise) {
+      return NextResponse.json(
+        {
+          error: `Price mismatch detected. The total has updated to ₹${amount}. Please review the updated total before proceeding.`,
+          code: "PRICE_MISMATCH",
+          checkoutAmount: rawCheckoutAmount,
+          calculatedAmount: amount,
+          difference: Math.abs(amount - rawCheckoutAmount),
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   try {
     const receipt = "ttp-" + Date.now().toString(36).toUpperCase();
     const order = await createRazorpayOrder({
@@ -82,6 +112,8 @@ export async function POST(req: NextRequest) {
         couponCode: couponCode ?? "",
         phone,
         addonCount: String(validatedAddons.length),
+        checkoutAmount: String(rawCheckoutAmount ?? amount),
+        calculatedAmount: String(amount),
       },
     });
     return NextResponse.json({
@@ -89,6 +121,7 @@ export async function POST(req: NextRequest) {
       keyId: razorpayKeyId(),
       orderId: order.id,
       amount: order.amount, // paise — what the checkout should charge
+      calculatedAmount: amount,
       subtotal,
       discount,
       validatedAddons,

@@ -335,6 +335,9 @@ export interface RazorpayOrderStart {
   receipt?: string;
   validatedAddons?: { id: string; name: string; price: number; quantity: number; emoji?: string }[];
   error?: string;
+  code?: string;
+  calculatedAmount?: number;
+  checkoutAmount?: number;
 }
 
 /** Ask the server to create a Razorpay order for a pooja and addons at the server-side
@@ -346,6 +349,7 @@ export async function createRazorpayOrderRemote(input: {
   addons?: { id: string; quantity: number }[];
   couponCode: string | null;
   phone: string;
+  checkoutAmount?: number;
 }): Promise<RazorpayOrderStart> {
   try {
     const res = await fetch("/api/payments/razorpay/order", {
@@ -366,9 +370,16 @@ export async function createRazorpayOrderRemote(input: {
         validatedAddons: body.validatedAddons,
         currency: body.currency,
         receipt: body.receipt,
+        calculatedAmount: body.calculatedAmount,
       };
     }
-    return { configured: false, error: body.error ?? "Order failed" };
+    return {
+      configured: false,
+      error: body.error ?? "Order failed",
+      code: body.code,
+      calculatedAmount: body.calculatedAmount,
+      checkoutAmount: body.checkoutAmount,
+    };
   } catch {
     // Server unreachable — demo mode.
     return { configured: false };

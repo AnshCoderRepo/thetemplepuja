@@ -466,7 +466,10 @@ export default function TempleDetailClient({
                             />
                           </Link>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-xs text-ink line-clamp-1 leading-snug">
+                            <h4
+                              title={pTitle}
+                              className="font-bold text-xs text-ink line-clamp-2 leading-snug break-words"
+                            >
                               {pTitle}
                             </h4>
                             <p className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">

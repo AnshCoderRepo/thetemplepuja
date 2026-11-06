@@ -6,6 +6,7 @@ export async function createRazorpayOrderRemote(input: {
   addons?: { id: string; quantity: number }[];
   couponCode: string | null;
   phone: string;
+  checkoutAmount?: number;
 }): Promise<RazorpayOrderStart> {
   try {
     const res = await fetch("/api/payments/razorpay/order", {
@@ -26,9 +27,18 @@ export async function createRazorpayOrderRemote(input: {
         validatedAddons: body.validatedAddons,
         currency: body.currency,
         receipt: body.receipt,
+        code: body.code,
+        calculatedAmount: body.calculatedAmount,
+        checkoutAmount: body.checkoutAmount,
       };
     }
-    return { configured: false, error: body.error ?? "Order failed" };
+    return {
+      configured: false,
+      error: body.error ?? "Order failed",
+      code: body.code,
+      calculatedAmount: body.calculatedAmount,
+      checkoutAmount: body.checkoutAmount,
+    };
   } catch {
     return { configured: false };
   }

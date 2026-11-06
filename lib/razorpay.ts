@@ -337,6 +337,37 @@ export async function getRazorpayOrder(orderId: string): Promise<RazorpayOrder> 
   return (await res.json()) as RazorpayOrder;
 }
 
+export interface RazorpayPaymentEntity {
+  id: string;
+  entity: "payment";
+  amount: number; // in paise
+  currency: string;
+  status: string; // "captured", "authorized", "failed", "refunded"
+  order_id?: string;
+  method: string;
+  captured?: boolean;
+  notes?: Record<string, string>;
+  created_at: number;
+}
+
+/** Fetch payment entity directly from Razorpay (used for authoritative amount verification). */
+export async function getRazorpayPayment(paymentId: string): Promise<RazorpayPaymentEntity> {
+  const c = razorpayConfig();
+  if (!c.keyId || !c.keySecret) {
+    throw new Error("Razorpay is not configured");
+  }
+  const res = await fetch(`${RAZORPAY_API}/payments/${encodeURIComponent(paymentId)}`, {
+    headers: {
+      Authorization: "Basic " + Buffer.from(`${c.keyId}:${c.keySecret}`).toString("base64"),
+    },
+    signal: AbortSignal.timeout(CREATE_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new Error(`Razorpay payment lookup failed (${res.status})`);
+  }
+  return (await res.json()) as RazorpayPaymentEntity;
+}
+
 /** Verify Razorpay's payment signature (HMAC-SHA256 of `orderId|paymentId`
  * signed with the key secret). Returns false when unconfigured or tampered. */
 export function verifyPaymentSignature(input: {

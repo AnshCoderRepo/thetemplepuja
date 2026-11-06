@@ -39,6 +39,9 @@ export interface RazorpayOrderStart {
   receipt?: string;
   validatedAddons?: { id: string; name: string; price: number; quantity: number; emoji?: string }[];
   error?: string;
+  code?: string;
+  calculatedAmount?: number;
+  checkoutAmount?: number;
 }
 
 export type RealMode =

@@ -873,6 +873,7 @@ export default function BookingFlow({
         addons: addonItems.map((a) => ({ id: a.id, quantity: a.quantity })),
         couponCode: appliedCoupon?.code ?? null,
         phone: cleanPhone,
+        checkoutAmount: finalTotal,
       });
 
       if (orderResult.configured && orderResult.orderId && orderResult.keyId) {

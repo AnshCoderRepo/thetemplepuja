@@ -27,8 +27,11 @@ import { formatINR } from "@/lib/format";
 import {
   cleanCustomerName,
   downloadCsv,
+  filterBookingRecords,
   generateBookingsExportCsv,
   getBookingDevoteeDisplay,
+  getExportFilename,
+  getQuickDateRange,
 } from "@/lib/booking-export";
 
 function getYouTubeEmbedUrl(url: string): string | null {
@@ -60,8 +63,12 @@ export default function BookingsTable({
   onRefresh?: () => void;
 }) {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const [dateFilter, setDateFilter] = useState("");
+  const [selectedPuja, setSelectedPuja] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "confirmed" | "rescheduled">("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [dateType, setDateType] = useState<"createdAt" | "pujaDate">("createdAt");
+  const [quickPreset, setQuickPreset] = useState<string>("");
   const [selectedBooking, setSelectedBooking] = useState<FlatBooking | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -175,12 +182,14 @@ export default function BookingsTable({
     }
   };
 
-  // Flatten all bookings (deduplicating identical booking records)
+  // Flatten verified bookings (deduplicating identical booking records)
+  // Successful Bookings section strictly displays ONLY verified confirmed and rescheduled bookings
   const allBookings = useMemo(() => {
     const list: FlatBooking[] = [];
     const seenBookingIds = new Set<string>();
     for (const u of users) {
       for (const b of u.bookings) {
+        if (b.status !== "confirmed" && b.status !== "rescheduled") continue;
         if (b.bookingId) {
           if (seenBookingIds.has(b.bookingId)) continue;
           seenBookingIds.add(b.bookingId);
@@ -194,63 +203,80 @@ export default function BookingsTable({
     );
   }, [users]);
 
-  const activeCount = useMemo(
-    () =>
-      allBookings.filter(
-        ({ booking }) => booking.status === "confirmed" || booking.status === "rescheduled"
-      ).length,
+  // Unique list of pujas appearing in bookings for filtering
+  const availablePoojaOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const { booking } of allBookings) {
+      if (booking.poojaSlug) {
+        map.set(booking.poojaSlug, booking.poojaTitle || booking.poojaSlug);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([slug, title]) => ({ slug, title }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [allBookings]);
+
+  const confirmedCount = useMemo(
+    () => allBookings.filter(({ booking }) => booking.status === "confirmed").length,
     [allBookings]
   );
-  const inactiveCount = allBookings.length - activeCount;
+  const rescheduledCount = useMemo(
+    () => allBookings.filter(({ booking }) => booking.status === "rescheduled").length,
+    [allBookings]
+  );
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return allBookings.filter(({ booking, user }) => {
-      const isActive = booking.status === "confirmed" || booking.status === "rescheduled";
-      if (statusFilter === "active" && !isActive) return false;
-      if (statusFilter === "inactive" && isActive) return false;
-
-      const matchesSearch =
-        !q ||
-        booking.bookingId.toLowerCase().includes(q) ||
-        booking.poojaTitle.toLowerCase().includes(q) ||
-        user.name.toLowerCase().includes(q) ||
-        user.phone.includes(q) ||
-        (user.city && user.city.toLowerCase().includes(q)) ||
-        (user.address && user.address.toLowerCase().includes(q)) ||
-        (booking.address && booking.address.toLowerCase().includes(q)) ||
-        (user.gotra && user.gotra.toLowerCase().includes(q)) ||
-        (booking.gotra && booking.gotra.toLowerCase().includes(q)) ||
-        (booking.primaryDevoteeName && booking.primaryDevoteeName.toLowerCase().includes(q));
-
-      const matchesDate =
-        !dateFilter ||
-        booking.createdAt.startsWith(dateFilter) ||
-        booking.date.toLowerCase().includes(dateFilter.toLowerCase());
-
-      return matchesSearch && matchesDate;
+    return filterBookingRecords(allBookings, {
+      search,
+      pujaSlug: selectedPuja,
+      status: statusFilter,
+      startDate,
+      endDate,
+      dateType,
+      section: "bookings",
     });
-  }, [allBookings, search, dateFilter, statusFilter]);
+  }, [allBookings, search, selectedPuja, statusFilter, startDate, endDate, dateType]);
 
-  const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
-  const paginated = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const hasActiveFilters = Boolean(
+    search ||
+      (selectedPuja && selectedPuja !== "all") ||
+      (statusFilter && statusFilter !== "all") ||
+      startDate ||
+      endDate
+  );
 
-  const copyText = async (text: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch {
-      // ignore
-    }
+  const handleClearFilters = () => {
+    setSearch("");
+    setSelectedPuja("all");
+    setStatusFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setQuickPreset("");
+    setDateType("createdAt");
+    setPage(1);
   };
+
+  const copyText = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
+
+  const PAGE_SIZE = 15;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   const exportCSV = () => {
     const csvContent = generateBookingsExportCsv(filtered);
-    downloadCsv(
-      csvContent,
-      `confirmed_bookings_${new Date().toISOString().slice(0, 10)}.csv`
-    );
+    const filename = getExportFilename("bookings", {
+      status: statusFilter,
+      startDate,
+      endDate,
+    });
+    downloadCsv(csvContent, filename);
   };
 
   return (
@@ -285,38 +311,57 @@ export default function BookingsTable({
               onClick={exportCSV}
               disabled={filtered.length === 0}
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 shadow-sm hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
+              title="Download currently filtered bookings as CSV (Excel compatible)"
             >
               <Download className="h-4 w-4 text-emerald-600" />
-              Export CSV ({filtered.length})
+              <span>Export Filtered ({filtered.length})</span>
             </button>
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-saffron-100 shadow-xs">
-          <div className="relative flex-1 min-w-[260px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search by Booking ID, Devotee name, phone, city, or gotra..."
-              className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => { setSearch(""); setPage(1); }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink cursor-pointer"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+        {/* Advanced Filter Bar */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-saffron-100 shadow-xs space-y-3">
+          {/* Row 1: Search, Puja Dropdown & Status Filter */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            {/* Search Input */}
+            <div className="md:col-span-6 relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search by Booking ID, devotee, phone, city, address, gotra..."
+                className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => { setSearch(""); setPage(1); }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Puja Dropdown */}
+            <div className="md:col-span-3">
+              <select
+                value={selectedPuja}
+                onChange={(e) => { setSelectedPuja(e.target.value); setPage(1); }}
+                className="w-full py-2 px-3 text-xs rounded-xl border border-saffron-100 bg-cream/40 text-ink font-medium focus:border-saffron-400 focus:bg-white focus:outline-none cursor-pointer"
+              >
+                <option value="all">🪔 All Pujas ({availablePoojaOptions.length})</option>
+                {availablePoojaOptions.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Status Segmented Buttons */}
-            <div className="flex rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs font-semibold">
+            <div className="md:col-span-3 flex rounded-xl bg-cream/70 p-1 border border-saffron-100 text-xs font-semibold justify-end">
               <button
                 type="button"
                 onClick={() => { setStatusFilter("all"); setPage(1); }}
@@ -330,50 +375,127 @@ export default function BookingsTable({
               </button>
               <button
                 type="button"
-                onClick={() => { setStatusFilter("active"); setPage(1); }}
+                onClick={() => { setStatusFilter("confirmed"); setPage(1); }}
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                  statusFilter === "active"
+                  statusFilter === "confirmed"
                     ? "bg-emerald-600 text-white shadow-xs font-bold"
                     : "text-emerald-700 hover:text-emerald-800"
                 }`}
               >
-                Active ({activeCount})
+                Confirmed ({confirmedCount})
               </button>
               <button
                 type="button"
-                onClick={() => { setStatusFilter("inactive"); setPage(1); }}
+                onClick={() => { setStatusFilter("rescheduled"); setPage(1); }}
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                  statusFilter === "inactive"
-                    ? "bg-slate-700 text-white shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-800"
+                  statusFilter === "rescheduled"
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "text-blue-700 hover:text-blue-800"
                 }`}
               >
-                Inactive ({inactiveCount})
+                Rescheduled ({rescheduledCount})
               </button>
             </div>
+          </div>
 
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
-              onClick={(e) => {
-                try {
-                  (e.currentTarget as HTMLInputElement).showPicker?.();
-                } catch {}
-              }}
-              title="Filter by date (select from calendar)"
-              className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
-            />
+          {/* Row 2: Date Filters & Presets */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-saffron-100/70 text-xs">
+            {/* Left: Date Type & Inputs & Presets */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Date Type Selector */}
+              <div className="flex items-center rounded-xl bg-cream/70 p-0.5 border border-saffron-100 text-[11px] font-semibold text-ink-soft">
+                <button
+                  type="button"
+                  onClick={() => { setDateType("createdAt"); setPage(1); }}
+                  className={`px-2 py-1 rounded-lg transition-all ${
+                    dateType === "createdAt"
+                      ? "bg-white text-saffron-900 shadow-2xs font-bold"
+                      : "hover:text-ink cursor-pointer"
+                  }`}
+                >
+                  📅 Creation Date
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setDateType("pujaDate"); setPage(1); }}
+                  className={`px-2 py-1 rounded-lg transition-all ${
+                    dateType === "pujaDate"
+                      ? "bg-white text-saffron-900 shadow-2xs font-bold"
+                      : "hover:text-ink cursor-pointer"
+                  }`}
+                >
+                  🛕 Scheduled Puja Date
+                </button>
+              </div>
 
-            {(search || dateFilter || statusFilter !== "all") && (
-              <button
-                type="button"
-                onClick={() => { setSearch(""); setDateFilter(""); setStatusFilter("all"); setPage(1); }}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200 cursor-pointer"
-              >
-                Reset Filters ✕
-              </button>
-            )}
+              {/* Start Date & End Date Inputs */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => { setStartDate(e.target.value); setQuickPreset(""); setPage(1); }}
+                  className="rounded-xl border border-saffron-100 bg-cream/40 px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:bg-white cursor-pointer font-medium"
+                />
+                <span className="text-ink-soft/60 font-bold text-xs">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => { setEndDate(e.target.value); setQuickPreset(""); setPage(1); }}
+                  className="rounded-xl border border-saffron-100 bg-cream/40 px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:bg-white cursor-pointer font-medium"
+                />
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="flex flex-wrap items-center gap-1">
+                {(["today", "yesterday", "last7", "last30"] as const).map((k) => {
+                  const labels: Record<string, string> = {
+                    today: "Today",
+                    yesterday: "Yesterday",
+                    last7: "Last 7D",
+                    last30: "Last 30D",
+                  };
+                  const isSelected = quickPreset === k;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => {
+                        const range = getQuickDateRange(k);
+                        setStartDate(range.startDate);
+                        setEndDate(range.endDate);
+                        setQuickPreset(k);
+                        setPage(1);
+                      }}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer ${
+                        isSelected
+                          ? "bg-saffron-500 text-white border-saffron-600 shadow-2xs"
+                          : "bg-white text-ink-soft hover:bg-cream border-saffron-100"
+                      }`}
+                    >
+                      {labels[k]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right: Record count & Clear button */}
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-xs font-bold text-saffron-900 bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200">
+                {filtered.length} of {allBookings.length} bookings matching
+              </span>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50/70 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear Filters
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -401,13 +523,13 @@ export default function BookingsTable({
                   <td colSpan={9} className="p-8 text-center text-ink-soft">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <p>No confirmed bookings found matching current criteria.</p>
-                      {(search || dateFilter) && (
+                      {hasActiveFilters && (
                         <button
                           type="button"
-                          onClick={() => { setSearch(""); setDateFilter(""); setPage(1); }}
-                          className="text-xs font-bold text-saffron-700 hover:underline bg-saffron-50 px-3 py-1.5 rounded-lg border border-saffron-200"
+                          onClick={handleClearFilters}
+                          className="text-xs font-bold text-saffron-700 hover:underline bg-saffron-50 px-3 py-1.5 rounded-lg border border-saffron-200 cursor-pointer"
                         >
-                          Reset Filters ✕
+                          Clear Filters ✕
                         </button>
                       )}
                     </div>

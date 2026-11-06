@@ -79,7 +79,10 @@ export default function BookingModal() {
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <h3 className="font-display text-sm sm:text-base font-bold text-ink leading-tight line-clamp-1 sm:line-clamp-2">
+                <h3
+                  title={modalTitle}
+                  className="font-display text-sm sm:text-base font-bold text-ink leading-tight line-clamp-2 break-words"
+                >
                   {modalTitle}
                 </h3>
                 <span className="hidden md:inline-flex items-center gap-1 rounded-full bg-saffron-50 border border-saffron-200 px-2 py-0.5 text-[10px] font-bold text-saffron-800 shrink-0">

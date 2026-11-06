@@ -66,9 +66,14 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: computed.couponProblem }, { status: 400 });
         }
         const expectedPaise = Math.round(computed.amount * 100);
-        if (Math.abs(amountInPaise - expectedPaise) > 100) {
+        if (amountInPaise !== expectedPaise) {
           return NextResponse.json(
-            { error: "Amount mismatch detected with database pricing. Please retry." },
+            {
+              error: `Amount mismatch detected: requested ${amountInPaise} paise (₹${(amountInPaise / 100).toFixed(2)}) but backend expected ${expectedPaise} paise (₹${computed.amount.toFixed(2)}).`,
+              code: "PRICE_MISMATCH",
+              requestedPaise: amountInPaise,
+              expectedPaise,
+            },
             { status: 400 }
           );
         }

@@ -222,6 +222,34 @@ export async function POST(req: NextRequest) {
   let devoteePassword = body.generatedPassword || body.password;
   let passwordHash: string | undefined;
 
+  // Phase 10: Authoritative server-side price calculation for consistency audit
+  let backendCalculatedAmount: number | null = null;
+  if (booking.poojaSlug) {
+    try {
+      const { getResolvedCatalog, getAllAddons } = await import("@/lib/server-store");
+      const { DEMO_POOJA, isDemoSlug } = await import("@/lib/data");
+      const { computeOrderAmount } = await import("@/lib/razorpay");
+      const catalog = await getResolvedCatalog();
+      const normSlug = booking.poojaSlug.toLowerCase().replace(/_/g, "-");
+      const pooja = isDemoSlug(normSlug) ? DEMO_POOJA : catalog.poojas.find((p) => p.slug === normSlug);
+      if (pooja) {
+        const availableAddons = await getAllAddons();
+        const computed = computeOrderAmount({
+          pooja,
+          packageTier: booking.packageTier,
+          addons: Array.isArray(booking.addons) ? booking.addons : undefined,
+          couponCode: booking.couponCode,
+          couponMap: catalog.coupons,
+          phone: normalizedPhone,
+          availableAddons,
+        });
+        backendCalculatedAmount = computed.amount;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   if (
     targetStatus === "pending" ||
     targetStatus === "checkout_incomplete" ||
@@ -230,9 +258,26 @@ export async function POST(req: NextRequest) {
   ) {
     // Booking initiated / draft preserved — pending payment
     booking.status = targetStatus;
+    booking.paymentAudit = {
+      checkoutAmount: booking.amount,
+      calculatedAmount: backendCalculatedAmount ?? booking.amount,
+      recordedAmount: booking.amount,
+      currency: booking.currency || "INR",
+      consistencyStatus: "PENDING VERIFICATION",
+      auditedAt: new Date().toISOString(),
+    };
   } else if (targetStatus === "failed" || targetStatus === "payment_failed") {
     // Booking failed — payment was rejected, expired, or cancelled
     booking.status = targetStatus;
+    booking.paymentAudit = {
+      checkoutAmount: booking.amount,
+      calculatedAmount: backendCalculatedAmount ?? booking.amount,
+      recordedAmount: booking.amount,
+      currency: booking.currency || "INR",
+      consistencyStatus: booking.paymentAudit?.consistencyStatus || "MISMATCH",
+      mismatchReason: booking.failureReason,
+      auditedAt: new Date().toISOString(),
+    };
   } else {
     const isUpiQrPayment =
       booking.paymentMethod === "upi_qr" ||
@@ -256,6 +301,20 @@ export async function POST(req: NextRequest) {
       booking.upiId = upiId;
       booking.paidAt = booking.paidAt || new Date().toISOString();
       booking.status = "confirmed";
+
+      const checkoutPaise = Math.round(booking.amount * 100);
+      const expectedPaise = backendCalculatedAmount !== null ? Math.round(backendCalculatedAmount * 100) : checkoutPaise;
+      const isConsistent = backendCalculatedAmount === null || checkoutPaise === expectedPaise;
+
+      booking.paymentAudit = {
+        checkoutAmount: booking.amount,
+        calculatedAmount: backendCalculatedAmount ?? booking.amount,
+        recordedAmount: booking.amount,
+        currency: booking.currency || "INR",
+        consistencyStatus: isConsistent ? "MATCHED" : "MISMATCH",
+        mismatchReason: isConsistent ? undefined : `Amount mismatch: Checkout submitted ₹${booking.amount}, but backend calculated ₹${backendCalculatedAmount}`,
+        auditedAt: new Date().toISOString(),
+      };
     } else if (
       razorpayConfigured() &&
       (booking.paymentMethod === "razorpay" ||
@@ -292,19 +351,60 @@ export async function POST(req: NextRequest) {
           { status: 402 }
         );
       }
-      // Belt-and-braces: the paid order's amount must match the booking amount.
+      // Belt-and-braces: the paid order's amount must match the booking amount and authoritative backend calculation.
+      let order: import("@/lib/razorpay").RazorpayOrder;
       try {
-        const order = await getRazorpayOrder(orderId);
-        if (order.amount !== Math.round(booking.amount * 100)) {
-          return NextResponse.json(
-            { error: "Payment amount does not match this booking." },
-            { status: 402 }
-          );
-        }
+        order = await getRazorpayOrder(orderId);
       } catch {
         return NextResponse.json(
           { error: "We couldn't verify your payment. Please contact support." },
           { status: 502 }
+        );
+      }
+
+      const checkoutPaise = Math.round(booking.amount * 100);
+      const orderPaise = order.amount;
+      const expectedPaise = backendCalculatedAmount !== null ? Math.round(backendCalculatedAmount * 100) : orderPaise;
+
+      const isConsistent =
+        checkoutPaise === orderPaise &&
+        (backendCalculatedAmount === null || checkoutPaise === expectedPaise);
+
+      if (!isConsistent) {
+        const mismatchReason = `Payment amount mismatch: Checkout ₹${booking.amount} (${checkoutPaise}p), Backend expected ₹${backendCalculatedAmount ?? "N/A"} (${expectedPaise}p), Gateway Order ₹${order.amount / 100} (${orderPaise}p).`;
+        booking.status = "failed";
+        booking.failureReason = mismatchReason;
+        booking.paymentAudit = {
+          checkoutAmount: booking.amount,
+          calculatedAmount: backendCalculatedAmount ?? undefined,
+          razorpayOrderAmount: order.amount / 100,
+          capturedAmount: order.amount_paid ? order.amount_paid / 100 : undefined,
+          recordedAmount: booking.amount,
+          currency: order.currency || "INR",
+          consistencyStatus: "MISMATCH",
+          mismatchReason,
+          auditedAt: new Date().toISOString(),
+          razorpayOrderId: orderId,
+          razorpayPaymentId: paymentId,
+        };
+
+        await upsertUserBooking({
+          phone: normalizedPhone,
+          name: body.name.trim(),
+          gotra: typeof body.gotra === "string" ? body.gotra : "",
+          city: typeof body.city === "string" ? body.city : "",
+          email: typeof body.email === "string" ? body.email : "",
+          ritualType: booking.ritualType,
+          booking,
+        });
+
+        return NextResponse.json(
+          {
+            error: "Payment verification failed: Amount mismatch with authoritative pricing. Booking cannot be confirmed.",
+            code: "AMOUNT_MISMATCH",
+            mismatchReason,
+          },
+          { status: 402 }
         );
       }
 
@@ -316,11 +416,37 @@ export async function POST(req: NextRequest) {
       booking.razorpaySignature = signature;
       booking.paidAt = new Date().toISOString();
       booking.status = "confirmed";
+      booking.paymentAudit = {
+        checkoutAmount: booking.amount,
+        calculatedAmount: backendCalculatedAmount ?? booking.amount,
+        razorpayOrderAmount: order.amount / 100,
+        capturedAmount: order.amount_paid ? order.amount_paid / 100 : (order.amount / 100),
+        recordedAmount: booking.amount,
+        currency: order.currency || "INR",
+        consistencyStatus: "MATCHED",
+        auditedAt: new Date().toISOString(),
+        razorpayOrderId: orderId,
+        razorpayPaymentId: paymentId,
+      };
     } else {
       // Demo / simulated checkout fallback
       booking.paymentMethod = booking.paymentMethod || "simulated";
       booking.paidAt = booking.paidAt || new Date().toISOString();
       booking.status = "confirmed";
+
+      const checkoutPaise = Math.round(booking.amount * 100);
+      const expectedPaise = backendCalculatedAmount !== null ? Math.round(backendCalculatedAmount * 100) : checkoutPaise;
+      const isConsistent = backendCalculatedAmount === null || checkoutPaise === expectedPaise;
+
+      booking.paymentAudit = {
+        checkoutAmount: booking.amount,
+        calculatedAmount: backendCalculatedAmount ?? booking.amount,
+        recordedAmount: booking.amount,
+        currency: booking.currency || "INR",
+        consistencyStatus: isConsistent ? "MATCHED" : "MISMATCH",
+        mismatchReason: isConsistent ? undefined : `Amount mismatch: Checkout submitted ₹${booking.amount}, but backend calculated ₹${backendCalculatedAmount}`,
+        auditedAt: new Date().toISOString(),
+      };
     }
 
     // Create / ensure user profile has a random password if none set
