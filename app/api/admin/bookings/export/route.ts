@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllDevotees, isValidSessionToken } from "@/lib/server-store";
-import { generateBookingsExportCsv } from "@/lib/booking-export";
-import type { BookingRecord, BookingStatus, UserProfile } from "@/lib/storage";
+import {
+  filterBookingRecords,
+  generateBookingsExportCsv,
+  getExportFilename,
+} from "@/lib/booking-export";
+import type { BookingRecord, UserProfile } from "@/lib/storage";
 
 function bearerToken(req: NextRequest): string | null {
   const header = req.headers.get("authorization");
@@ -23,64 +27,61 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const q = searchParams.get("search")?.toLowerCase().trim() || "";
-  const dateFilter = searchParams.get("date")?.trim() || "";
+  const dateLegacy = searchParams.get("date")?.trim() || "";
+  const startDate = searchParams.get("startDate")?.trim() || (dateLegacy.length === 10 ? dateLegacy : "");
+  const endDate = searchParams.get("endDate")?.trim() || (dateLegacy.length === 10 ? dateLegacy : "");
   const statusParam = searchParams.get("status")?.toLowerCase().trim();
+  const pujaSlug = searchParams.get("pujaSlug")?.trim() || searchParams.get("puja")?.trim() || "";
+  const dateType = (searchParams.get("dateType")?.trim() === "pujaDate" ? "pujaDate" : "createdAt") as "createdAt" | "pujaDate";
+  const section = (searchParams.get("section")?.trim() === "orders" ? "orders" : "bookings") as "bookings" | "orders";
 
   // Retrieve all devotee profiles
   const users = await getAllDevotees();
 
-  // Flatten matching bookings
-  const records: { booking: BookingRecord; user: UserProfile }[] = [];
+  // Flatten all booking records across users
+  const allRecords: { booking: BookingRecord; user: UserProfile }[] = [];
+  const seenBookingIds = new Set<string>();
   for (const user of users) {
     for (const booking of user.bookings) {
-      const isConfirmedOrRescheduled =
-        booking.status === "confirmed" || booking.status === "rescheduled";
-
-      // If status param provided, match against it. Default to confirmed/rescheduled.
-      const matchesStatus = statusParam
-        ? statusParam === "all" || booking.status === statusParam
-        : isConfirmedOrRescheduled;
-
-      if (!matchesStatus) continue;
-
-      const matchesSearch =
-        !q ||
-        booking.bookingId.toLowerCase().includes(q) ||
-        booking.poojaTitle.toLowerCase().includes(q) ||
-        user.name.toLowerCase().includes(q) ||
-        user.phone.includes(q) ||
-        (user.city && user.city.toLowerCase().includes(q)) ||
-        (user.address && user.address.toLowerCase().includes(q)) ||
-        (booking.address && booking.address.toLowerCase().includes(q)) ||
-        (user.gotra && user.gotra.toLowerCase().includes(q)) ||
-        (booking.gotra && booking.gotra.toLowerCase().includes(q)) ||
-        (booking.primaryDevoteeName && booking.primaryDevoteeName.toLowerCase().includes(q));
-
-      const matchesDate =
-        !dateFilter ||
-        booking.createdAt.startsWith(dateFilter) ||
-        booking.date.toLowerCase().includes(dateFilter.toLowerCase());
-
-      if (matchesSearch && matchesDate) {
-        records.push({ booking, user });
+      if (booking.bookingId) {
+        if (seenBookingIds.has(booking.bookingId)) continue;
+        seenBookingIds.add(booking.bookingId);
       }
+      allRecords.push({ booking, user });
     }
   }
 
+  // Filter with server-authoritative filter parameters
+  const filteredRecords = filterBookingRecords(allRecords, {
+    search: q,
+    pujaSlug,
+    status: statusParam,
+    startDate,
+    endDate,
+    dateType,
+    section,
+  });
+
   // Sort newest first
-  records.sort(
+  filteredRecords.sort(
     (a, b) =>
       new Date(b.booking.createdAt).getTime() - new Date(a.booking.createdAt).getTime()
   );
 
-  const csvContent = generateBookingsExportCsv(records);
-  const dateSuffix = new Date().toISOString().slice(0, 10);
+  const csvContent = generateBookingsExportCsv(filteredRecords, {
+    includeStatusColumns: section === "orders",
+  });
+  const filename = getExportFilename(section, {
+    status: statusParam,
+    startDate,
+    endDate,
+  });
 
   return new NextResponse(csvContent, {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="bookings_export_${dateSuffix}.csv"`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store, no-cache, must-revalidate",
     },
   });

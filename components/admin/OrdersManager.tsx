@@ -29,7 +29,14 @@ import {
 } from "lucide-react";
 import type { BookingRecord, BookingStatus, CustomerMediaRecord, UserProfile } from "@/lib/storage";
 import { formatINR } from "@/lib/format";
-import { downloadCsv, generateBookingsExportCsv } from "@/lib/booking-export";
+import {
+  downloadCsv,
+  filterBookingRecords,
+  generateBookingsExportCsv,
+  getBookingDevoteeDisplay,
+  getExportFilename,
+  getQuickDateRange,
+} from "@/lib/booking-export";
 import { submitRefundRequestRemote } from "@/lib/api";
 
 function getYouTubeEmbedUrl(url: string): string | null {
@@ -46,12 +53,13 @@ function getYouTubeEmbedUrl(url: string): string | null {
 
 type OrderStatusFilter =
   | "all"
-  | "confirmed"
+  | "successful"
   | "pending"
   | "failed"
-  | "rescheduled"
+  | "cancelled"
   | "refunded"
-  | "cancelled";
+  | "confirmed"
+  | "rescheduled";
 
 interface FlatOrder {
   orderId: string;
@@ -74,7 +82,11 @@ export default function OrdersManager({
 }) {
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<OrderStatusFilter>("all");
-  const [dateFilter, setDateFilter] = useState("");
+  const [selectedPuja, setSelectedPuja] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [dateType, setDateType] = useState<"createdAt" | "pujaDate">("createdAt");
+  const [quickPreset, setQuickPreset] = useState<string>("");
   const [selectedOrder, setSelectedOrder] = useState<FlatOrder | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -375,29 +387,97 @@ export default function OrdersManager({
     );
   }, [users]);
 
+  // Unique list of pujas appearing in orders for filtering
+  const availablePoojaOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const { booking } of allOrders) {
+      if (booking.poojaSlug) {
+        map.set(booking.poojaSlug, booking.poojaTitle || booking.poojaSlug);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([slug, title]) => ({ slug, title }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [allOrders]);
+
+  const successfulCount = useMemo(
+    () =>
+      allOrders.filter(
+        ({ booking: b }) =>
+          b.status === "confirmed" ||
+          b.status === "rescheduled" ||
+          Boolean(b.paidAt) ||
+          Boolean(b.razorpayPaymentId)
+      ).length,
+    [allOrders]
+  );
+
+  const pendingCount = useMemo(
+    () =>
+      allOrders.filter(
+        ({ booking: b }) => b.status === "pending"
+      ).length,
+    [allOrders]
+  );
+
+  const failedCount = useMemo(
+    () =>
+      allOrders.filter(
+        ({ booking: b }) => b.status === "failed"
+      ).length,
+    [allOrders]
+  );
+
+  const cancelledCount = useMemo(
+    () => allOrders.filter(({ booking: b }) => b.status === "cancelled").length,
+    [allOrders]
+  );
+
+  const refundedCount = useMemo(
+    () => allOrders.filter(({ booking: b }) => b.status === "refunded").length,
+    [allOrders]
+  );
+
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return allOrders.filter(({ orderId, booking, user }) => {
-      const matchesSearch =
-        !q ||
-        orderId.toLowerCase().includes(q) ||
-        booking.bookingId.toLowerCase().includes(q) ||
-        booking.poojaTitle.toLowerCase().includes(q) ||
-        user.name.toLowerCase().includes(q) ||
-        user.phone.includes(q) ||
-        user.city.toLowerCase().includes(q);
-
-      const matchesStatus =
-        statusTab === "all" || booking.status === statusTab;
-
-      const matchesDate =
-        !dateFilter ||
-        booking.createdAt.startsWith(dateFilter) ||
-        booking.date.toLowerCase().includes(dateFilter.toLowerCase());
-
-      return matchesSearch && matchesStatus && matchesDate;
+    return filterBookingRecords(allOrders, {
+      search,
+      pujaSlug: selectedPuja,
+      status: statusTab,
+      startDate,
+      endDate,
+      dateType,
+      section: "orders",
     });
-  }, [allOrders, search, statusTab, dateFilter]);
+  }, [allOrders, search, selectedPuja, statusTab, startDate, endDate, dateType]);
+
+  const hasActiveFilters = Boolean(
+    search ||
+      (selectedPuja && selectedPuja !== "all") ||
+      (statusTab && statusTab !== "all") ||
+      startDate ||
+      endDate
+  );
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setSelectedPuja("all");
+    setStatusTab("all");
+    setStartDate("");
+    setEndDate("");
+    setQuickPreset("");
+    setDateType("createdAt");
+    setPage(1);
+  };
+
+  const exportCSV = () => {
+    const csvContent = generateBookingsExportCsv(filtered, { includeStatusColumns: true });
+    const filename = getExportFilename("orders", {
+      status: statusTab,
+      startDate,
+      endDate,
+    });
+    downloadCsv(csvContent, filename);
+  };
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
   const paginated = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -459,12 +539,6 @@ export default function OrdersManager({
     }
   };
 
-  const exportCSV = () => {
-    const records = filtered.map(({ booking, user }) => ({ booking, user }));
-    const csvContent = generateBookingsExportCsv(records);
-    downloadCsv(csvContent, `all_orders_${new Date().toISOString().slice(0, 10)}.csv`);
-  };
-
   return (
     <div className="space-y-5">
       {/* Sticky Action / Header Bar (Persists on Scroll with Zero Content Overlap) */}
@@ -507,9 +581,10 @@ export default function OrdersManager({
               onClick={exportCSV}
               disabled={filtered.length === 0}
               className="inline-flex items-center gap-2 rounded-xl border border-saffron-200 bg-saffron-50 px-4 py-2 text-xs font-bold text-saffron-800 shadow-sm hover:bg-saffron-100 disabled:opacity-50 cursor-pointer"
+              title="Download currently filtered orders as CSV with payment & booking details"
             >
               <Download className="h-4 w-4 text-saffron-600" />
-              Export Orders ({filtered.length})
+              Export Filtered ({filtered.length})
             </button>
           </div>
         </div>
@@ -520,34 +595,29 @@ export default function OrdersManager({
             [
               { id: "all", label: "All Orders", count: allOrders.length },
               {
-                id: "confirmed",
-                label: "🟢 Confirmed / Paid",
-                count: allOrders.filter((o) => o.booking.status === "confirmed").length,
+                id: "successful",
+                label: "🟢 Successful / Paid",
+                count: successfulCount,
               },
               {
                 id: "pending",
                 label: "⏳ Pending Payment",
-                count: allOrders.filter((o) => o.booking.status === "pending").length,
+                count: pendingCount,
               },
               {
                 id: "failed",
                 label: "❌ Payment Failed",
-                count: allOrders.filter((o) => o.booking.status === "failed").length,
-              },
-              {
-                id: "rescheduled",
-                label: "🕒 Rescheduled",
-                count: allOrders.filter((o) => o.booking.status === "rescheduled").length,
-              },
-              {
-                id: "refunded",
-                label: "↩️ Refunded",
-                count: allOrders.filter((o) => o.booking.status === "refunded").length,
+                count: failedCount,
               },
               {
                 id: "cancelled",
                 label: "🚫 Cancelled",
-                count: allOrders.filter((o) => o.booking.status === "cancelled").length,
+                count: cancelledCount,
+              },
+              {
+                id: "refunded",
+                label: "↩️ Refunded",
+                count: refundedCount,
               },
             ] as const
           ).map((tab) => {
@@ -572,65 +642,167 @@ export default function OrdersManager({
           })}
         </div>
 
-        {/* Search & Date Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-saffron-100 shadow-xs">
-          <div className="relative flex-1 min-w-[260px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search by Order ID, Booking ID, devotee, or pooja..."
-              className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
+        {/* Advanced Filter Bar */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-saffron-100 shadow-xs space-y-3">
+          {/* Row 1: Search & Puja Dropdown */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            {/* Search Input */}
+            <div className="md:col-span-8 relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-soft/40" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink cursor-pointer"
+                placeholder="Search by Order ID, Booking ID, devotee, phone, city, or pooja..."
+                className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-saffron-100 bg-cream/30 text-ink focus:border-saffron-400 focus:bg-white focus:outline-none"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft/40 hover:text-ink cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Puja Dropdown */}
+            <div className="md:col-span-4">
+              <select
+                value={selectedPuja}
+                onChange={(e) => {
+                  setSelectedPuja(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full py-2 px-3 text-xs rounded-xl border border-saffron-100 bg-cream/40 text-ink font-medium focus:border-saffron-400 focus:bg-white focus:outline-none cursor-pointer"
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
+                <option value="all">🪔 All Pujas ({availablePoojaOptions.length})</option>
+                {availablePoojaOptions.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => {
-                setDateFilter(e.target.value);
-                setPage(1);
-              }}
-              onClick={(e) => {
-                try {
-                  (e.currentTarget as HTMLInputElement).showPicker?.();
-                } catch {}
-              }}
-              title="Filter by date (select from calendar)"
-              className="rounded-xl border border-saffron-100 bg-cream/40 px-3 py-1.5 text-xs text-ink focus:outline-none font-medium cursor-pointer"
-            />
+          {/* Row 2: Date Type, Start/End Dates, Quick Presets & Clear Filters */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-saffron-100/70 text-xs">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Date Type Selector */}
+              <div className="flex items-center rounded-xl bg-cream/70 p-0.5 border border-saffron-100 text-[11px] font-semibold text-ink-soft">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDateType("createdAt");
+                    setPage(1);
+                  }}
+                  className={`px-2 py-1 rounded-lg transition-all ${
+                    dateType === "createdAt"
+                      ? "bg-white text-saffron-900 shadow-2xs font-bold"
+                      : "hover:text-ink cursor-pointer"
+                  }`}
+                >
+                  📅 Order Date
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDateType("pujaDate");
+                    setPage(1);
+                  }}
+                  className={`px-2 py-1 rounded-lg transition-all ${
+                    dateType === "pujaDate"
+                      ? "bg-white text-saffron-900 shadow-2xs font-bold"
+                      : "hover:text-ink cursor-pointer"
+                  }`}
+                >
+                  🛕 Scheduled Puja Date
+                </button>
+              </div>
 
-            {(search || dateFilter || statusTab !== "all") && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setDateFilter("");
-                  setStatusTab("all");
-                  setPage(1);
-                }}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200 cursor-pointer"
-              >
-                Reset Filters ✕
-              </button>
-            )}
+              {/* Start Date & End Date Inputs */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setQuickPreset("");
+                    setPage(1);
+                  }}
+                  className="rounded-xl border border-saffron-100 bg-cream/40 px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:bg-white cursor-pointer font-medium"
+                />
+                <span className="text-ink-soft/60 font-bold text-xs">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setQuickPreset("");
+                    setPage(1);
+                  }}
+                  className="rounded-xl border border-saffron-100 bg-cream/40 px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:bg-white cursor-pointer font-medium"
+                />
+              </div>
+
+              {/* Quick Presets */}
+              <div className="hidden sm:flex items-center gap-1 text-[11px]">
+                {(
+                  [
+                    { key: "today", label: "Today" },
+                    { key: "yesterday", label: "Yesterday" },
+                    { key: "last7", label: "Last 7D" },
+                    { key: "last30", label: "Last 30D" },
+                  ] as const
+                ).map((preset) => {
+                  const isActive = quickPreset === preset.key;
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => {
+                        const range = getQuickDateRange(preset.key);
+                        setStartDate(range.startDate);
+                        setEndDate(range.endDate);
+                        setQuickPreset(preset.key);
+                        setPage(1);
+                      }}
+                      className={`px-2 py-1 rounded-lg border transition-all cursor-pointer font-medium ${
+                        isActive
+                          ? "bg-saffron-100 text-saffron-900 border-saffron-300 font-bold shadow-2xs"
+                          : "bg-white text-ink-soft hover:bg-saffron-50 border-saffron-100"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Matching count & Clear Filters */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-ink-soft">
+                {filtered.length} of {allOrders.length} orders matching
+              </span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-saffron-700 hover:underline bg-saffron-50 px-2.5 py-1 rounded-lg border border-saffron-200 cursor-pointer"
+                >
+                  Clear Filters ✕
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -656,18 +828,13 @@ export default function OrdersManager({
                   <td colSpan={7} className="p-8 text-center text-ink-soft">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <p>No orders found matching current criteria.</p>
-                      {(search || dateFilter || statusTab !== "all") && (
+                      {hasActiveFilters && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setSearch("");
-                            setDateFilter("");
-                            setStatusTab("all");
-                            setPage(1);
-                          }}
-                          className="text-xs font-bold text-saffron-700 hover:underline bg-saffron-50 px-3 py-1.5 rounded-lg border border-saffron-200"
+                          onClick={handleClearFilters}
+                          className="text-xs font-bold text-saffron-700 hover:underline bg-saffron-50 px-3 py-1.5 rounded-lg border border-saffron-200 cursor-pointer"
                         >
-                          Reset Filters ✕
+                          Clear Filters ✕
                         </button>
                       )}
                     </div>
