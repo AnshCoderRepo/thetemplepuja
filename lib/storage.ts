@@ -111,6 +111,49 @@ export interface BookingRecord {
   city?: string;
   /** Quantity of puja services booked (default 1) */
   quantity?: number;
+  /** Phase 10 Payment & Amount Consistency Audit Snapshot */
+  paymentAudit?: PaymentAuditRecord;
+}
+
+export type AmountConsistencyStatus =
+  | "MATCHED"
+  | "MISMATCH"
+  | "PENDING VERIFICATION"
+  | "NOT AVAILABLE";
+
+export interface PaymentAuditRecord {
+  checkoutAmount?: number;
+  calculatedAmount?: number;
+  razorpayOrderAmount?: number;
+  capturedAmount?: number;
+  recordedAmount: number;
+  currency: string;
+  consistencyStatus: AmountConsistencyStatus;
+  mismatchReason?: string;
+  auditedAt: string; // ISO
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+}
+
+/**
+ * Determine authoritative amount consistency status for display and filtering.
+ * Never falsely flags legacy historical records where checkout snapshots were unavailable.
+ */
+export function resolveBookingConsistencyStatus(
+  booking: BookingRecord
+): AmountConsistencyStatus {
+  if (booking.paymentAudit?.consistencyStatus) {
+    return booking.paymentAudit.consistencyStatus;
+  }
+  if (
+    booking.status === "pending" ||
+    booking.status === "pending_payment" ||
+    booking.status === "checkout_incomplete" ||
+    booking.status === "payment_processing"
+  ) {
+    return "PENDING VERIFICATION";
+  }
+  return "NOT AVAILABLE";
 }
 
 export interface DevoteeEntitlement {

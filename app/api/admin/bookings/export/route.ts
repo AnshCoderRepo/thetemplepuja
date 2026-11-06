@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
   const pujaSlug = searchParams.get("pujaSlug")?.trim() || searchParams.get("puja")?.trim() || "";
   const dateType = (searchParams.get("dateType")?.trim() === "pujaDate" ? "pujaDate" : "createdAt") as "createdAt" | "pujaDate";
   const section = (searchParams.get("section")?.trim() === "orders" ? "orders" : "bookings") as "bookings" | "orders";
+  const consistencyStatus = (searchParams.get("consistency")?.trim() || searchParams.get("consistencyStatus")?.trim() || undefined) as any;
 
   // Retrieve all devotee profiles
   const users = await getAllDevotees();
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
     endDate,
     dateType,
     section,
+    consistencyStatus,
   });
 
   // Sort newest first

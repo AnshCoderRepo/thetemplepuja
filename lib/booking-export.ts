@@ -3,7 +3,12 @@
  * Provides sanitized, audit-compliant CSV generation and devotee naming helpers.
  */
 
-import type { BookingRecord, UserProfile } from "./storage";
+import {
+  resolveBookingConsistencyStatus,
+  type AmountConsistencyStatus,
+  type BookingRecord,
+  type UserProfile,
+} from "./storage";
 
 /**
  * Legacy 14 export columns preserved for backward compatibility.
@@ -40,7 +45,7 @@ export const BOOKING_EXPORT_HEADERS = [
 ] as const;
 
 /**
- * Order and payment export columns: 21 booking columns + 5 payment and order tracking columns.
+ * Order and payment export columns: 21 booking columns + 6 payment, order, and consistency audit columns.
  */
 export const ORDER_EXPORT_HEADERS = [
   ...BOOKING_EXPORT_HEADERS,
@@ -49,6 +54,7 @@ export const ORDER_EXPORT_HEADERS = [
   "Payment Method",
   "Razorpay Payment ID",
   "Order ID",
+  "Amount Consistency Status",
 ] as const;
 
 /**
@@ -390,8 +396,9 @@ export function generateBookingsExportCsv(
 
         const paymentId = booking.razorpayPaymentId || booking.upiTransactionId || "-";
         const orderId = booking.razorpayOrderId || `ORD-${booking.bookingId}`;
+        const consistencyStatus = resolveBookingConsistencyStatus(booking);
 
-        rowCells.push(paymentStatus, bookingStatus, paymentMethod, paymentId, orderId);
+        rowCells.push(paymentStatus, bookingStatus, paymentMethod, paymentId, orderId, consistencyStatus);
       }
     }
 
@@ -454,6 +461,7 @@ export interface BookingFilterCriteria {
   endDate?: string;   // YYYY-MM-DD
   dateType?: "createdAt" | "pujaDate";
   section?: "bookings" | "orders";
+  consistencyStatus?: AmountConsistencyStatus | "all";
 }
 
 /**
@@ -472,6 +480,7 @@ export function filterBookingRecords<T extends { booking: BookingRecord; user: U
     endDate,
     dateType = "createdAt",
     section,
+    consistencyStatus,
   } = criteria;
 
   const q = search ? search.toLowerCase().trim() : "";
@@ -479,6 +488,13 @@ export function filterBookingRecords<T extends { booking: BookingRecord; user: U
   const cleanStatus = status && status !== "all" ? status.toLowerCase().trim() : "";
 
   return records.filter(({ booking, user }) => {
+    // 0. Consistency Status Filter
+    if (consistencyStatus && consistencyStatus !== "all") {
+      const actualConsistency = resolveBookingConsistencyStatus(booking);
+      if (actualConsistency !== consistencyStatus) {
+        return false;
+      }
+    }
     // 1. Section Gate
     if (section === "bookings") {
       // Successful Bookings section strictly permits ONLY confirmed or rescheduled bookings
