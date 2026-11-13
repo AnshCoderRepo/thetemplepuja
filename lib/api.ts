@@ -466,8 +466,8 @@ export async function fetchAllUsers(
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       cache: "no-store",
     });
-    if (res.status === 401) return null;
-    if (!res.ok) throw new Error("users request failed");
+    if (res.status === 401 || res.status === 403) return null;
+    if (!res.ok) throw new Error(`users request failed with status ${res.status}`);
     const body = (await res.json()) as { users?: UserProfile[] };
     if (Array.isArray(body.users)) {
       for (const u of body.users) {
@@ -484,7 +484,11 @@ export async function fetchAllUsers(
       return body.users;
     }
     throw new Error("unexpected users payload");
-  } catch {
+  } catch (err) {
+    if (token) {
+      console.error("[fetchAllUsers] Failed to fetch users from server:", err);
+      return [];
+    }
     return getUsers();
   }
 }

@@ -35,6 +35,7 @@ export default function AdminPageClient({ initialSection }: AdminPageClientProps
   const [poojaCount, setPoojaCount] = useState(12);
   const [templeCount, setTempleCount] = useState(6);
   const [adminEmail, setAdminEmail] = useState("");
+  const [authNotice, setAuthNotice] = useState("");
   const [mounted, setMounted] = useState(false);
 
   // Sync tab with URL without full page reload
@@ -76,11 +77,46 @@ export default function AdminPageClient({ initialSection }: AdminPageClientProps
     }
   }, [initialSection]);
 
+  const handleAuthError = useCallback((notice?: string) => {
+    clearAdminToken();
+    setSession(false);
+    setToken(null);
+    setUsers([]);
+    if (notice) setAuthNotice(notice);
+  }, []);
+
+  const loadData = useCallback(async (tok: string | null) => {
+    if (!tok) {
+      handleAuthError("Please sign in to access the admin portal.");
+      return;
+    }
+
+    const remoteUsers = await fetchAllUsers(tok);
+    if (remoteUsers === null) {
+      // 401 Unauthorized: Expired or invalid session token.
+      // Force clean re-authentication rather than silently falling back to mock localStorage data.
+      handleAuthError("Your admin session has expired. Please sign in again to view live bookings.");
+      return;
+    }
+
+    setUsers(remoteUsers);
+    setAuthNotice("");
+
+    const catalog = await fetchCatalog();
+    if (catalog) {
+      if (catalog.poojas) setPoojaCount(catalog.poojas.length);
+      if (catalog.temples) setTempleCount(catalog.temples.length);
+    }
+
+    const cfg = await adminConfig();
+    setAdminEmail(cfg.email);
+  }, [handleAuthError]);
+
   useEffect(() => {
     if (session && token) {
       loadData(token);
     }
-  }, [session, token]);
+  }, [session, token, loadData]);
 
   // Live real-time sync in Admin: automatically refresh data when devotees book or catalog updates
   useEffect(() => {
@@ -96,28 +132,14 @@ export default function AdminPageClient({ initialSection }: AdminPageClientProps
       window.removeEventListener("catalog-updated", onLiveUpdate);
       window.removeEventListener("feedback-updated", onLiveUpdate);
     };
-  }, [session, token]);
-
-  const loadData = async (tok: string | null) => {
-    const remoteUsers = await fetchAllUsers(tok);
-    if (remoteUsers) setUsers(remoteUsers);
-    else setUsers(getUsers());
-
-    const catalog = await fetchCatalog();
-    if (catalog) {
-      if (catalog.poojas) setPoojaCount(catalog.poojas.length);
-      if (catalog.temples) setTempleCount(catalog.temples.length);
-    }
-
-    const cfg = await adminConfig();
-    setAdminEmail(cfg.email);
-  };
+  }, [session, token, loadData]);
 
   const handleLoginSuccess = (newToken: string) => {
+    setAuthNotice("");
     setAdminToken(newToken);
     setSession(true);
     setToken(newToken);
-    loadData(newToken);
+    void loadData(newToken);
   };
 
   const handleLogout = async () => {
@@ -125,13 +147,10 @@ export default function AdminPageClient({ initialSection }: AdminPageClientProps
     clearAdminToken();
     setSession(false);
     setToken(null);
+    setUsers([]);
+    setAuthNotice("");
   };
 
-  const handleAuthError = () => {
-    clearAdminToken();
-    setSession(false);
-    setToken(null);
-  };
 
   const handleRefund = async (userId: string, bookingId: string) => {
     if (!token) return;
@@ -179,7 +198,7 @@ export default function AdminPageClient({ initialSection }: AdminPageClientProps
   }
 
   if (!session) {
-    return <AdminLoginGate onLoginSuccess={handleLoginSuccess} />;
+    return <AdminLoginGate onLoginSuccess={handleLoginSuccess} notice={authNotice} />;
   }
 
   return (
