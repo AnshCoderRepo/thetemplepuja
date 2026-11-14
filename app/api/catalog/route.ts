@@ -110,12 +110,14 @@ export async function GET(req: NextRequest) {
           ? {
               ...catalog.siteContent.footer,
               phone:
-                catalog.siteContent.footer.phone?.includes("9988776655")
-                  ? "+91 96210 14155"
+                catalog.siteContent.footer.phone?.includes("9988776655") ||
+                catalog.siteContent.footer.phone?.includes("9621014155")
+                  ? (process.env.NEXT_PUBLIC_CONTACT_PHONE_DISPLAY || "")
                   : catalog.siteContent.footer.phone,
               whatsappNumber:
-                catalog.siteContent.footer.whatsappNumber?.includes("9988776655")
-                  ? "+91 96210 14155"
+                catalog.siteContent.footer.whatsappNumber?.includes("9988776655") ||
+                catalog.siteContent.footer.whatsappNumber?.includes("9621014155")
+                  ? (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "")
                   : catalog.siteContent.footer.whatsappNumber,
             }
           : undefined,

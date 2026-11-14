@@ -74,11 +74,21 @@ export default function Footer() {
     "Connecting devotees worldwide with authentic Vedic rituals, sacred temples, and verified certified pandits.";
 
   const rawHelpline = siteContent?.footer?.phone;
-  const isOldDummyNumber = rawHelpline && (rawHelpline.includes("9988776655") || rawHelpline.includes("998877"));
-  const helplinePhone = !isOldDummyNumber && rawHelpline ? rawHelpline : SITE_CONFIG.contact.phoneDisplay;
-  const helplinePhoneRaw = !isOldDummyNumber && rawHelpline
-    ? rawHelpline.replace(/\s+/g, "")
-    : SITE_CONFIG.contact.phoneRaw;
+  const isOldDummyNumber = rawHelpline && (rawHelpline.includes("9988776655") || rawHelpline.includes("998877") || rawHelpline.includes("9621014155"));
+  const configuredDisplay = SITE_CONFIG.contact.phoneDisplay;
+  const helplinePhone = !isOldDummyNumber && rawHelpline && !rawHelpline.includes("9621014155")
+    ? rawHelpline
+    : (configuredDisplay && !configuredDisplay.includes("9621014155") ? configuredDisplay : "");
+  const helplinePhoneRaw = helplinePhone ? helplinePhone.replace(/\D/g, "") : "";
+
+  const rawWhatsApp = siteContent?.footer?.whatsappNumber;
+  const isOldDummyWhatsApp = rawWhatsApp && (rawWhatsApp.includes("9988776655") || rawWhatsApp.includes("998877") || rawWhatsApp.includes("9621014155"));
+  const configuredWhatsApp = SITE_CONFIG.contact.whatsappNumber;
+  const whatsAppDisplay = !isOldDummyWhatsApp && rawWhatsApp && !rawWhatsApp.includes("9621014155")
+    ? rawWhatsApp
+    : (configuredWhatsApp && !configuredWhatsApp.includes("9621014155")
+      ? (SITE_CONFIG.contact.phoneDisplay || "Chat on WhatsApp")
+      : "Chat on WhatsApp");
   const supportEmail = siteContent?.footer?.email || SITE_CONFIG.contact.email;
   const copyrightText =
     siteContent?.footer?.copyrightText ||
@@ -281,21 +291,23 @@ export default function Footer() {
 
             <div className="flex flex-col gap-2">
               {/* Direct Phone Helpline */}
-              <a
-                href={`tel:${helplinePhoneRaw}`}
-                className="flex items-center gap-3 rounded-xl bg-cream/[0.06] border border-cream/10 px-3 py-2 text-cream transition-all hover:border-saffron-400 hover:bg-saffron-500/10 hover:text-white group"
-                title={`Call ${helplinePhone}`}
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-                  <Phone className="h-3.5 w-3.5" />
-                </span>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-cream/50 uppercase tracking-wider font-semibold">Pooja Helpline</span>
-                  <span className="font-bold text-xs text-white group-hover:text-saffron-300 transition-colors">
-                    {helplinePhone}
+              {helplinePhone ? (
+                <a
+                  href={`tel:${helplinePhoneRaw}`}
+                  className="flex items-center gap-3 rounded-xl bg-cream/[0.06] border border-cream/10 px-3 py-2 text-cream transition-all hover:border-saffron-400 hover:bg-saffron-500/10 hover:text-white group"
+                  title={`Call ${helplinePhone}`}
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                    <Phone className="h-3.5 w-3.5" />
                   </span>
-                </div>
-              </a>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] text-cream/50 uppercase tracking-wider font-semibold">Pooja Helpline</span>
+                    <span className="font-bold text-xs text-white group-hover:text-saffron-300 transition-colors">
+                      {helplinePhone}
+                    </span>
+                  </div>
+                </a>
+              ) : null}
 
               {/* Direct Support Email */}
               <a
@@ -328,7 +340,7 @@ export default function Footer() {
                 <div className="flex flex-col min-w-0">
                   <span className="text-[10px] text-cream/50 uppercase tracking-wider font-semibold">WhatsApp Chat</span>
                   <span className="font-bold text-xs text-white group-hover:text-emerald-300 transition-colors">
-                    +91 96210 14155
+                    {whatsAppDisplay}
                   </span>
                 </div>
               </a>

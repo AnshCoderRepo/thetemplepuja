@@ -54,7 +54,18 @@ export default function Contact() {
               </p>
 
               <div className="mt-8 space-y-4">
-                {contactInfo.map((info) => (
+                {contactInfo
+                  .filter((info) => {
+                    if (
+                      info.href.startsWith("tel:") &&
+                      (!SITE_CONFIG.contact.phoneRaw ||
+                        SITE_CONFIG.contact.phoneRaw.includes("9621014155"))
+                    ) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((info) => (
                   <a
                     key={info.label}
                     href={info.href}

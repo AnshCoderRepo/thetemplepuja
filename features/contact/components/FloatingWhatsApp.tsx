@@ -139,24 +139,26 @@ export default function FloatingWhatsApp() {
           </a>
         </div>
 
-        {/* 2. Direct Call Action */}
-        <div className="flex items-center gap-2 sm:gap-3 group">
-          <span className="rounded-xl bg-ink/90 backdrop-blur-md px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
-            Call Helpline
-          </span>
-          <a
-            href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
-            title="Call Helpline"
-            aria-label="Call Helpline"
-            onClick={() => {
-              trackContact({ method: "phone", label: "Floating Helpline" });
-              setIsOpen(false);
-            }}
-            className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"
-          >
-            <Phone className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:rotate-12" />
-          </a>
-        </div>
+        {/* 2. Direct Call Action (Only if active non-hidden phone number is configured) */}
+        {SITE_CONFIG.contact.phoneRaw && !SITE_CONFIG.contact.phoneRaw.includes("9621014155") ? (
+          <div className="flex items-center gap-2 sm:gap-3 group">
+            <span className="rounded-xl bg-ink/90 backdrop-blur-md px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105 border border-white/10">
+              Call Helpline
+            </span>
+            <a
+              href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+              title="Call Helpline"
+              aria-label="Call Helpline"
+              onClick={() => {
+                trackContact({ method: "phone", label: "Floating Helpline" });
+                setIsOpen(false);
+              }}
+              className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer pointer-events-auto"
+            >
+              <Phone className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:rotate-12" />
+            </a>
+          </div>
+        ) : null}
 
         {/* 3. WhatsApp Chat Action */}
         <div className="flex items-center gap-2 sm:gap-3 group">

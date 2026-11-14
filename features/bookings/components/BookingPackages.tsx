@@ -3,7 +3,7 @@
 import { Check, Phone, User, Users, Users2 } from "lucide-react";
 import { formatINR } from "@/lib/format";
 import { useI18n } from "@/components/providers";
-import { SITE_CONFIG } from "@/lib/config";
+import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
 import type { PackageTier, PoojaPackageOption } from "../types/booking.types";
 
 interface BookingPackagesProps {
@@ -189,13 +189,24 @@ export default function BookingPackages({
             <p className="text-[11px] text-ink-soft">Exclusive pandit coordination, private muhurat & home prasad delivery.</p>
           </div>
         </div>
-        <a
-          href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold px-3.5 py-2 text-xs shadow-xs transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <Phone className="h-3 w-3" />
-          <span>Call for VIP Puja ({SITE_CONFIG.contact.phoneDisplay})</span>
-        </a>
+        {SITE_CONFIG.contact.phoneRaw && !SITE_CONFIG.contact.phoneRaw.includes("9621014155") ? (
+          <a
+            href={`tel:${SITE_CONFIG.contact.phoneRaw}`}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold px-3.5 py-2 text-xs shadow-xs transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Phone className="h-3 w-3" />
+            <span>Call for VIP Puja ({SITE_CONFIG.contact.phoneDisplay})</span>
+          </a>
+        ) : (
+          <a
+            href={getWhatsAppUrl("Namaste, I want to enquire about VIP / Private Individual Sankalp.")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold px-3.5 py-2 text-xs shadow-xs transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <span>Enquire for VIP Puja</span>
+          </a>
+        )}
       </div>
     </div>
   );

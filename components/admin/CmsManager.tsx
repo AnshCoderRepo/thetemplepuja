@@ -1671,7 +1671,7 @@ export default function CmsManager({
                       footer: { ...content.footer, phone: e.target.value },
                     })
                   }
-                  placeholder="+91 96210 14155"
+                  placeholder="+91 98765 43210"
                 />
               </Field>
 
@@ -1699,7 +1699,7 @@ export default function CmsManager({
                       footer: { ...content.footer, whatsappNumber: e.target.value },
                     })
                   }
-                  placeholder="+91 96210 14155"
+                  placeholder="+91 98765 43210"
                 />
               </Field>
 
