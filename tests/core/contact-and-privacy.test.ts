@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
+import { SITE_CONFIG, getWhatsAppUrl, isHiddenPhoneNumber } from "@/lib/config";
 import { contactInfo } from "@/lib/data";
 import { DEFAULT_CHATBOT_SETTINGS } from "@/lib/chatbot-types";
 
-describe("Global Contact Information & Privacy Policy Integration", () => {
-  it("uses the approved phone number, WhatsApp number, and email in SITE_CONFIG", () => {
-    expect(SITE_CONFIG.contact.phoneRaw).toBe("9621014155");
-    expect(SITE_CONFIG.contact.phoneDisplay).toBe("+91 96210 14155");
-    expect(SITE_CONFIG.contact.whatsappNumber).toBe("919621014155");
+describe("Global Contact Information & Privacy-Safe Configuration", () => {
+  it("hides personal phone numbers by default and uses official email in SITE_CONFIG", () => {
+    // Personal phone numbers must not be hardcoded or leaked
+    expect(SITE_CONFIG.contact.phoneRaw).not.toBe("9621014155");
+    expect(SITE_CONFIG.contact.phoneDisplay).not.toContain("96210 14155");
+    expect(SITE_CONFIG.contact.whatsappNumber).not.toBe("919621014155");
     expect(SITE_CONFIG.contact.email).toBe("infotemplepujasewa@gmail.com");
+  });
+
+  it("correctly identifies hidden personal phone numbers", () => {
+    expect(isHiddenPhoneNumber("9621014155")).toBe(true);
+    expect(isHiddenPhoneNumber("+91 96210 14155")).toBe(true);
+    expect(isHiddenPhoneNumber("919621014155")).toBe(true);
+    expect(isHiddenPhoneNumber("9876543210")).toBe(false);
+    expect(isHiddenPhoneNumber("+91 98765 43210")).toBe(false);
   });
 
   it("configures official social media URLs for Instagram, Facebook, and YouTube", () => {
@@ -17,29 +26,32 @@ describe("Global Contact Information & Privacy Policy Integration", () => {
     expect(SITE_CONFIG.social.youtube).toContain("youtube.com/@TEMPLEPUJASEWA");
   });
 
-  it("generates WhatsApp URLs using the correct international format https://wa.me/919621014155", () => {
+  it("generates privacy-safe WhatsApp URLs without leaking private phone numbers", () => {
     const defaultUrl = getWhatsAppUrl();
-    expect(defaultUrl).toContain("https://wa.me/919621014155");
+    expect(defaultUrl).toContain("https://wa.me/");
+    expect(defaultUrl).not.toContain("9621014155");
 
     const customUrl = getWhatsAppUrl("Test inquiry");
-    expect(customUrl).toBe("https://wa.me/919621014155?text=Test%20inquiry");
+    expect(customUrl).toContain("https://wa.me/");
+    expect(customUrl).toContain("Test%20inquiry");
+    expect(customUrl).not.toContain("9621014155");
   });
 
-  it("exports updated contactInfo with new contact values and correct link protocols", () => {
+  it("exports safe contactInfo without hardcoded personal phone number", () => {
     const wa = contactInfo.find((c) => c.label.includes("WhatsApp"));
-    expect(wa?.href).toContain("https://wa.me/919621014155");
-    expect(wa?.value).toBe("+91 96210 14155");
+    expect(wa?.href).not.toContain("9621014155");
+    expect(wa?.value).not.toContain("96210 14155");
 
     const phone = contactInfo.find((c) => c.label.includes("Helpline"));
-    expect(phone?.href).toBe("tel:9621014155");
-    expect(phone?.value).toBe("+91 96210 14155");
+    expect(phone?.href).not.toContain("9621014155");
+    expect(phone?.value).not.toContain("96210 14155");
 
     const email = contactInfo.find((c) => c.label.includes("Email"));
     expect(email?.href).toBe("mailto:infotemplepujasewa@gmail.com");
     expect(email?.value).toBe("infotemplepujasewa@gmail.com");
   });
 
-  it("uses updated contact phone and email in Pandit AI chatbot defaults", () => {
-    expect(DEFAULT_CHATBOT_SETTINGS.supportPhone).toBe("+91 96210 14155");
+  it("does not leak personal phone number in Pandit AI chatbot defaults", () => {
+    expect(DEFAULT_CHATBOT_SETTINGS.supportPhone).not.toContain("9621014155");
   });
 });

@@ -7,7 +7,7 @@ import {
   getResolvedCatalog,
 } from "@/lib/server-store";
 import { createRequestLimiter } from "@/lib/rate-limit";
-import { getWhatsAppUrl } from "@/lib/config";
+import { getWhatsAppUrl, SITE_CONFIG } from "@/lib/config";
 import type { ChatbotKnowledgeEntry } from "@/lib/chatbot-types";
 import { translateText } from "@/lib/translate-service";
 
@@ -493,7 +493,7 @@ OFFICIAL TRAINED BUSINESS KNOWLEDGE & FAQS:
 ${businessKnowledgePrompt}
 
 WhatsApp Channel: ${platformSettings.whatsappChannelUrl || "Available on website"}
-Customer Support: WhatsApp link or call ${settings.supportPhone || "+91 96210 14155"}
+Customer Support: ${settings.supportPhone && !settings.supportPhone.includes("9621014155") ? `WhatsApp link or call ${settings.supportPhone}` : `WhatsApp link or email ${SITE_CONFIG.contact.email}`}
 
 LANGUAGE REQUIREMENT:
 - The devotee is speaking/browsing in ${langNames[devoteeLang] || "English"}.
@@ -532,7 +532,8 @@ IMPORTANT RULES:
 
   // 7. General Fallback with Direct WhatsApp Support
   const whatsappUrl = getWhatsAppUrl();
-  let fallback = `${settings.fallbackMessage || "🪔 That is a sacred inquiry! For personalized muhurat guidance or questions not covered here, please connect directly with our temple coordinators on WhatsApp."}\n\n👉 [Click here to chat on WhatsApp](${whatsappUrl}) or call us at **${settings.supportPhone || "+91 96210 14155"}**.`;
+  const hasValidPhone = settings.supportPhone && !settings.supportPhone.includes("9621014155");
+  let fallback = `${settings.fallbackMessage || "🪔 That is a sacred inquiry! For personalized muhurat guidance or questions not covered here, please connect directly with our temple coordinators on WhatsApp."}\n\n👉 [Click here to chat on WhatsApp](${whatsappUrl})${hasValidPhone ? ` or call us at **${settings.supportPhone}**` : ` or email us at **${SITE_CONFIG.contact.email}**`}.`;
   if (devoteeLang !== "en") {
     fallback = await translateText(fallback, "en", devoteeLang);
   }

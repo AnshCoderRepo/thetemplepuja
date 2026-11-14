@@ -22,7 +22,9 @@ import { SITE_CONFIG } from "./config";
 
 const TWILIO_API = "https://api.twilio.com/2010-04-01/Accounts";
 const SEND_TIMEOUT_MS = 8_000;
-const DEFAULT_ADMIN_WHATSAPP = `whatsapp:+${SITE_CONFIG.contact.whatsappNumber}`;
+const DEFAULT_ADMIN_WHATSAPP = SITE_CONFIG.contact.whatsappNumber
+  ? `whatsapp:+${SITE_CONFIG.contact.whatsappNumber}`
+  : "";
 
 export interface BookingAlertInfo {
   bookingId: string;

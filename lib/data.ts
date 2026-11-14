@@ -976,20 +976,32 @@ export const contactInfo = [
   {
     icon: "💬",
     label: "WhatsApp Support",
-    value: "+91 96210 14155",
+    value:
+      SITE_CONFIG.contact.whatsappNumber &&
+      !SITE_CONFIG.contact.whatsappNumber.includes("9621014155")
+        ? SITE_CONFIG.contact.phoneDisplay || "Available on WhatsApp"
+        : "Connect on WhatsApp",
     href: getWhatsAppUrl(),
   },
   {
     icon: "📞",
     label: "Pooja Helpline",
-    value: "+91 96210 14155",
-    href: `tel:${SITE_CONFIG.contact.phoneRaw}`,
+    value:
+      SITE_CONFIG.contact.phoneDisplay &&
+      !SITE_CONFIG.contact.phoneDisplay.includes("9621014155")
+        ? SITE_CONFIG.contact.phoneDisplay
+        : "Support via Email & WhatsApp",
+    href:
+      SITE_CONFIG.contact.phoneRaw &&
+      !SITE_CONFIG.contact.phoneRaw.includes("9621014155")
+        ? `tel:${SITE_CONFIG.contact.phoneRaw}`
+        : `mailto:${SITE_CONFIG.contact.email}`,
   },
   {
     icon: "✉️",
     label: "Email Support",
-    value: "infotemplepujasewa@gmail.com",
-    href: `mailto:${SITE_CONFIG.contact.email}`,
+    value: SITE_CONFIG.contact.email || "infotemplepujasewa@gmail.com",
+    href: `mailto:${SITE_CONFIG.contact.email || "infotemplepujasewa@gmail.com"}`,
   },
 ];
 

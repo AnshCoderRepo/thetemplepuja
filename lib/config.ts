@@ -11,6 +11,34 @@
  * 2. Set the corresponding environment variables in .env.local
  */
 
+const HIDDEN_PERSONAL_NUMBERS = ["9621014155", "919621014155"];
+
+export function isHiddenPhoneNumber(val?: string | null): boolean {
+  if (!val) return false;
+  const digits = val.replace(/\D/g, "");
+  return HIDDEN_PERSONAL_NUMBERS.some((num) => digits.includes(num));
+}
+
+function resolveContactPhoneRaw(): string {
+  const envVal = (process.env.NEXT_PUBLIC_CONTACT_PHONE || "").trim();
+  if (isHiddenPhoneNumber(envVal)) return "";
+  return envVal;
+}
+
+function resolveContactPhoneDisplay(): string {
+  const envVal = (process.env.NEXT_PUBLIC_CONTACT_PHONE_DISPLAY || "").trim();
+  if (isHiddenPhoneNumber(envVal)) return "";
+  if (envVal) return envVal;
+  const raw = resolveContactPhoneRaw();
+  return raw ? `+91 ${raw}` : "";
+}
+
+function resolveWhatsAppNumber(): string {
+  const envVal = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "").trim();
+  if (isHiddenPhoneNumber(envVal)) return "";
+  return envVal;
+}
+
 export const SITE_CONFIG = {
   // Brand & Domain
   brandName: "templepujasewa",
@@ -20,13 +48,13 @@ export const SITE_CONFIG = {
   // Business Contact Details (Easily replaceable for client handoff)
   contact: {
     // 10-digit mobile number
-    phoneRaw: process.env.NEXT_PUBLIC_CONTACT_PHONE || "9621014155",
+    phoneRaw: resolveContactPhoneRaw(),
     // Human-readable formatted phone
-    phoneDisplay: process.env.NEXT_PUBLIC_CONTACT_PHONE_DISPLAY || "+91 96210 14155",
+    phoneDisplay: resolveContactPhoneDisplay(),
     // Country code prefix (digits only)
     countryCode: "91",
     // Full WhatsApp international number (strictly digits)
-    whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919621014155",
+    whatsappNumber: resolveWhatsAppNumber(),
     // Official pre-filled greeting message for customer support
     whatsappPreFilledMessage: "Namaste, I would like to know more about your Puja services.",
     // Support & Admin Email
@@ -96,10 +124,11 @@ export function getUpiPaymentUrl(amount: number, note?: string): string {
  * @param customMessage Optional custom greeting or enquiry text
  */
 export function getWhatsAppUrl(customMessage?: string): string {
-  const number = SITE_CONFIG.contact.whatsappNumber.replace(/\D/g, "");
+  const rawNumber = (SITE_CONFIG.contact.whatsappNumber || "").replace(/\D/g, "");
+  const number = isHiddenPhoneNumber(rawNumber) ? "" : rawNumber;
   const message = customMessage || SITE_CONFIG.contact.whatsappPreFilledMessage;
   const encoded = encodeURIComponent(message);
-  return `https://wa.me/${number}?text=${encoded}`;
+  return number ? `https://wa.me/${number}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
 }
 
 /**
