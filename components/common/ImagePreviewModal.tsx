@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import { Camera, X, Sparkles, ZoomIn } from "lucide-react";
 
@@ -97,22 +98,27 @@ export default function ImagePreviewModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Ambient blurred glow for dark mode atmosphere */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={imageUrl}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-contain blur-2xl opacity-20 pointer-events-none scale-105"
+          fill
+          sizes="100vw"
+          className="object-contain blur-2xl opacity-20 pointer-events-none scale-105"
+          unoptimized
         />
 
         {/* Complete Uncropped Image */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrl}
-          alt={title || "Pooja Image Preview"}
-          className="relative z-10 max-h-[75vh] sm:max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/10 transition-all duration-300"
-          style={{ objectFit: "contain" }}
-        />
+        <div className="relative z-10 h-[75vh] sm:h-[82vh] w-full flex items-center justify-center">
+          <Image
+            src={imageUrl}
+            alt={title || "Pooja Image Preview"}
+            fill
+            sizes="100vw"
+            className="object-contain rounded-2xl shadow-2xl border border-white/10"
+            unoptimized
+          />
+        </div>
       </div>
 
       {/* Bottom Bar: Title & Photo Counter Badge */}

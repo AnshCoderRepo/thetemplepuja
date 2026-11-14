@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 export interface ImageAccordionItem {
   id: number;
@@ -44,12 +45,13 @@ function AccordionItem({
       `}
     >
       {/* Background image */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={item.imageUrl}
         alt={item.title}
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="lazy"
+        fill
+        sizes="(max-width: 768px) 80vw, 400px"
+        className="object-cover"
+        unoptimized
       />
 
       {/* Dark gradient overlay — stronger at bottom for text legibility */}

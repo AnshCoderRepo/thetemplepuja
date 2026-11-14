@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import PoojaImageFallback from "./PoojaImageFallback";
+import { isConfiguredImageSource } from "@/lib/image-utils";
 
 export interface PoojaImageProps {
   src?: string | null;
@@ -78,15 +80,16 @@ export default function PoojaImage({
       <div className="absolute inset-0 bg-radial from-slate-900/80 to-slate-950 pointer-events-none" />
 
       {/* Uncropped foreground image preserving 100% of the original aspect ratio */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={currentSrc}
         alt={alt}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-        className={`relative z-0 h-full w-full object-contain transition-transform duration-300 ${imgClassName}`}
+        fill
+        priority={priority}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        className={`relative z-0 object-contain transition-transform duration-300 ${imgClassName}`}
         onLoad={handleImageLoad}
         onError={handleImageError}
+        unoptimized={!isConfiguredImageSource(currentSrc)}
       />
     </div>
   );

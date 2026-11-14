@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   Check,
   Copy,
@@ -163,18 +164,22 @@ export default function UpiQrCheckout({
           <div className="relative p-3 rounded-2xl bg-gradient-to-b from-amber-50 to-cream border border-saffron-200 shadow-inner">
             <div className="relative bg-white p-2.5 rounded-xl border border-saffron-100 shadow-sm flex items-center justify-center">
               {customQrImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={customQrImage}
                   alt="Official UPI Payment QR Code"
+                  width={320}
+                  height={320}
                   className="max-h-72 w-auto max-w-full object-contain rounded-lg sm:max-h-80 shadow-xs"
+                  unoptimized
                 />
               ) : qrDataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={qrDataUrl}
                   alt="Dynamic UPI Payment QR Code"
+                  width={208}
+                  height={208}
                   className="h-48 w-48 object-contain rounded-lg sm:h-52 sm:w-52"
+                  unoptimized
                 />
               ) : (
                 <div className="h-48 w-48 flex flex-col items-center justify-center text-slate-400 gap-2 sm:h-52 sm:w-52">

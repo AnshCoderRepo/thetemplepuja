@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Building2,
   Calendar,
@@ -526,14 +527,16 @@ export default function TempleDetailClient({
             <X className="h-5 w-5" />
           </button>
           <div
-            className="relative max-h-[85vh] max-w-4xl w-full overflow-hidden rounded-2xl"
+            className="relative h-[80vh] max-w-4xl w-full overflow-hidden rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={previewImage}
               alt="Temple Full View"
-              className="h-auto max-h-[85vh] w-full object-contain rounded-2xl mx-auto"
+              fill
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              className="object-contain rounded-2xl mx-auto"
+              unoptimized
             />
           </div>
         </div>

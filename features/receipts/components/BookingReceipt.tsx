@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   BadgeCheck,
   Check,
@@ -117,10 +118,12 @@ export default function BookingReceipt({ booking, holder }: BookingReceiptProps)
       <div className="relative bg-gradient-to-br from-saffron-500 to-maroon-600 px-8 py-8 text-center text-white print:bg-white print:text-ink print:border-b-2 print:border-saffron-600">
         <div className="absolute inset-0 opacity-15 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px] print:hidden" />
         <span className="relative inline-flex h-16 w-auto sm:h-20 md:h-22 items-center justify-center rounded-2xl bg-white px-4 py-2 shadow-card shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/logo.png"
             alt="templepujasewa"
+            width={180}
+            height={60}
+            priority
             className="h-full w-auto object-contain"
           />
         </span>

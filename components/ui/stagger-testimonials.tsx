@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const SQRT_5000 = Math.sqrt(5000);
@@ -101,12 +102,14 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
         }}
       />
       {testimonial.imgSrc ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <Image
           src={testimonial.imgSrc}
           alt={testimonial.by.split(",")[0]}
+          width={48}
+          height={56}
           className="mb-4 h-14 w-12 bg-muted object-cover object-top"
           style={{ boxShadow: "3px 3px 0px #FFFBF4" }}
+          unoptimized
         />
       ) : (
         <div

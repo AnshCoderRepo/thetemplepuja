@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Building2 } from "lucide-react";
+import { isConfiguredImageSource } from "@/lib/image-utils";
 
 export interface TempleImageProps {
   src?: string | null;
@@ -18,6 +20,7 @@ export default function TempleImage({
   className = "",
   imgClassName = "",
   onClick,
+  priority = false,
 }: TempleImageProps) {
   const cleanSrc = typeof src === "string" ? src.trim() : "";
   const [currentSrc, setCurrentSrc] = useState(cleanSrc);
@@ -68,21 +71,26 @@ export default function TempleImage({
       className={`relative h-full w-full overflow-hidden bg-slate-950 flex items-center justify-center ${className}`}
     >
       {/* Ambient blurred backdrop to softly fill letterbox without clipping or distortion */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={currentSrc}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+        fill
+        sizes="50vw"
+        className="object-cover blur-md opacity-35 scale-110 pointer-events-none"
+        unoptimized={!isConfiguredImageSource(currentSrc)}
       />
 
       {/* Uncropped foreground image preserving 100% of the original aspect ratio */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={currentSrc}
         alt={alt}
-        className={`relative z-0 h-full w-full object-cover transition-transform duration-300 ${imgClassName}`}
+        fill
+        priority={priority}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        className={`relative z-0 object-cover transition-transform duration-300 ${imgClassName}`}
         onError={handleImageError}
+        unoptimized={!isConfiguredImageSource(currentSrc)}
       />
     </div>
   );
