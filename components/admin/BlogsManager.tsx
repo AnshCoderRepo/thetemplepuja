@@ -732,13 +732,15 @@ export default function BlogsManager({
                 <div>
                   {/* Image with status badge */}
                   <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-slate-900">
-                    <img
-                      src={post.imageUrl}
+                    <Image
+                      src={post.imageUrl || "/images/blog-default.jpg"}
                       alt={post.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      unoptimized
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 pointer-events-none" />
 
                     {/* Status Badge */}
                     <div className="absolute top-2.5 left-2.5 z-10">
@@ -1199,10 +1201,13 @@ export default function BlogsManager({
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       <div className="relative h-28 w-44 shrink-0 overflow-hidden rounded-xl border border-saffron-200 bg-slate-900">
                         {draft.imageUrl ? (
-                          <img
+                          <Image
                             src={draft.imageUrl}
                             alt="Preview"
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="176px"
+                            className="object-cover"
+                            unoptimized
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">

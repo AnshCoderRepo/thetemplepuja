@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import NextImage from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
@@ -2235,19 +2236,23 @@ export default function PoojasManager({
                         {draft.imageUrl ? (
                           <div className="relative rounded-2xl overflow-hidden border border-saffron-200 bg-slate-950 aspect-[16/7] max-h-48 group flex items-center justify-center">
                             {/* Ambient backdrop */}
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <NextImage
                               src={draft.imageUrl}
                               alt=""
                               aria-hidden="true"
-                              className="absolute inset-0 h-full w-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+                              fill
+                              sizes="(max-width: 768px) 100vw, 400px"
+                              className="object-cover blur-md opacity-35 scale-110 pointer-events-none"
+                              unoptimized
                             />
                             {/* Uncropped unzoomed preview */}
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <NextImage
                               src={draft.imageUrl}
                               alt="Banner Preview"
-                              className="relative z-0 h-full w-full object-contain"
+                              fill
+                              sizes="(max-width: 768px) 100vw, 400px"
+                              className="relative z-0 object-contain"
+                              unoptimized
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end justify-between p-3 text-white pointer-events-none">
                               <span className="text-xs font-bold bg-black/50 backdrop-blur px-2.5 py-1 rounded-lg border border-white/20">
